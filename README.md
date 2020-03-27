@@ -6,21 +6,16 @@ Sensors, electro-valves and controller
 ![recovid-synoptique](image/high level synoptique.jpg)
 
 ## lexique
-* Paw = pression voie aerienne (en cmH20) 
-
-* QPatientSLM = debit patient a 21°C et 1013hPa
-
-* QPatientBTPS = debit Patient a 37°C, Pression ambiante et 100% Humidite (breath Temperature and pressure saturated)
-
-* RawO2 = tension qui sort de la cellule O2
-
-* PAtmo Pression atmospherique (exprime en hpa)
-
-* Ti = Temps d'inspiration  = VT(en L)/Debit de pointe(L/Min)
-
-* VTi = volume tidal inspiratoire
-
-* VTe = Volume tidal expiratoire
+|    Nom|definition|range | resolution|
+|----------------|-------------------------------|-----------------------------|-----------------------------|
+| Paw | pression voie aerienne (en cmH20) |-2 ; 100| 0.1|
+| QPatientSLM | debit patient a 21°C et 1013hPa|-200 ; 200|0.1|
+| QPatientBTPS | debit Patient a 37°C, Pression ambiante et 100% Humidite (breath Temperature and pressure saturated)|-200 ; 200|0.1|
+| RawO2 | tension qui sort de la cellule O2 |||
+| PAtmo Pression atmospherique (exprime en hpa)|0-1200|1|
+| Ti | Temps d'inspiration(seconde)  = VT(en L)/Debit de pointe(L/Min)|0;2|0.1|
+| VTi | volume tidal inspiratoire (ml)|0-1500|1|
+| VTe | Volume tidal expiratoire (ml)|0-1500|1|
 
 ## principe de fonctionement
 
@@ -56,5 +51,8 @@ cycle a cycle pour la PEP et le VT
 * pour le VT on va ajuster le nombre de tour de consigne (attention a ne pas compenser tout d'un coup) 
 
 Pour le moment je pense qu'il faut avoir une vitesse constante. je ne pense pas qu'il soit necessaire de viser une forme de debit precise.
+
+###Calibration O2
+c'est une procedure a part ou l'on met la cellule O2 à l'air (pendant 2minute au minimum) et on prend la valeur RawO2 et Patmo a la fin des 2 minutes. a faire avant le debut de la ventilation probablement en assurant un passage d'air devant la cellule pour flusher toute trace d'O2.
 
 
