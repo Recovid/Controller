@@ -61,6 +61,11 @@ c'est une procedure a part ou l'on met la cellule O2 à l'air (pendant 2minute a
 [Sensirion SFM3300-AW](https://fr.farnell.com/sensirion/sfm3300-aw/flow-sensor-washable-95ac5341/dp/3103639?st=sfm3300)
 
 [Application Note I2C](https://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/5_Mass_Flow_Meters/Application_Notes/Sensirion_Mass_Flo_Meters_SFM3xxx_I2C_Functional_Description.pdf)
+
+[Effects of gas mixtures and humidity on the sensor signal](https://www.repcomsrl.com/wp-content/uploads/2016/05/GF_AN_SFM3200_SFM3300_Effects_Humidity_Gas_mixtures_V1_D2.pdf)
+
+[Connector Interface for SFM3x00-AWand SFM3300-DFlow Sensors](https://www.repcomsrl.com/wp-content/uploads/2016/05/GF_AN_SFM3xxx-AW_ConnectorInterface_v1.0_D2.pdf)
+
 #### DIY solution
 [Pneumotach](https://www.hamilton-medical.com/dam/jcr:b8ef47c8-c2fa-47d5-8378-7fb9198ff7fc/Flow-sensor-tech-specs-EN-689568.00.pdf) setup with a differential pressure sensor. According to the datasheet, de pressure difference is around 5mbar @ 180L/min.
 
