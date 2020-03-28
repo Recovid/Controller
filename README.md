@@ -64,6 +64,8 @@ c'est une procedure a part ou l'on met la cellule O2 à l'air (pendant 2minute a
 
 [Effects of gas mixtures and humidity on the sensor signal](https://www.repcomsrl.com/wp-content/uploads/2016/05/GF_AN_SFM3200_SFM3300_Effects_Humidity_Gas_mixtures_V1_D2.pdf)
 
+[Connector Interface for SFM3x00-AWand SFM3300-DFlow Sensors](https://www.repcomsrl.com/wp-content/uploads/2016/05/GF_AN_SFM3xxx-AW_ConnectorInterface_v1.0_D2.pdf)
+
 #### DIY solution
 [Pneumotach](https://www.hamilton-medical.com/dam/jcr:b8ef47c8-c2fa-47d5-8378-7fb9198ff7fc/Flow-sensor-tech-specs-EN-689568.00.pdf) setup with a differential pressure sensor. According to the datasheet, de pressure difference is around 5mbar @ 180L/min.
 
