@@ -4,9 +4,11 @@
 #include "main.h"
 #include "sensor.h"
 
+
 #define DEBUG 1
 #define uint8_t unsigned char
 #define uint16_t unsigned short
+
 
 //Revoir l'utilité de chaque variable pour sa definition et son type.
 unsigned int RawO2 = 0,
@@ -51,10 +53,10 @@ bool Flag_moteur = true;
 * si le medecin appuie sur pause expiratoire on ferme la l'electrovanne tant qu'il est appuye dessus
 */
 
+
 void setup( void ) {
     Wire.begin();
     Serial.begin( BAUDRATE );
-    
     setup_PAtmo();
     measflow.init();
 
@@ -71,7 +73,36 @@ void loop( void ){
     PAtmo = get_PAtmo();
 
     sendPckt( 1 );
+}
 
+void Cycle(){
+    breathIn();
+
+    breathOut();
+}
+
+void breathIn(){ //Inspiration
+
+    electroValve( EV_CLOSE ); //close electovalve
+
+    controle_motor( Ti , Speed );
+}
+
+void breathOut(){ //expiratoire
+    if( !Flag_expiratoire )
+        electroValve( EV_OPEN ); //open electovalve
+}
+
+void control_motor( float time , int speed ){
+    //
+}
+
+void electroValve( bool state ){
+    if( state ){
+        //Open EV
+    } else {
+        //close EV
+    }
 }
 
 float  get_QpatientBTPS ( uint16_t QPatientSLM , uint16_t PAtmo ){

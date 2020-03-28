@@ -21,7 +21,9 @@
 #define MIN_SENDING_PCKT_LEN 5
 #define MAX_RECEIVED_PCKT_LEN 8 //maximum length of a packet to receive = 8 bytes
 
-
+//define states for the electrovalve
+#define EV_CLOSE 0
+#define EV_OPEN 1
 
 
 #endif //CONTROLLER_MAIN_H
