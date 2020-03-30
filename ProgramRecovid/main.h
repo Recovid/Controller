@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #ifndef CONTROLLER_MAIN_H
 #define CONTROLLER_MAIN_H
 
