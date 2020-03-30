@@ -24,7 +24,7 @@ long    VMi = 0,
         VMe = 0;
 
 bool Flag_moteur = true;
-
+bool Flag_expiration = true;
 
 /*
  * Paw = pression voie aerienne (en cmH20) [-2;100] [0.1]
@@ -36,8 +36,6 @@ bool Flag_moteur = true;
  * VTi = volume tidal inspiratoire (ml) [0;1500] [1]
  * VTe = Volume tidal expiratoire (ml) [0;1500] [1]
  */
-
-
 
 /*
 * Inspiration :
@@ -59,7 +57,6 @@ void setup( void ) {
     Serial.begin( BAUDRATE );
     setup_PAtmo();
     measflow.init();
-
 }
 
 void loop( void ){
@@ -118,7 +115,7 @@ int get_O2Concentration( uint16_t RawO2 ){
     return RawO2 * GAIN;
 }
 
-void get_PEP( ){}
+void get_PEP(  ){}
 
 void get_PPlat( ){}
 
@@ -159,8 +156,7 @@ uint16_t get_PAtmo() {
 #endif
 }
 
-
-void sendPckt( uint8_t type ){
+void send_Packet( uint8_t type ){
     uint8_t packet[ MAX_SENDING_PCKT_LEN ] = {0};
 
     build_packet_upload( packet , type );
@@ -169,7 +165,6 @@ void sendPckt( uint8_t type ){
         sendToIHM( packet , MAX_SENDING_PCKT_LEN );
     else
         sendToIHM( packet , MIN_SENDING_PCKT_LEN );
-
 }
 
 //From Arduino to RPi
@@ -221,7 +216,7 @@ bool build_packet_upload( uint8_t* packet, uint8_t packet_type){
     }
 }
 
-void decode_packet( uint8_t* buf, uint8_t sizeOfBuf ){
+void decode_packet_download( uint8_t* buf, uint8_t sizeOfBuf ){
     uint8_t rcv_pckt_type = buf[0];
 
     switch( rcv_pckt_type ){
@@ -267,7 +262,6 @@ void BME280_setup(){
     // suggested rate is 1/60Hz (1m)
     //delayTime = 30000; // in milliseconds
 }
-
 
 void BMP280_setup(){
     if (!bmp.begin()) {
