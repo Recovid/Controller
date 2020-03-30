@@ -69,6 +69,8 @@ c'est une procedure a part ou l'on met la cellule O2 à l'air (pendant 2minute a
 #### DIY solution
 [Pneumotach](https://www.hamilton-medical.com/dam/jcr:b8ef47c8-c2fa-47d5-8378-7fb9198ff7fc/Flow-sensor-tech-specs-EN-689568.00.pdf) setup with a differential pressure sensor. According to the datasheet, de pressure difference is around 5mbar @ 180L/min.
 
+Note : the pneumotach mentioned above has a flexible flapper. Hence, its deltaP response is not linear to flow. We might have to calibrate thoroughly if high flows are to be accurately measured. [ref](https://www.apsf.org/article/how-do-flow-sensors-work/)
+
 Differential pressure sensors ordered:
 
 [HSCDRRD006MDSA3](https://eu.mouser.com/ProductDetail/Honeywell/HSCDRRD006MDSA3?qs=Yk42LiOZU8RCThK5r%252BnSIA==) SPI, +-6mbar
