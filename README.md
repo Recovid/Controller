@@ -76,34 +76,50 @@ cycle a cycle pour la PEP et le VT
 Pour le moment je pense qu'il faut avoir une vitesse constante. je ne pense pas qu'il soit necessaire de viser une forme de debit precise.
 
 ### Alarme
+#### general
+une alarme est compose de deux elements : 
+- une alarme audible en utilisant 
+https://www.digikey.fr/product-detail/fr/mallory-sonalert-products-inc/MSS5MMG/458-1405-ND/5418608
+- une alarme visuelle 
+
+pour le moment (avant formalisation de l'analyse de risques) on a deux niveaux d'alarme:
+l'alarme audible est gere entierement par le composant mallory (il suffit d'activer la bonne entree)
+l'alarme visuelle est gere en pilotant des LED 
+|Priorite |couleur | Fréquence de clignotement|Rapport cyclique|
+|-------------|-------------|-------------|-------------|
+|High|rouge|1,4 Hz à 2,8 Hz (on va dire 2Hz)|20 % à 60 % en marche (on va dire 50%)|
+|Medium|Jaune|0,4 Hz à 0,8 Hz (on va dire 0.5Hz)|20 % à 60 % en marche (on va dire 50%)|
+
+attention il faut que le voyant soit visible à 4 m
+
 #### Pmax 
 
-|Activation | deactivation |Action|
-|-------------|-------------|-------------|
-|on alarme si durant 3 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration.|
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|Haute|on alarme si durant 3 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration.|
 #### Pmin
 
-|Activation | deactivation |Action|
-|-------------|-------------|-------------|
-|on alarme si durant 15s consecutive PPeak < Max(PMin, PEPs+2).| on arrete l'alarme si PPeak >Max(PMin, PEPs+2)||
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|High|on alarme si durant 15s consecutive PPeak < Max(PMin, PEPs+2).| on arrete l'alarme si PPeak >Max(PMin, PEPs+2)||
 
 #### PEP Haute
 
-|Activation | deactivation |Action|
-|-------------|-------------|-------------|
-|on alarme si durant 8 cycle consecutif PEP > PEPs + 2 cmH2O.| on arrete l'alarme si PEP < PEPs + 2 cmH2O||
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|High|on alarme si durant 8 cycle consecutif PEP > PEPs + 2 cmH2O.| on arrete l'alarme si PEP < PEPs + 2 cmH2O||
 
 #### PEP basse
 
-|Activation | deactivation |Action|
-|-------------|-------------|-------------|
-|on alarme si durant 8 cycle consecutif PEP < PEPs - 2 cmH2O.| on arrete l'alarme si PEP > PEPs - 2 cmH2O||
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|Medium|on alarme si durant 8 cycle consecutif PEP < PEPs - 2 cmH2O.| on arrete l'alarme si PEP > PEPs - 2 cmH2O||
 
 #### VTmin
 
-|Activation | deactivation |Action|
-|-------------|-------------|-------------|
-|on alarme si durant 3 cycle consecutif VTe < VTe Min.| on arrete l'alarme si VTe > VTe Min||
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|Medium|on alarme si durant 3 cycle consecutif VTe < VTe Min.| on arrete l'alarme si VTe > VTe Min||
 
 
 ### Calibration O2 (si on a une cellule O2)
