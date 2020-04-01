@@ -7,7 +7,6 @@
 #include "SDP610-500pa.h"
 #include "NPA-700B-001G.h"
 #include "ABPLANT001PG2A5.h"
-#include "RunningAverage.h"
 
 #define MOVING_AVG_SIZE 3
 
