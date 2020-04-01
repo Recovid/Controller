@@ -62,11 +62,11 @@ Inspiration :
 * on ferme l'electovalve I/E (Valve expi connecte a la sortie du ballon)
 * on actionne le ballon pendant le temps Ti a la vitesse determiné (pas de controle durant le cycle)
 * apres le Ti on commence a faire revenir le ballon mais on garde l'electrovanne fermé durant le temps de plateau ou le temps de la pause inpiratoire (tant que le medecin a le bouton appuyé) puis passage a l'expiration.
-* si Paw > PMax alors on passe directement en expiration.
+* si Paw > PMax alors on passe directement en expiration.Attention pas de regulation du volume a part a la baisse dans ce cas là
 
 Expiration
 * On ouvre l'electrovanne (plutot simple)
-* si le medecin appuie sur pause expiratoire on ferme l'electrovanne tant qu'il est appuye dessus.
+* si le medecin appuie sur pause expiratoire on ferme l'electrovanne tant qu'il est appuye dessus. Quand il relache on repart en inspi directement
 
 ### regulation
 cycle a cycle pour la PEP et le VT
@@ -96,7 +96,7 @@ attention il faut que le voyant soit visible à 4 m
 
 |Priorite |Activation | deactivation |Action|
 |-------------|-------------|-------------|-------------|
-|Haute|on alarme si durant 3 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration.|
+|Haute|on alarme si durant 3 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration. Attention pas de regulation du volume a part a la baisse dans ce cas là|
 #### Pmin
 
 |Priorite |Activation | deactivation |Action|
