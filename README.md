@@ -61,12 +61,12 @@ en continu (1Hz) on lit RawO2 et PAtmo
 Inspiration :
 * on ferme l'electovalve I/E (Valve expi connecte a la sortie du ballon)
 * on actionne le ballon pendant le temps Ti a la vitesse determiné (pas de controle durant le cycle)
-* apres le Ti on commence a faire revenir le ballon mais on garde l'electrovanne fermé durant le temps de plateau ou le temps de la pause inpiratoire (tant que le medecin a le bouton appuyé) puis passage a l'expiration.
+* apres le Ti on commence a faire revenir le ballon mais on garde l'electrovanne fermé durant le temps de plateau ou le temps de la pause inpiratoire (tant que le medecin a le bouton appuyé et au maximum durant 5s) puis passage a l'expiration.
 * si Paw > PMax alors on passe directement en expiration.Attention pas de regulation du volume a part a la baisse dans ce cas là
 
 Expiration
 * On ouvre l'electrovanne (plutot simple)
-* si le medecin appuie sur pause expiratoire on ferme l'electrovanne tant qu'il est appuye dessus. Quand il relache on repart en inspi directement
+* si le medecin appuie sur pause expiratoire on ferme l'electrovanne tant qu'il est appuye dessus. Quand il relache on repart en inspi directement. la duree maximum de la pause expiratoire est de 5s.
 
 ### regulation
 cycle a cycle pour la PEP et le VT
@@ -96,7 +96,7 @@ attention il faut que le voyant soit visible à 4 m
 
 |Priorite |Activation | deactivation |Action|
 |-------------|-------------|-------------|-------------|
-|Haute|on alarme si durant 3 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration. Attention pas de regulation du volume a part a la baisse dans ce cas là|
+|Haute|on alarme si durant 2 cycle consecutif Paw >= max(PMax, PEPs+10).| on arrete l'alarme si durant un cycle complet Paw <PMax|si Paw > max(PMax, PEPs+10) alors on passe directement en expiration. Attention pas de regulation du volume a part a la baisse dans ce cas là|
 #### Pmin
 
 |Priorite |Activation | deactivation |Action|
@@ -107,19 +107,24 @@ attention il faut que le voyant soit visible à 4 m
 
 |Priorite |Activation | deactivation |Action|
 |-------------|-------------|-------------|-------------|
-|High|on alarme si durant 8 cycle consecutif PEP > PEPs + 2 cmH2O.| on arrete l'alarme si PEP < PEPs + 2 cmH2O||
+|High|on alarme si durant 3 cycle consecutif PEP > PEPs + 2 cmH2O.| on arrete l'alarme si PEP < PEPs + 2 cmH2O||
 
 #### PEP basse
 
 |Priorite |Activation | deactivation |Action|
 |-------------|-------------|-------------|-------------|
-|Medium|on alarme si durant 8 cycle consecutif PEP < PEPs - 2 cmH2O.| on arrete l'alarme si PEP > PEPs - 2 cmH2O||
+|Medium|on alarme si apres les 8 premiers cycle de la ventilation, durant 3 cycle consecutif PEP < PEPs - 2 cmH2O.| on arrete l'alarme si PEP > PEPs - 2 cmH2O||
 
 #### VTmin
 
 |Priorite |Activation | deactivation |Action|
 |-------------|-------------|-------------|-------------|
 |Medium|on alarme si durant 3 cycle consecutif VTe < VTe Min.| on arrete l'alarme si VTe > VTe Min||
+#### VTmax
+
+|Priorite |Activation | deactivation |Action|
+|-------------|-------------|-------------|-------------|
+|Medium|on alarme si durant 3 cycle consecutif VTe < VT+100mL.| on arrete l'alarme si VTe < VT+100mL||
 
 
 ### Calibration O2 (si on a une cellule O2)
