@@ -11,7 +11,7 @@
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-
+  xQueueMessage = xQueueCreate( NB_MAX_MESSAGE, sizeof(struct message*));
   // initialize serial communication at SERIAL_SPEED bits per second:
   Serial.begin(2000000);
 

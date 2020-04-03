@@ -46,6 +46,10 @@ struct alarm_settings {
 	int vtmin_alarm; //'VTMIN' (Volume Minimum inspiration) : 0200..1000 (mL)
 };
 
-
+#define SIZE_OF_TEXT_MESSAGE 100
+#define NB_MAX_MESSAGE 10
+struct message {
+  char text[SIZE_OF_TEXT_MESSAGE];
+};
 
 #endif //STRUCT_H
