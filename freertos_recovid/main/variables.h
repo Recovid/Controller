@@ -14,5 +14,6 @@ extern int ALARM_IDX_TO_ACK; //next alarm needing to be acked
 extern struct alarm alarms_array[ALARM_CYCLE_RING_SIZE]; // Ring buffer of the alarm
 extern int count_ms;
 
+extern QueueHandle_t xQueueMessage;
 
 #endif //VARIABLES_H
