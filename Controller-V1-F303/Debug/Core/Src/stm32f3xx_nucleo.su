@@ -1,0 +1,9 @@
+stm32f3xx_nucleo.c:165:10:BSP_GetVersion	4	static
+stm32f3xx_nucleo.c:177:6:BSP_LED_Init	40	static
+stm32f3xx_nucleo.c:204:6:BSP_LED_DeInit	40	static
+stm32f3xx_nucleo.c:222:6:BSP_LED_On	16	static
+stm32f3xx_nucleo.c:234:6:BSP_LED_Off	16	static
+stm32f3xx_nucleo.c:246:6:BSP_LED_Toggle	16	static
+stm32f3xx_nucleo.c:262:6:BSP_PB_Init	40	static
+stm32f3xx_nucleo.c:300:6:BSP_PB_DeInit	40	static
+stm32f3xx_nucleo.c:315:10:BSP_PB_GetState	16	static
