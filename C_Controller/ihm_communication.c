@@ -19,7 +19,7 @@ unsigned char checksum8(const char* s)
     for (; s && *s!='\0' ; s++) {
         cs8 += *s;
     }
-    return (unsigned char)(cs8 % 0xFF);
+    return (unsigned char)(cs8 % 256);
 }
 
 bool send(const char* frame)
