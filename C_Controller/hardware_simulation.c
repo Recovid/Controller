@@ -34,11 +34,17 @@ bool soft_reset()
 FILE *in ;
 FILE *out;
 
-bool init_ihm()
+bool init_ihm(const char* pathInputFile, const char* pathOutputFile)
 {
     // TODO Replace with HAL_UART_init, no connection per se
-    in  = stdin ;
-    out = stdout;
+    if (pathInputFile)
+        in  = fopen(pathInputFile, "r");
+    else
+        in = stdin;
+    if (pathOutputFile)
+        out = fopen(pathOutputFile, "w");
+    else
+        out = stdout;
     return true;
 }
 
