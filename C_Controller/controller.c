@@ -16,6 +16,10 @@ int VTmin_mL   = 400;
 int FRmin_pm   =  10;
 int VMmin_Lm   =   5;
 
+int Tpins_ms   =   0;
+int Tpexp_ms   =   0;
+int Tpbip_ms   =   0;
+
 const int PEPmax_cmH2O = 2;
 const int PEPmin_cmH2O = 2;
 
@@ -41,9 +45,25 @@ int Pcrete_cmH2O = 0;
 int Pplat_cmH2O  = 0;
 int PEPs_cmH2O   = 0;
 
-bool run()
+void sense_and_compute()
 {
-    send_DATA(P_cmH2O, VolM_Lpm, Vol_mL, Pplat_cmH2O, PEP_cmH2O);
-    send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
-    read();
+    static int sent_DATA_ms = 0;
+
+    // TODO Sense Paw, Patmo, Pdiff, ...
+    // TODO Compute Q, ...
+
+    if ((sent_DATA_ms+50 < get_time_ms())
+        && send_DATA(P_cmH2O, VolM_Lpm, Vol_mL, Pplat_cmH2O, PEP_cmH2O)) {
+        sent_DATA_ms = get_time_ms();
+    }
+}
+
+void cycle_respiration()
+{
+    static int sent_RESP_ms = 0;
+
+    if ((sent_RESP_ms+2000 < get_time_ms()) // TODO Insufflation, Plateau, Exhalation, ExhalationPEP
+        && send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O)) {
+        sent_RESP_ms = get_time_ms();
+    }
 }

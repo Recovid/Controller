@@ -8,21 +8,10 @@
 
 #define MAX_FRAME 1000
 
-FILE *in ;
-FILE *out;
-
-bool connect()
-{
-    // TODO Replace with HAL_UART_init
-    in  = stdin ;
-    out = stdout;
-    return true;
-}
-
 char sign(int i) { return i<0 ? '-' : '+'; }
 
 #define CS8 "\tCS8:"
-#define CS8_VALUE "%02X\n"
+#define CS8_VALUE "%02hhX\n"
 
 unsigned char checksum8(const char* s)
 {
@@ -35,14 +24,16 @@ unsigned char checksum8(const char* s)
 
 bool send(const char* frame)
 {
-    return fprintf(out, "%s" CS8_VALUE, frame, checksum8(frame)) > 0;
+    char checked_frame[MAX_FRAME+1] = "";
+    return sprintf(checked_frame, "%s" CS8_VALUE, frame, checksum8(frame)) > 0
+           && send_ihm(checked_frame)>0;
 }
 
 bool send_DATA(int P, int VolM, int Vol, int Pplat, int PEP)
 {
     char frame[MAX_FRAME+1] = "";
     return sprintf(frame, "DATA msec_:%06d Vol__:%04d Deb__:%c%03d Paw__:%c%03d" CS8,
-                   (int)(getTimeMs() % 1000000l), Vol, sign(VolM), VolM, sign(P), P) > 0
+                   (int)(get_time_ms() % 1000000l), Vol, sign(VolM), VolM, sign(P), P) > 0
            && send(frame);
 }
 
@@ -88,6 +79,7 @@ bool send_SET(const char* field, const char* fmt, int value)
 }
 
 #define INIT "INIT "
+
 bool send_INIT(const char* information)
 {
     char frame[MAX_FRAME+1] = "";
@@ -113,19 +105,32 @@ bool process(const char** ppf, const char* field, const char* fmt, int* value)
     return sscanf(*ppf, fmt, value)==1 && send_SET(field, fmt, *value);
 }
 
-//! Read messages from IHM and process them including:
-//! - update controller settings and acknowledge modified value
-//! - answer to INIT
-bool read()
+#define PINS "PINS "
+#define PEXP "PEXP "
+#define PBIP "PBIP "
+
+#define P_FMT "%05d"
+
+#define SRST "SRST "
+
+char* payload(char* frame, const char* prefix)
+{
+    int prefix_length = strlen(prefix);
+    return strncmp(frame, prefix, prefix_length)!=0 ? NULL : frame+prefix_length;
+}
+
+bool send_and_recv()
 {
     static bool initSent = true; // even if not received
+
+    // TODO Asynchronous send
 
     char frame[MAX_FRAME+1] = "";
     while (true) {
         char *pf = frame;
-        for (char c = EOF; (c = fgetc(in))!='\n'; pf++) { // read until \n to make sure frame starts at a new line
+        for (char c = EOF; (c = recv_ihm())!='\n'; pf++) { // read until \n to make sure frame starts at a new line
             if (c == EOF) {
-                return connect();
+                return true;
             }
             else if (c<' ' && c!='\t') { // filter out frames with C0, C1 characters but \t
                 pf = frame+MAX_FRAME;
@@ -147,12 +152,10 @@ bool read()
         unsigned char cs8computed = checksum8(frame);
         if (cs8!=cs8computed) continue;
 
-        if (strncmp(frame, INIT, strlen(INIT))==0 || !initSent) {
-            pf = frame + strlen(INIT);
+        if ((pf = payload(frame, INIT)) || !initSent) {
             initSent = send_INIT(init_str);
         }
-        else if (strncmp(frame, SET_, strlen(SET_))==0) {
-            pf = frame + strlen(SET_);
+        else if ((pf = payload(frame, SET_))) {
             process(&pf, VT___, VT____FMT, &VT_mL     ) ||
             process(&pf, FR___, FR____FMT, &FR_pm     ) ||
             process(&pf, PEP__, PEP___FMT, &PEP_cmH2O ) ||
@@ -164,7 +167,27 @@ bool read()
             process(&pf, FRMIN, FRMIN_FMT, &FRmin_pm  ) ||
             process(&pf, VMMIN, VMMIN_FMT, &VMmin_Lm  );
         }
-
-        // TODO parse other frames
+        else if ((pf = payload(frame, PINS))) {
+            int pause_ms = 0;
+            process(&pf, "", P_FMT, &pause_ms);
+            Tpins_ms = get_time_ms()+pause_ms;
+        }
+        else if ((pf = payload(frame, PEXP))) {
+            int pause_ms = 0;
+            process(&pf, "", P_FMT, &pause_ms);
+            Tpins_ms = get_time_ms()+pause_ms;
+        }
+        else if ((pf = payload(frame, PBIP))) {
+            int pause_ms = 0;
+            process(&pf, "", P_FMT, &pause_ms);
+            Tpins_ms = get_time_ms()+pause_ms;
+        }
+        else if ((pf = payload(frame, SRST))
+                 && soft_reset()) {
+            return false;
+        }
+        else { // Unknown frame
+            return true;
+        }
     }
 }

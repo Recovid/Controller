@@ -19,6 +19,10 @@ extern int VTmin_mL  ;
 extern int FRmin_pm  ;
 extern int VMmin_Lm  ;
 
+extern int Tpins_ms  ;
+extern int Tpexp_ms  ;
+extern int Tpbip_ms  ;
+
 extern const char* init_str; //!< not modified after init
 
 #endif // CONTROLLER_SETTINGS_H

@@ -9,6 +9,8 @@
 // Global settings that can be atomically read
 // Only main.c and communication.h should ever update them
 
-bool run();
+void sense_and_compute();
+
+void cycle_respiration();
 
 #endif // CONTROLLER_H
