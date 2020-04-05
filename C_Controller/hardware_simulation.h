@@ -16,7 +16,7 @@ bool soft_reset();
 // ------------------------------------------------------------------------------------------------
 //! IHM simulation based on stdin/stdout
 
-bool init_ihm();
+bool init_ihm(const char* pathInputFile, const char* pathOutputFile);
 
 //! \returns true if frame sent
 //! \sa fputs()
