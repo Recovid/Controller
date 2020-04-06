@@ -93,6 +93,7 @@ bool motor_press()
     motor_release_ms = -1;
     motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
     motor_pos = MIN(MOTOR_MAX, motor_pos+motor_dir); // TODO simulate lost steps in range
+    if (motor_pos/0xF) printf("motor %X\n", motor_pos);
     return true; // TODO simulate driver failure
 }
 
@@ -108,6 +109,7 @@ bool motor_release()
     motor_release_ms = get_time_ms();
     motor_dir = -1;
     motor_pos = MAX(0, motor_pos+motor_dir); // TODO simulate lost steps in range
+    if (motor_pos/0xF) printf("motor %X\n", motor_pos);
     return true; // TODO simulate driver failure
 }
 
@@ -156,7 +158,7 @@ float BAVU_V_mL()
 //! \remark a valve normally ensures that Q is always positive
 float BAVU_Q_Lpm()
 {
-    const float Q_Lpm = motor_dir * sinf(M_PI_2*(motor_pos/MOTOR_MAX)) * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
+    const float Q_Lpm = motor_dir * sinf(M_PI_2*((float)(motor_pos)/MOTOR_MAX)) * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
     return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
 }
 
@@ -208,5 +210,5 @@ float read_Paw_cmH2O()
 
 float read_Patmo_mbar()
 {
-    return 1033. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
+    return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }

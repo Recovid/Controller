@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "controller.h"
 #include "controller_settings.h"
 #include "ihm_communication.h"
@@ -6,6 +8,8 @@
 int main()
 {
     int result = self_tests();
+    // if (result & 0b111111)
+    //     return -1;
 
     init_ihm();
 

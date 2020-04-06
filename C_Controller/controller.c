@@ -34,19 +34,19 @@ char init_str[80] = "";
 
 // DATA
 
-float VolM_Lpm = 0;
-float P_cmH2O  = 0;
-int   Vol_mL   = 0;
+float VolM_Lpm = 0.;
+float P_cmH2O  = 0.;
+float Vol_mL   = 0.;
 
 // RESP
 
-int IE           = 0;
-int FRs_pm       = 0;
-int VTe_mL       = 0;
-int VM_Lm        = 0;
-int Pcrete_cmH2O = 0;
-int Pplat_cmH2O  = 0;
-int PEPs_cmH2O   = 0;
+float IE           = 0.;
+float FRs_pm       = 0.;
+float VTe_mL       = 0.;
+float VM_Lm        = 0.;
+float Pcrete_cmH2O = 0.;
+float Pplat_cmH2O  = 0.;
+float PEPs_cmH2O   = 0.;
 
 void check(int* bits, int bit, bool success)
 {
@@ -125,9 +125,6 @@ int self_tests()
     check(&test_bits,  9, light_yellow(On )); wait_ms(100);
     check(&test_bits, 10, light_yellow(Off)); // start pos
 
-    if (test_bits & 0b111111)
-        atexit(-1);
-
     return test_bits;
 }
 
@@ -191,6 +188,13 @@ void cycle_respiration()
         valve_exhale();
         if (MAX(respi_start_ms+1000*60/FR_pm,Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
             enter_state(Insufflation);
+            long t_ms = get_time_ms();
+
+            IE = (float)((state_start_ms-respi_start_ms))/(t_ms-state_start_ms);
+            FRs_pm = 1./((t_ms-respi_start_ms)/1000/60);
+            VTe_mL = Vol_mL;
+            // TODO ...
+
             send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
         }
         motor_release();
