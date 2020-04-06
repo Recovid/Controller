@@ -84,7 +84,6 @@ const int PATMO_VARIATION_MBAR = 50;
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
-const int MOTOR_MAX = 2000;
 static int motor_pos = 0;
 static int motor_dir = 0;
 static long motor_release_ms = -1;
@@ -115,31 +114,35 @@ bool motor_release()
 static enum Valve { Inhale, Exhale } valve_state = Exhale;
 static long valve_exhale_ms = -1;
 
-void valve_exhale()
+bool valve_exhale()
 {
+    if (valve_state == Exhale) return true;
+
     valve_state = Exhale;
     valve_exhale_ms = get_time_ms();
+    return true;
 }
 
-void valve_inhale()
+bool valve_inhale()
 {
     valve_state = Inhale;
     valve_exhale_ms = -1;
+    return true;
 }
 
-void light_yellow(enum OnOff new)
+bool light_yellow(enum OnOff new)
 {
-    // TODO
+    return true; // TODO
 }
 
-void light_red(enum OnOff new)
+bool light_red(enum OnOff new)
 {
-    // TODO
+    return true; // TODO
 }
 
-void buzzer(enum OnOff new)
+bool buzzer(enum OnOff new)
 {
-    // TODO
+    return true; // TODO
 }
 
 //! Usable BAVU volume based on motor position
@@ -162,14 +165,15 @@ float BAVU_Q_Lpm()
 
 float read_Pdiff_Lpm()
 {
-    static float abs_Q_Lpm = 0; // to handle exponential decrease during exhalation
+    static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
 
     if (valve_state == Inhale) {
         abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
         return abs_Q_Lpm;
     }
     else if (valve_state == Exhale) {
-        abs_Q_Lpm *= expf(- abs(get_time_ms()-valve_exhale_ms)/100); // <1% after 500ms
+        const float decrease = .9; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
+        abs_Q_Lpm *= decrease;
         return -abs_Q_Lpm;
     }
     else {
@@ -179,7 +183,7 @@ float read_Pdiff_Lpm()
 
 float read_Paw_cmH2O()
 {
-    static float Paw_cmH2O = 0; // to handle exponential decrease during plateau and exhalation
+    static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
 
     if (valve_state == Inhale) {
         if (motor_dir > 0) {
@@ -189,14 +193,14 @@ float read_Paw_cmH2O()
         }
         else {
             // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
-            const float decrease = expf(- abs(get_time_ms()-motor_release_ms)/10); // <1% after 50ms
+            const float decrease = .6; // expf(- abs(get_time_ms()-motor_release_ms)/10.); // <1% after 50ms
             const float Pplat_cmH2O = PEP_cmH2O + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
             Paw_cmH2O = Pplat_cmH2O
                         + (Paw_cmH2O-Pplat_cmH2O) * decrease;
         }
     }
     else if (valve_state == Exhale) {
-        const float decrease = expf(- abs(get_time_ms()-valve_exhale_ms)/100); // <1% after 500ms
+        const float decrease = .9; // abs(get_time_ms()-valve_exhale_ms)/100.; // <1% after 500ms
         Paw_cmH2O = PEP_cmH2O + (Paw_cmH2O-PEP_cmH2O) * decrease;
     }
     return Paw_cmH2O;
@@ -204,5 +208,5 @@ float read_Paw_cmH2O()
 
 float read_Patmo_mbar()
 {
-    return 1033 + cos(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure and Patmo variation
+    return 1033. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }

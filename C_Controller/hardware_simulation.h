@@ -29,18 +29,24 @@ int recv_ihm();
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
+#define MOTOR_MAX 2000
 bool motor_press();
 bool motor_stop();
 bool motor_release();
 
-void valve_exhale();
-void valve_inhale();
+// TODO #define MOTOR_PEP_MAX;
+// TODO bool motor_pep_press();
+// TODO bool motor_pep_stop();
+// TODO bool motor_pep_release();
+
+bool valve_exhale();
+bool valve_inhale();
 
 enum OnOff { On, Off };
 
-void light_yellow(enum OnOff new); // onboard + 4m visible leds
-void light_red   (enum OnOff new); // onboard + 4m visible leds
-void buzzer      (enum OnOff new); // onboard
+bool light_yellow(enum OnOff new); // onboard + 4m visible leds
+bool light_red   (enum OnOff new); // onboard + 4m visible leds
+bool buzzer      (enum OnOff new); // onboard
 
 // ------------------------------------------------------------------------------------------------
 //! HW sensors

@@ -23,6 +23,6 @@ extern long Tpins_ms  ;
 extern long Tpexp_ms  ;
 extern long Tpbip_ms  ;
 
-extern const char* init_str; //!< not modified after init
+extern char init_str[80];
 
 #endif // CONTROLLER_SETTINGS_H
