@@ -1,6 +1,6 @@
 # Controller Target
 * Board: STM32 Nucleo
-* IDE: STM32Cube
+* IDE: STM32Cube : https://www.st.com/en/development-tools/stm32cubeide.html
 * Toolchain: https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads/7-2018-q2-update
 * Compiler: GCC 7
 
