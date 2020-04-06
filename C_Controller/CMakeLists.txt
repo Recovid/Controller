@@ -20,3 +20,4 @@ add_executable(C_Controller
     unit_tests.c
     )
 
+target_link_libraries(C_Controller m)
