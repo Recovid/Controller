@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "controller.h"
 #include "controller_settings.h"
 
@@ -7,6 +9,8 @@
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
 
 #include "ihm_communication.h"
+#include "hardware_simulation.h"
+
 #include "hardware_simulation.h"
 
 int FR_pm      =  18;
@@ -154,10 +158,24 @@ long state_start_ms = -1;
 
 enum State enter_state(enum State new)
 {
-    enum State old = state;
-    state = new;
-    state_start_ms = get_time_ms();
-    return old;
+
+    static int sent_RESP_ms = 0;
+    int period_ms = 60 * 1000 / FR_pm;
+    float end_insufflation = 0.5f - ((float)Tplat_ms / period_ms);
+    float cycle_pos = (float)(get_time_ms() % period_ms) / period_ms; // 0 cycle start => 1 cycle end
+    if (cycle_pos < end_insufflation)
+    {
+        float insufflation_pos = cycle_pos / end_insufflation; // 0 start insufflation => 1 end insufflation
+        P_cmH2O = (int)(Pmin_cmH2O + sqrtf(insufflation_pos) * (Pmax_cmH2O - Pmin_cmH2O));
+    }
+    else if (cycle_pos < 0.5) // Plateau
+    {
+        P_cmH2O = (int)(0.9f * Pmax_cmH2O);
+    }
+    else
+    {
+        P_cmH2O = (int)(0.9f * Pmax_cmH2O - sqrtf(cycle_pos * 2.f - 1.f) * (0.9f * Pmax_cmH2O - Pmin_cmH2O));
+    }
 }
 
 void cycle_respiration()
