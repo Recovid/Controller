@@ -11,7 +11,7 @@
 char sign(int i) { return i<0 ? '-' : '+'; }
 
 #define CS8 "\tCS8:"
-#define CS8_VALUE "%02hhX\n"
+#define CS8_VALUE "%02X\n"
 
 unsigned char checksum8(const char* s)
 {
@@ -19,7 +19,7 @@ unsigned char checksum8(const char* s)
     for (; s && *s!='\0' ; s++) {
         cs8 += *s;
     }
-    return (unsigned char)(cs8 % 0xFF);
+    return (unsigned char)(cs8 & 0xFF);
 }
 
 bool send(const char* frame)
@@ -128,11 +128,11 @@ bool send_and_recv()
     char frame[MAX_FRAME+1] = "";
     while (true) {
         char *pf = frame;
-        for (char c = EOF; (c = recv_ihm())!='\n'; pf++) { // read until \n to make sure frame starts at a new line
+        for (int c = EOF; (c = recv_ihm())!='\n'; pf++) { // read until \n to make sure frame starts at a new line
             if (c == EOF) {
                 return true;
             }
-            else if (c<' ' && c!='\t') { // filter out frames with C0, C1 characters but \t
+            else if ((c<' ' && c!='\t') || 126<c) { // filter out frames with C0, C1 characters but \t
                 pf = frame+MAX_FRAME;
             }
             else if (pf<(frame+MAX_FRAME)) {
@@ -175,12 +175,12 @@ bool send_and_recv()
         else if ((pf = payload(frame, PEXP))) {
             int pause_ms = 0;
             process(&pf, "", P_FMT, &pause_ms);
-            Tpins_ms = get_time_ms()+pause_ms;
+            Tpexp_ms = get_time_ms()+pause_ms;
         }
         else if ((pf = payload(frame, PBIP))) {
             int pause_ms = 0;
             process(&pf, "", P_FMT, &pause_ms);
-            Tpins_ms = get_time_ms()+pause_ms;
+            Tpbip_ms = get_time_ms()+pause_ms;
         }
         else if ((pf = payload(frame, SRST))
                  && soft_reset()) {

@@ -13,7 +13,7 @@ int main()
     send_INIT(init_str);
 
     // TODO simulate interrupts/scheduling/preemption using QThread in a separate main.cpp
-    for (int t=0; true; wait_ms(1)) { // 1kHz
+    for (long t=0; true; wait_ms(1)) { // 1kHz
 
         sense_and_compute();
 

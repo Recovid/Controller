@@ -11,7 +11,7 @@ extern int FR_pm     ;
 extern int VT_mL     ;
 extern int PEP_cmH2O ;
 extern int Vmax_Lpm  ;
-extern int Tplat_ms  ;
+extern long Tplat_ms  ;
 
 extern int Pmax_cmH2O;
 extern int Pmin_cmH2O;
@@ -19,9 +19,9 @@ extern int VTmin_mL  ;
 extern int FRmin_pm  ;
 extern int VMmin_Lm  ;
 
-extern int Tpins_ms  ;
-extern int Tpexp_ms  ;
-extern int Tpbip_ms  ;
+extern long Tpins_ms  ;
+extern long Tpexp_ms  ;
+extern long Tpbip_ms  ;
 
 extern const char* init_str; //!< not modified after init
 
