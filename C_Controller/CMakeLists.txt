@@ -12,3 +12,4 @@ add_executable(C_Controller
     hardware_simulation.h
     hardware_simulation.c)
 
+target_link_libraries(C_Controller m)
