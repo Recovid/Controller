@@ -133,7 +133,7 @@ bool send_and_recv()
             if (c == EOF) {
                 return true;
             }
-            else if ((c<' ' && c!='\t') || 126<c) { // filter out frames with C0, C1 characters but \t
+            else if (c<' ' && c!='\t' || 126<c ) { // filter out frames with C0, C1 characters but \t
                 pf = frame+MAX_FRAME;
             }
             else if (pf<(frame+MAX_FRAME)) {
