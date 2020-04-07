@@ -1,3 +1,7 @@
 -xc
 -Ilowlevel/include/
+-Ilowlevel/native/
+-Ilowlevel/native/FreeRTOS-Sim/Source/include
+-Ilowlevel/native/FreeRTOS-Sim/Source/portable/GCC/POSIX/
 -I.
+

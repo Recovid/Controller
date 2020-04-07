@@ -1,0 +1,3 @@
+[submodule "C_Controller/lowlevel/native/FreeRTOS-Sim"]
+	path = C_Controller/lowlevel/native/FreeRTOS-Sim
+	url = https://github.com/Muriukidavid/FreeRTOS-Sim.git
