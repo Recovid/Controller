@@ -30,7 +30,7 @@ const int PEPmin_cmH2O = 2;
 
 // INIT
 
-char init_str[80] = "";
+char init_str[81] = "";
 
 // DATA
 

@@ -4,9 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#define MAX(a,b) ((a)>(b) ? (a) : (b))
-#define MIN(a,b) ((a)<(b) ? (a) : (b))
-
+#include "configuration.h"
 #include "controller_settings.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -67,21 +65,6 @@ int recv_ihm()
 }
 
 // ------------------------------------------------------------------------------------------------
-//! Environment simulation
-
-const int LUNG_V_ML_MAX   = 3000; // TODO read from getenv() in motor_init() ?
-const int LUNG_COMPLIANCE = 500/25; //!< dV_mL/dP_cmH2O \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
-
-const int BAVU_V_ML_MAX  = 500; // TODO read from getenv() in motor_init() ?
-const int BAVU_Q_LPM_MAX =  60; // TODO read from getenv() in motor_init() ?
-// To simulate BAVU 'anti-retour' valve perforation
-const int BAVU_VALVE_RATIO =  0.; // TODO read from getenv() in motor_init() ?
-
-const int EXHAL_VALVE_RATIO =  1.; // no leak, no obstruction // TODO read from getenv() in motor_init() ?
-
-const int PATMO_VARIATION_MBAR = 50;
-
-// ------------------------------------------------------------------------------------------------
 //! HW actuators
 
 static int motor_pos = 0;
@@ -93,7 +76,9 @@ bool motor_press()
     motor_release_ms = -1;
     motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
     motor_pos = MIN(MOTOR_MAX, motor_pos+motor_dir); // TODO simulate lost steps in range
-    if (motor_pos/0xF) printf("motor %X\n", motor_pos);
+    if (motor_pos/0xF) {
+        DEBUG_PRINTF("motor %X\n", motor_pos);
+    }
     return true; // TODO simulate driver failure
 }
 
@@ -109,7 +94,9 @@ bool motor_release()
     motor_release_ms = get_time_ms();
     motor_dir = -1;
     motor_pos = MAX(0, motor_pos+motor_dir); // TODO simulate lost steps in range
-    if (motor_pos/0xF) printf("motor %X\n", motor_pos);
+    if (motor_pos/0xF) {
+        DEBUG_PRINTF("motor %X\n", motor_pos);
+    }
     return true; // TODO simulate driver failure
 }
 
@@ -158,7 +145,7 @@ float BAVU_V_mL()
 //! \remark a valve normally ensures that Q is always positive
 float BAVU_Q_Lpm()
 {
-    const float Q_Lpm = motor_dir * sinf(M_PI_2*((float)(motor_pos)/MOTOR_MAX)) * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
+    const float Q_Lpm = SIGN(motor_dir) * sinf(M_PI_2*((float)(motor_pos)/MOTOR_MAX)) * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
     return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
 }
 

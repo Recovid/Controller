@@ -1,6 +1,8 @@
 #ifndef CONTROLLER_SETTINGS_H
 #define CONTROLLER_SETTINGS_H
 
+#include "platform.h"
+
 // ------------------------------------------------------------------------------------------------
 //! Public interface to the controller settings
 
@@ -23,6 +25,8 @@ extern long Tpins_ms  ;
 extern long Tpexp_ms  ;
 extern long Tpbip_ms  ;
 
-extern char init_str[80];
+// leaving space for off by 1 errors in code
+#define INIT_STR_SIZE 80
+extern char init_str[81];
 
 #endif // CONTROLLER_SETTINGS_H

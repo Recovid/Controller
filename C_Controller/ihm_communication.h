@@ -1,7 +1,7 @@
 #ifndef IHM_COMMUNICATION_H
 #define IHM_COMMUNICATION_H
 
-#include <stdbool.h>
+#include "platform.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Public interface to send event/data to the IHM and process read messages

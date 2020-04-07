@@ -1,7 +1,7 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include <stdbool.h>
+#include "platform.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Public interface to the controller state machine

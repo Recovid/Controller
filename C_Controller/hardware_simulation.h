@@ -1,7 +1,7 @@
 #ifndef HARDWARE_SIMULATION_H
 #define HARDWARE_SIMULATION_H
 
-#include <stdbool.h>
+#include "platform.h"
 
 // Public interface to send event/data to the hardware simulation
 
