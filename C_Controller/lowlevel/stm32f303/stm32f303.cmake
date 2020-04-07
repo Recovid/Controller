@@ -15,13 +15,22 @@ set(CMAKE_OBJDUMP arm-none-eabi-objdump)
 set(SIZE arm-none-eabi-size)
 
 
+SET(FREERTOS_DIR_STM32 ${LOWLEVEL_SRC_DIR}/FreeRTOS/)
+SET(FREERTOS_SRC_DIR_STM32 ${FREERTOS_DIR_STM32}/Source/)
+SET(FREERTOS_INC_DIR_STM32 ${FREERTOS_DIR_STM32}/Source/include/)
 file(GLOB_RECURSE SOURCES_STM32 "startup/*.*" "Drivers/*.*" "Core/*.*")
 set(SOURCES_STM32 ${SOURCES_STM32} 
 	${HAL_DIR}/stm32f3xx_nucleo.c
 	${HAL_DIR}/syscalls.c
 	${HAL_DIR}/sysmem.c
 	${HAL_DIR}/system_stm32f3xx.c
+    ${FREERTOS_SRC_DIR_STM32}/timers.c
+    ${FREERTOS_SRC_DIR_STM32}/queue.c
+    ${FREERTOS_SRC_DIR_STM32}/tasks.c
+    ${FREERTOS_SRC_DIR_STM32}/croutine.c
+    ${FREERTOS_SRC_DIR_STM32}/list.c
 	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp.c)
+
 
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES} ${SOURCES_STM32})
 
@@ -36,7 +45,16 @@ set(CMAKE_CXX_STANDARD 11)
 add_definitions(-D__weak=__attribute__\(\(weak\)\) -D__packed=__attribute__\(\(__packed__\)\) -DUSE_HAL_DRIVER -DSTM32F303xE)
 
 
-include_directories(${LOWLEVEL_INC_DIR} ${HAL_DIR} ${HAL_DIR}/Core/Inc ${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Inc ${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy ${HAL_DIR}/Drivers/CMSIS/Device/ST/STM32F3xx/Include ${HAL_DIR}/Drivers/CMSIS/Include)
+include_directories(${LOWLEVEL_INC_DIR} 
+	${HAL_DIR} 
+	${HAL_DIR}/Core/Inc	
+	${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Inc	
+	${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy	
+	${HAL_DIR}/Drivers/CMSIS/Device/ST/STM32F3xx/Include	
+	${HAL_DIR}/Drivers/CMSIS/Include	
+	${FREERTOS_SRC_DIR_STM32}	
+	${FREERTOS_INC_DIR_STM32}	
+	${FREERTOS_SRC_DIR_STM32}/portable/GCC/ARM_CM4F/)
 
 
 
