@@ -31,7 +31,7 @@
 #define configUSE_APPLICATION_TASK_TAG			1
 #define configUSE_COUNTING_SEMAPHORES			1
 #define configUSE_ALTERNATIVE_API				0
-//#define configMAX_SYSCALL_INTERRUPT_PRIORITY	1
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY	1
 
 #define configUSE_QUEUE_SETS					1
 #define configUSE_TASK_NOTIFICATIONS			1
@@ -44,7 +44,7 @@
 
 #define configMAX_PRIORITIES		( 10 )
 
-#define configGENERATE_RUN_TIME_STATS		1
+//#define configGENERATE_RUN_TIME_STATS		1
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function.  In most cases the linker will remove unused
