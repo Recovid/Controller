@@ -21,6 +21,9 @@ Controller_Sources = \
 	main.c \
 	controller.c \
 	ihm_communication.c \
+    unit_tests.c \
+    alarms.c \
+    configuration.c \
 
 
 ###############################################################################
@@ -69,13 +72,13 @@ $(Builddir)/%.s.o: %.s | $$(@D)/.
 
 %.elf:
 	@echo LINK $@
-	@$(CC) $(CFlags) $^ $(LFlags) -o $@
+	$(CC) $(CFlags) $^ $(LFlags) -o $@
 
 
 ###############################################################################
 # Target-specific definitions
 
-CFlags += -I$(Root_Makefile_path)/lowlevel/include
+CFlags += -I$(Root_Makefile_path)/ -I$(Root_Makefile_path)/lowlevel/include
 
 -include $(Root_Makefile_path)/lowlevel/$(Target)/$(Target).mk
 

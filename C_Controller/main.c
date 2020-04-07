@@ -11,7 +11,7 @@
 #include "unit_tests.h"
 #endif
 
-int main()
+int main(int argc, const char** argv)
 {
 #ifndef NDEBUG
     if (!unit_tests_passed())
