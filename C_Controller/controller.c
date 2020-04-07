@@ -152,7 +152,7 @@ void sense_and_compute()
     last_sense_ms = get_time_ms();
 }
 
-enum State { Insufflation, Plateau, Exhalation, ExhalationEnd } state = Exhalation;
+enum State { Insufflation, Plateau, Exhalation, ExhalationEnd } state = Insufflation;
 long respi_start_ms = -1;
 long state_start_ms = -1;
 

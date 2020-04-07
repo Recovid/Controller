@@ -37,13 +37,16 @@ bool send_DATA(float P, float VolM, float Vol, float Pplat, float PEP)
 {
     char frame[MAX_FRAME+1] = "";
     return sprintf(frame, "DATA msec_:%06d Vol__:%04d Deb__:%c%03d Paw__:%c%03d" CS8,
-                   (int)(get_time_ms() % 1000000l), (int)Vol, sign(VolM), (int)VolM, sign(P), (int)P) > 0
+                   (int)(get_time_ms() % 1000000l), (int)Vol, sign(VolM), abs((int)VolM), sign(P), abs((int)P)) > 0
            && send(frame);
 }
 
 bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP)
 {
     char frame[MAX_FRAME+1] = "";
+
+    printf(frame, "RESP IE___:%02d FR___:%02d VTe__:%03d PCRET:%02d VM___:%c%02d PPLAT:%02d PEP__:%02d" CS8,
+                   (int)(1./IE), (int)FR, (int)VTe, (int)Pcrete, sign(VM), abs((int)VM), (int)Pplat, (int)PEP);
     return sprintf(frame, "RESP IE___:%02d FR___:%02d VTe__:%03d PCRET:%02d VM___:%c%02d PPLAT:%02d PEP__:%02d" CS8,
                    (int)(1./IE), (int)FR, (int)VTe, (int)Pcrete, sign(VM), abs((int)VM), (int)Pplat, (int)PEP) > 0
            && send(frame);
