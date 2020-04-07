@@ -9,7 +9,6 @@
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
 
 #include "ihm_communication.h"
-#include "hardware_simulation.h"
 
 #include "hardware_simulation.h"
 
