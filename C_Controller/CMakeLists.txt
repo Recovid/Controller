@@ -28,10 +28,17 @@ SET(SOURCES platform.h
     alarms.c
     ihm_communication.h
     ihm_communication.c
+	tasks_recovid.c
+	tasks_recovid.h
     ${LOWLEVEL_INC_DIR}/hardware_simulation.h
 	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
     unit_tests.h
-    unit_tests.c)
+    unit_tests.c
+	TaskMessageManagement.c
+	TaskRespirationCycle.c
+	TaskSensing.c
+	TaskAlarm.c
+)
 
 add_executable(${EXECUTABLE} ${SOURCES})
 

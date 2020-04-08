@@ -1,27 +1,20 @@
-#include "hardware_simulation.h"
+//FreeRTOS include
+#include <FreeRTOS.h>
+#include <task.h>
 
+//STD include
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
 
+//Recovid include
+#include "hardware_simulation.h"
 #include "configuration.h"
 #include "controller_settings.h"
+#include "portmacro.h"
 
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
-
-//! Simulated clock for testing purposes
-static long clock_ms = 0; // will not overflow before 24 simulated days
-
-long get_time_ms()
-{
-    return clock_ms;
-}
-
-long wait_ms(long t_ms)
-{
-    return clock_ms += t_ms; // simulated clock for testing purposes
-}
 
 bool soft_reset()
 {
@@ -36,6 +29,7 @@ FILE *out;
 
 bool init_ihm(const char* pathInputFile, const char* pathOutputFile)
 {
+	printf("INIT IHM");
     // TODO Replace with HAL_UART_init, no connection per se
     if (pathInputFile)
         in  = fopen(pathInputFile, "r");
@@ -82,9 +76,9 @@ bool motor_press()
     motor_release_ms = -1;
     motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
     motor_pos = MIN(MOTOR_MAX, motor_pos+motor_dir); // TODO simulate lost steps in range
-    if (motor_pos/0xF) {
-        DEBUG_PRINTF("motor %X\n", motor_pos);
-    }
+    //if (motor_pos/0xF) {
+    //    DEBUG_PRINTF("motor %X\n", motor_pos);
+    //}
     return true; // TODO simulate driver failure
 }
 
@@ -100,9 +94,9 @@ bool motor_release()
     motor_release_ms = get_time_ms();
     motor_dir = -1;
     motor_pos = MAX(0, motor_pos+motor_dir); // TODO simulate lost steps in range
-    if (motor_pos/0xF) {
-        DEBUG_PRINTF("motor %X\n", motor_pos);
-    }
+    //if (motor_pos/0xF) {
+    //    DEBUG_PRINTF("motor %X\n", motor_pos);
+    //}
     return true; // TODO simulate driver failure
 }
 

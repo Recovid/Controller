@@ -1,6 +1,9 @@
+#include <FreeRTOS.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "controller.h"
 #include "controller_settings.h"
@@ -190,5 +193,6 @@ bool send_and_recv()
         else { // Unknown frame
             return true;
         }
+		vPortYield();
     }
 }
