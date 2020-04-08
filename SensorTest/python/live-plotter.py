@@ -1,15 +1,15 @@
 import struct
 import matplotlib.pyplot as plt
 import numpy as np
-
 import serial
+import sys
 
 
 # use ggplot style for more sophisticated visuals
 plt.style.use('ggplot')
 
 
-def live_plotter(x_vec, y_data, lines, identifier='', pause_time=0.1):
+def live_plotter(x_vec, y_data, lines, identifier='', pause_time=0.001):
     if lines[0] == []:
         # this is the call to matplotlib that allows dynamic plotting
         plt.ion()
@@ -50,33 +50,26 @@ time = np.linspace(0, 1, size+1)[0:-1]
 flows = np.zeros(size)
 paws = np.zeros(size)
 data = [[], []]
+data = live_plotter(time, [flows, paws], data, pause_time=0.001)
 
-data = live_plotter(time, [flows, paws], data, pause_time=0.01)
-# f= open("measurements.txt","w+")
 
-with serial.Serial('/dev/ttyUSB1', 115200, timeout=None) as ser:
+with serial.Serial('/dev/ttyUSB0', 115200, timeout=None) as ser:
     while True:
         c = ser.read()
         while c == b'>':
-            t, = struct.unpack('H', ser.read(2))
+            # t, = struct.unpack('H', ser.read(2))
             dp, = struct.unpack('f', ser.read(4))
             paw, = struct.unpack('f', ser.read(4))
             # dp = dp * 1.1 * 0.51
             #time[-1]=t
-            flows[-1] = dp
+            flows[-1] = dp/60.
             paws[-1] = paw
-
-            # f.write("{}, {}\r\n".format(dp, paw))
-
 
             plot_data = [flows, paws]
 
-            # data = live_plotter(time, plot_data, data, pause_time=0.01)
+            data = live_plotter(time, plot_data, data, pause_time=0.01)
 
             paws = np.append(paws[1:], 0.0)
             flows = np.append(flows[1:], 0.0)
-
             c = ser.read()
-
-
 

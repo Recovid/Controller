@@ -6,7 +6,7 @@
 #include <Wire.h>
 #include "SDP610-500pa.h"
 #include "NPA-700B-001G.h"
-#include "ABPLANT001PG2A5.h"
+//#include "ABPLANT001PG2A5.h"
 
 #define MOVING_AVG_SIZE 3
 
@@ -25,6 +25,7 @@ unsigned long start_time = millis();
 void setup() {
     Wire.begin();
     Serial.begin(115200);
+    delay(100);
     if(!sdp610.init()) {
         while (1) {
             Serial.println("unable to init SDP610_500pa");
@@ -33,7 +34,7 @@ void setup() {
     }
     if(!npa700G.init()) {
         while (1) {
-            Serial.println("unable to init NPA_700B_001G");
+            Serial.println("unable to init ABPLANT001PG2A5");
             delay(1000);
         }
     }
@@ -41,18 +42,15 @@ void setup() {
 }
 
 void loop() {
-    static uint16_t cnt = 0;
+
     sdp610.getMeasurement(&data_p_diff);
+//    npa700G.getMeasurement(&data_p);
     npa700G.getMeasurement(&data_p);
-//    abp.getMeasurement(&data_p);
 
     Serial.print('>');
-    Serial.write((const uint8_t*)&cnt, 2);
     Serial.write((const uint8_t*)&data_p_diff, 4);
     Serial.write((const uint8_t*)&data_p, 4);
-
-    cnt++;
-    delay(50);
+    delay(80);
 }
 
 void scanI2C() {
