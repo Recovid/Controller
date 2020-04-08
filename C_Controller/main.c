@@ -20,7 +20,6 @@
 #include "unit_tests.h"
 #endif
 
-
 int main(int argc, const char** argv)
 {
 #ifndef NDEBUG

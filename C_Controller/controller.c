@@ -12,6 +12,8 @@
 
 #include "hardware_simulation.h"
 
+#include "hardware_simulation.h"
+
 int FR_pm      =  18;
 int VT_mL      = 300;
 int PEP_cmH2O  =   5;
@@ -195,7 +197,7 @@ void cycle_respiration()
             long t_ms = get_time_ms();
 
             IE = (float)((state_start_ms-respi_start_ms))/(t_ms-state_start_ms);
-            FRs_pm = 1./((t_ms-respi_start_ms)/1000/60);
+            FRs_pm = 1./(((float) (t_ms-respi_start_ms))/1000/60);
             VTe_mL = Vol_mL;
             // TODO ...
 

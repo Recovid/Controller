@@ -5,7 +5,7 @@
 #include "NPA-700B-001G.h"
 #include "I2c_helper.h"
 
-NPA_700B_001G::NPA_700B_001G(uint8 i2c_address) {
+NPA_700B_001G::NPA_700B_001G(uint8_t i2c_address) {
     this->i2c_address = i2c_address;
 }
 

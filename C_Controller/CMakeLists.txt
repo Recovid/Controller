@@ -49,5 +49,3 @@ include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
 include_directories(${CMAKE_SOURCE_DIR} ${LOWLEVEL_INC_DIR})
 target_link_libraries(${EXECUTABLE} m)
 set_target_properties(${EXECUTABLE} PROPERTIES LINKER_LANGUAGE C)
-
-
