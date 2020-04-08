@@ -7,6 +7,15 @@
 
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
+//
+
+typedef enum ihm_mode_t
+{
+	IHM_MODE_FILE = 0,
+	IHM_MODE_SERIAL,
+
+	IHM_MODE_MAX,
+}ihm_mode_t;
 
 long get_time_ms();
 long wait_ms(long t_ms);
@@ -16,7 +25,7 @@ bool soft_reset();
 // ------------------------------------------------------------------------------------------------
 //! UI communication
 
-bool init_ihm(const char* pathInputFile, const char* pathOutputFile);
+bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile);
 
 //! \returns true if frame sent
 //! \sa fputs()

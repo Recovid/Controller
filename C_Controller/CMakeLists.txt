@@ -29,7 +29,9 @@ SET(SOURCES platform.h
     ihm_communication.h
     ihm_communication.c
     ${LOWLEVEL_INC_DIR}/hardware_simulation.h
-	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+    ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+    ${LOWLEVEL_INC_DIR}/hardware_serial.h
+    ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     unit_tests.h
     unit_tests.c)
 

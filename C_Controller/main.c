@@ -23,15 +23,24 @@ int main(int argc, const char** argv)
     // if (result & 0b111111)
     //     return -1;
 
-    if (argc != 1 && argc != 3)
-    {
-        printf("Usage: %s [inputFile outputFile]\n", argv[0]);
+    if (argc == 1) {
+        init_ihm(0, 0, NULL);
+    }
+    else if(argc == 4 && strstr(argv[1], "-f")) {
+        init_ihm(IHM_MODE_FILE, argv[2], argv[3]);
+    }
+    else if(argc == 3 && strstr(argv[1], "-s")) {
+        init_ihm(IHM_MODE_SERIAL, argv[2], NULL);
+    }
+    else {
+        printf("Usage: %s Default file mode\n", argv[0]);
+
+        printf("Usage : -f [inputFile outputFile] for ihm in file mode\n");
+        printf("Usage : -s [serialPort] for ihm in serial mode\n");
+
         return 1;
     }
-    if (argc == 1)
-        init_ihm(0, 0);
-    else
-        init_ihm(argv[1], argv[2]);
+
     // TODO replace with STM32 code that will:
     // - initialize the hardware
     // - schedule cyclic tasks

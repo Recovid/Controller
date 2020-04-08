@@ -7,9 +7,10 @@
 #include "configuration.h"
 #include "controller_settings.h"
 
+#include "hardware_serial.h"
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
-
+ihm_mode_t current_ihm_mode = IHM_MODE_MAX;
 //! Simulated clock for testing purposes
 static long clock_ms = 0; // will not overflow before 24 simulated days
 
@@ -29,29 +30,61 @@ bool soft_reset()
 }
 
 // ------------------------------------------------------------------------------------------------
-//! IHM simulation based on stdin/stdout
+//! IHM simulation based on stdin/stdout or Serial 
 
 FILE *in ;
 FILE *out;
 
-bool init_ihm(const char* pathInputFile, const char* pathOutputFile)
+bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile)
 {
-    // TODO Replace with HAL_UART_init, no connection per se
-    if (pathInputFile)
-        in  = fopen(pathInputFile, "r");
+    if(ihm_mode >= IHM_MODE_MAX)
+    {
+        printf("Wrong ihm mode \n");
+        return false;
+    }
+    else if (ihm_mode == IHM_MODE_FILE)
+    {
+        printf("Serial oppened in File Mode \n");
+        // TODO Replace with HAL_UART_init, no connection per se
+        if (pathInputFile)
+            in  = fopen(pathInputFile, "r");
+        else
+            in = stdin;
+        if (pathOutputFile)
+            out = fopen(pathOutputFile, "w");
+        else
+            out = stdout;
+    }
     else
-        in = stdin;
-    if (pathOutputFile)
-        out = fopen(pathOutputFile, "w");
-    else
-        out = stdout;
+    {
+        printf("Serial oppened in Serial Mode \n");
+        if(!hardware_serial_init(pathInputFile))
+        {
+            return false;
+        }
+    }
+
+    current_ihm_mode = ihm_mode;
+
     return true;
 }
 
 bool send_ihm(const char* frame)
 {
+    bool is_data_send = false;
+
     if (!frame || *frame=='\0') return 0;
-    return fputs(frame, out) >= 0;
+
+    if(current_ihm_mode == IHM_MODE_FILE)
+    {
+        is_data_send = fputs(frame, out) >= 0;
+    }
+    else
+    {
+        is_data_send = hardware_serial_write_data(frame, strlen(frame));
+    }
+
+    return is_data_send;
 }
 
 int recv_ihm()
@@ -60,12 +93,27 @@ int recv_ihm()
 
     time_t t_s;
     time(&t_s);
-    if (last_blocked_s+5 < t_s) {
-        int blocking_read = fgetc(in);
-        if (blocking_read == '\n') {
-            last_blocked_s = t_s;
+
+    if(current_ihm_mode == IHM_MODE_FILE)
+    {
+        if (last_blocked_s+5 < t_s) {
+            int blocking_read = fgetc(in);
+            if (blocking_read == '\n') {
+                last_blocked_s = t_s;
+            }
+            return blocking_read;
         }
-        return blocking_read;
+    }
+    else
+    {
+        if (last_blocked_s+5 < t_s) {
+            char blocking_read = 0;
+            hardware_serial_read_data(&blocking_read, sizeof(char));
+            if (blocking_read == '\n') {
+                last_blocked_s = t_s;
+            }
+            return blocking_read;
+        }
     }
     return EOF;
 }
