@@ -6,6 +6,7 @@
 
 int main(int argc, const char** argv)
 {
+    #ifdef native
     if (argc != 1 && argc != 3)
     {
         printf("Usage: %s [inputFile outputFile]\n", argv[0]);
@@ -15,6 +16,9 @@ int main(int argc, const char** argv)
         init_ihm(0, 0);
     else
         init_ihm(argv[1], argv[2]);
+    #else
+        init_ihm(0, 0);
+    #endif
     // TODO replace with STM32 code that will:
     // - initialize the hardware
     // - schedule cyclic tasks

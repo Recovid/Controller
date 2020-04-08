@@ -3,8 +3,8 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
-#include "stm32f4xx_hal.h"
-
+#include "hardware_serial.h"
+#include "stm32f3xx_hal.h"
 // ------------------------------------------------------------------------------------------------
 /*
 Config USART2_RY DMA1 Stream5 Mode Circular
@@ -30,75 +30,92 @@ bool soft_reset()
     return true;
 }
 
+void SystemClock_Config(void)
+{
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+	/** Initializes the CPU, AHB and APB busses clocks 
+	*/
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+	RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+	}
+	/** Initializes the CPU, AHB and APB busses clocks 
+	*/
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+	              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+	{
+	}
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2;
+	PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+	PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+	{
+	}
+}
+
+
+#ifdef __GNUC__
+/* With GCC, small printf (option LD Linker->Libraries->Small printf
+ set to 'Yes') calls __io_putchar() */
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+
+PUTCHAR_PROTOTYPE
+{
+	/* Place your implementation of fputc here */
+	/* e.g. write a character to the USART2 and Loop until the end of transmission */
+
+	// TODO Implement UART1 for printf LOG
+
+	return ch;
+}
+
 // ------------------------------------------------------------------------------------------------
-//! IHM simulation based on stdin/stdout
 
-#define UART_DMA_BUFFER_SIZE 2048
-#define PARSER_MESSAGE_LIST_SIZE 10
-#define PARSER_MESSAGE_SIZE 200
-#define TXBUFFER_SIZE 100
-
-#define FRAMETIMEOUTMS 10
-
-uint8_t txbuff[TXBUFFER_SIZE];
-static uint8_t rxbuffer[UART_DMA_BUFFER_SIZE];
-size_t dma_head = 0, dma_tail = 0;
-
-UART_HandleTypeDef huart2;
 
 bool init_ihm(const char* pathInputFile, const char* pathOutputFile)
 {
-    huart2.Instance = USART2;
-	huart2.Init.BaudRate = 115200;
-	huart2.Init.WordLength = UART_WORDLENGTH_8B;
-	huart2.Init.StopBits = UART_STOPBITS_1;
-	huart2.Init.Parity = UART_PARITY_NONE;
-	huart2.Init.Mode = UART_MODE_TX_RX;
-	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart2) != HAL_OK) {
-		return false;
-	}
-	HAL_UART_Receive_DMA(&huart2, rxbuffer, UART_DMA_BUFFER_SIZE);
-	return true;
+	HAL_Init();
+
+	SystemClock_Config();
+
+	return hardware_serial_init(NULL);
 }
 
 bool send_ihm(const char* frame)
 {
-    if (!frame || *frame=='\0') return 0;
-    size_t len = strlen((char *) frame);
-    return HAL_UART_Transmit(&huart2, frame, len, 1000) == HAL_OK;
+
+	return hardware_serial_write_data((unsigned char *) frame, strlen(frame));
 }
 
 int recv_ihm()
 {
-	__disable_irq();
-	dma_tail = UART_DMA_BUFFER_SIZE - huart2.hdmarx->Instance->NDTR;
-	__enable_irq();
+	static long last_blocked_s = 0;
+	
+	unsigned char blocking_read = 0;
 
-	if (dma_tail != dma_head) {
-		size_t tm1=dma_tail == 0 ? UART_DMA_BUFFER_SIZE-1 : dma_tail-1;
-		long starttime = HAL_GetTick();
-		while(rxbuffer[tm1] != '\n')
-		{
-			if(HAL_GetTick()-starttime>FRAMETIMEOUTMS) //RESET buffer on timeout
-			{
-				dma_head=dma_tail;
-				return (char)EOF;
-			}
-			HAL_Delay(1);
-			__disable_irq();
-			dma_tail = UART_DMA_BUFFER_SIZE - huart2.hdmarx->Instance->NDTR;
-			__enable_irq();
-			tm1=dma_tail == 0 ? UART_DMA_BUFFER_SIZE-1 : dma_tail-1;
-		}
-		char ret = rxbuffer[dma_head];
-		dma_head = dma_head == UART_DMA_BUFFER_SIZE - 1 ?
-												0 : dma_head + 1;
-		return ret;
-	}
-	else
-	{
-		return (char)EOF;
-	}
+    int t_s = hardware_serial_read_data(&blocking_read, sizeof(char));;
+
+    if (t_s > 0) {
+
+        return blocking_read;
+    }
+    return EOF;
 }

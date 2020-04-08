@@ -50,7 +50,7 @@ CXXFlags += \
 
 
 # Dependencies on headers
-CFlags += -MMD -MP
+CFlags += -MMD -MP -D$(Target)
 
 
 # Generic rules
@@ -74,7 +74,7 @@ $(Builddir)/%.s.o: %.s | $$(@D)/.
 
 ###############################################################################
 # Target-specific definitions
-
+CFlags += -I$(Root_Makefile_path)/tools/
 CFlags += -I$(Root_Makefile_path)/lowlevel/include
 
 -include $(Root_Makefile_path)/lowlevel/$(Target)/$(Target).mk
