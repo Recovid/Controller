@@ -172,7 +172,8 @@ void cycle_respiration()
 
     if (Insufflation == state) {
         valve_inhale();
-        if (Pmax_cmH2O <= read_Paw_cmH2O()) {
+        if (Pmax_cmH2O <= P_cmH2O) {
+    		Pcrete_cmH2O = P_cmH2O;
             enter_state(Exhalation);
         }
         if (VT_mL <= Vol_mL) {
@@ -182,8 +183,8 @@ void cycle_respiration()
     }
     else if (Plateau == state) {
         valve_inhale();
-        if (Pmax_cmH2O <= read_Paw_cmH2O()
-            || MAX(Tplat_ms,Tpins_ms) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
+        if (Pmax_cmH2O <= P_cmH2O || MAX(Tplat_ms,Tpins_ms) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
+    		Pcrete_cmH2O = P_cmH2O;
             enter_state(Exhalation);
         }
         motor_release();
@@ -191,7 +192,6 @@ void cycle_respiration()
     else if (Exhalation == state) {
         valve_exhale();
         if (MAX(respi_start_ms+1000*60/FR_pm,Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
-            enter_state(Insufflation);
             long t_ms = get_time_ms();
 
             IE = (float)((state_start_ms-respi_start_ms))/(t_ms-state_start_ms);
@@ -201,6 +201,7 @@ void cycle_respiration()
 
 			
             send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, Pexp_cmH2O);
+            enter_state(Insufflation);
         }
         motor_release();
     }
