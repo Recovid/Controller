@@ -156,26 +156,13 @@ enum State { Insufflation, Plateau, Exhalation, ExhalationEnd } state = Insuffla
 long respi_start_ms = -1;
 long state_start_ms = -1;
 
-enum State enter_state(enum State new)
+void enter_state(enum State new)
 {
-
-    static int sent_RESP_ms = 0;
-    int period_ms = 60 * 1000 / FR_pm;
-    float end_insufflation = 0.5f - ((float)Tplat_ms / period_ms);
-    float cycle_pos = (float)(get_time_ms() % period_ms) / period_ms; // 0 cycle start => 1 cycle end
-    if (cycle_pos < end_insufflation)
-    {
-        float insufflation_pos = cycle_pos / end_insufflation; // 0 start insufflation => 1 end insufflation
-        P_cmH2O = (int)(Pmin_cmH2O + sqrtf(insufflation_pos) * (Pmax_cmH2O - Pmin_cmH2O));
-    }
-    else if (cycle_pos < 0.5) // Plateau
-    {
-        P_cmH2O = (int)(0.9f * Pmax_cmH2O);
-    }
-    else
-    {
-        P_cmH2O = (int)(0.9f * Pmax_cmH2O - sqrtf(cycle_pos * 2.f - 1.f) * (0.9f * Pmax_cmH2O - Pmin_cmH2O));
-    }
+	state = new;
+	state_start_ms = get_time_ms();
+	if(state == Insufflation) {
+		respi_start_ms = get_time_ms();
+	}
 }
 
 void cycle_respiration()
