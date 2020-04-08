@@ -37,8 +37,8 @@ bool send_DATA(float P, float VolM, float Vol, float Pplat, float PEP)
 {
     char frame[MAX_FRAME+1] = "";
     return sprintf(frame, "DATA msec_:%06d Vol__:%04d Deb__:%c%03d Paw__:%c%03d" CS8,
-                   (int)(get_time_ms() % 1000000l), (int)Vol, sign(VolM), abs((int)VolM), sign(P), abs((int)P)) > 0
-           && send(frame);
+			(int)(get_time_ms() % 1000000l), (int)Vol, sign(VolM), abs((int)VolM), sign(P), abs((int)P)) > 0
+		&& send(frame);
 }
 
 bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP)

@@ -1,4 +1,5 @@
-
+#We use cmake that generate a makefile
+Makefile 
 
 # Atom editor
 .vscode
