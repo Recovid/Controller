@@ -138,15 +138,18 @@ bool buzzer(enum OnOff new)
 //! \remark BAVU deformation/elasticity is simulated with a cos to easily derive Q
 float BAVU_V_mL()
 {
-    return cosf(M_PI_2*(motor_pos/MOTOR_MAX)) * BAVU_V_ML_MAX; // TODO simulate BAVU perforation
+    return cosf(M_PI_2*(((float)motor_pos) /MOTOR_MAX)) * BAVU_V_ML_MAX; // TODO simulate BAVU perforation
 }
 
 //! Usable BAVU flow based on motor position and direction
 //! \remark a valve normally ensures that Q is always positive
 float BAVU_Q_Lpm()
 {
-    const float Q_Lpm = SIGN(motor_dir) * sinf(M_PI_2*((float)(motor_pos)/MOTOR_MAX)) * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
-    return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
+    float piover2 = M_PI_2;
+    float ratio_motor = ((float)(motor_pos)/MOTOR_MAX);
+    float sinus = sinf(piover2 * ratio_motor);
+    const float Q_Lpm = sinus * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
+    return Q_Lpm /** (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO)*/;
 }
 
 // ------------------------------------------------------------------------------------------------
