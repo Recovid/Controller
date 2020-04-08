@@ -139,7 +139,7 @@ void sense_and_compute()
     P_cmH2O = read_Paw_cmH2O();
     // TODO float Patmo_mbar = read_Patmo_mbar();
     VolM_Lpm = read_Pdiff_Lpm(); // TODO Compute corrected QPatientSLM based on Patmo
-    Vol_mL += (VolM_Lpm / 1000.) * abs(get_time_ms() - last_sense_ms)/1000./60.;
+    Vol_mL += (VolM_Lpm * 1000.) * labs(get_time_ms() - last_sense_ms)/1000./60.;
 
     Pplat_cmH2O = Pexp_cmH2O = P_cmH2O; // TODO Compute average
 
