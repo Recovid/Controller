@@ -164,7 +164,7 @@ float read_Pdiff_Lpm()
         return abs_Q_Lpm;
     }
     else if (valve_state == Exhale) {
-        const float decrease = .9; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
+        const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
         abs_Q_Lpm *= decrease;
         return -abs_Q_Lpm;
     }
