@@ -167,11 +167,10 @@ void enter_state(enum State new)
 
 void cycle_respiration()
 {
-    if (state_start_ms==-1) state_start_ms = get_time_ms();
-    if (respi_start_ms==-1) respi_start_ms = get_time_ms();
+            
+    if (respi_start_ms==-1) enter_state(Insufflation);
 
     if (Insufflation == state) {
-        respi_start_ms = get_time_ms();
         valve_inhale();
         if (Pmax_cmH2O <= read_Paw_cmH2O()) {
             enter_state(Exhalation);
