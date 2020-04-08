@@ -49,7 +49,7 @@ float VTe_mL       = 0.;
 float VM_Lm        = 0.;
 float Pcrete_cmH2O = 0.;
 float Pplat_cmH2O  = 0.;
-float PEPs_cmH2O   = 0.;
+float Pexp_cmH2O   = 0.;
 
 void check(int* bits, int bit, bool success)
 {
@@ -141,7 +141,7 @@ void sense_and_compute()
     VolM_Lpm = read_Pdiff_Lpm(); // TODO Compute corrected QPatientSLM based on Patmo
     Vol_mL += (VolM_Lpm / 1000.) * abs(get_time_ms() - last_sense_ms)/1000./60.;
 
-    Pplat_cmH2O = PEP_cmH2O = P_cmH2O; // TODO Compute average
+    Pplat_cmH2O = Pexp_cmH2O = P_cmH2O; // TODO Compute average
 
     if ((sent_DATA_ms+50 < get_time_ms())
         && send_DATA(P_cmH2O, VolM_Lpm, Vol_mL, Pplat_cmH2O, PEP_cmH2O)) {
@@ -213,7 +213,8 @@ void cycle_respiration()
             VTe_mL = Vol_mL;
             // TODO ...
 
-            send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
+			
+            send_RESP(IE, FRs_pm, VTe_mL, VM_Lm, Pcrete_cmH2O, Pplat_cmH2O, Pexp_cmH2O);
         }
         motor_release();
     }
