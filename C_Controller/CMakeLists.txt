@@ -19,7 +19,6 @@ else()
 endif()
 SET(SOURCES platform.h
     main.c
-    controller_settings.h
     controller.h
     controller.c
     configuration.h
@@ -28,10 +27,10 @@ SET(SOURCES platform.h
     alarms.c
     ihm_communication.h
     ihm_communication.c
-	tasks_recovid.c
-	tasks_recovid.h
+    tasks_recovid.c
+    tasks_recovid.h
     ${LOWLEVEL_INC_DIR}/hardware_simulation.h
-	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+      ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
     ${LOWLEVEL_INC_DIR}/hardware_serial.h
     ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     unit_tests.h
