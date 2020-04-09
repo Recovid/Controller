@@ -262,6 +262,5 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-		vPortYield();
     }
 }

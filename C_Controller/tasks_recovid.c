@@ -24,11 +24,7 @@ long wait_ms(long t_ms)
 {
 	if(xTaskGetCurrentTaskHandle() != NULL)
 		vTaskDelay(t_ms/portTICK_PERIOD_MS);
-	else
-		usleep(1000*t_ms);
 }
-
-
 
 int sleepPeriodic(struct periodic_task* task)
 {
