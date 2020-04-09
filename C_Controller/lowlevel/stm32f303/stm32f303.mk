@@ -72,16 +72,19 @@ LowLevel_Sources += \
 	$(HAL_Dir)/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart_ex.c \
 	$(HAL_Dir)/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_uart.c \
 	$(HAL_Dir)/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal.c \
+	$(HAL_Dir)/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c \
 	$(HAL_Dir)/Drivers/startup_stm32f303retx.s \
 	$(HAL_Dir)/stm32f3xx_nucleo.c \
 	$(HAL_Dir)/syscalls.c \
 	$(HAL_Dir)/sysmem.c \
 	$(HAL_Dir)/system_stm32f3xx.c \
+	$(Makefile_path)/stm32f3xx_it.c \
 	$(Makefile_path)/stm32f3xx_hal_msp.c
 
 
 LowLevel_Sources += \
-	$(Makefile_path)/hardware_simulation.c
+	$(Makefile_path)/hardware_simulation.c \
+	$(Makefile_path)/hardware_serial.c
 
 
 # Use LibOpenCm3

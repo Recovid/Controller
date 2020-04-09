@@ -28,7 +28,7 @@ int main(int argc, const char** argv)
     int result = self_tests();
     // if (result & 0b111111)
     //     return -1;
-
+    #ifdef native
     if (argc == 1) {
         init_ihm(0, 0, NULL);
     }
@@ -45,6 +45,9 @@ int main(int argc, const char** argv)
 
         return 1;
     }
+	#else
+        init_ihm(IHM_MODE_SERIAL, 0, 0);
+    #endif
 
 	for(int task_idx=0; task_idx < size_task_array; task_idx++)
 	{ 
