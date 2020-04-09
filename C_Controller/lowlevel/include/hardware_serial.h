@@ -32,7 +32,7 @@
 // ------------------------------------------------------------------------------------------------
 
 int hardware_serial_read_data(unsigned char * data, uint16_t data_size);
-int hardware_serial_write_data(unsigned char * data, uint16_t data_size);
+int hardware_serial_write_data(const unsigned char * data, uint16_t data_size);
 int hardware_serial_init(const char * serial_port);
 
 #endif // HARDWARE_SERIAL

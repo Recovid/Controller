@@ -91,7 +91,7 @@ int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
     return read_return;
 }
 
-int hardware_serial_write_data(unsigned char * data, uint16_t data_size)
+int hardware_serial_write_data(const unsigned char * data, uint16_t data_size)
 {
     int write_return = 0;
 

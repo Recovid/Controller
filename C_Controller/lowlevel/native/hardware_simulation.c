@@ -10,9 +10,8 @@
 //Recovid include
 #include "hardware_simulation.h"
 #include "configuration.h"
-#include "controller_settings.h"
 #include "portmacro.h"
-
+#include "ihm_communication.h"
 #include "hardware_serial.h"
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
@@ -148,6 +147,12 @@ bool motor_release()
     return true; // TODO simulate driver failure
 }
 
+bool motor_pep_move(int steps)
+{
+    return false; // TODO
+}
+
+
 static enum Valve { Inhale, Exhale } valve_state = Exhale;
 static long valve_exhale_ms = -1;
 
@@ -197,7 +202,7 @@ float BAVU_Q_Lpm()
     float ratio_motor = ((float)(motor_pos)/MOTOR_MAX);
     float sinus = sinf(piover2 * ratio_motor);
     const float Q_Lpm = sinus * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
-    return Q_Lpm /** (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO)*/;
+    return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -224,6 +229,7 @@ float read_Pdiff_Lpm()
 float read_Paw_cmH2O()
 {
     static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
+    const float PEP_cmH2O = get_setting_PEP_cmH2O();
 
     if (valve_state == Inhale) {
         if (motor_dir > 0) {
@@ -234,14 +240,13 @@ float read_Paw_cmH2O()
         else {
             // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
             const float decrease = .6; // expf(- abs(get_time_ms()-motor_release_ms)/10.); // <1% after 50ms
-            const float Pplat_cmH2O = PEP_cmH2O + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
-            Paw_cmH2O = Pplat_cmH2O
-                        + (Paw_cmH2O-Pplat_cmH2O) * decrease;
+            const float Pplat_cmH2O = get_setting_PEP_cmH2O() + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
+            Paw_cmH2O = Pplat_cmH2O + (Paw_cmH2O-Pplat_cmH2O) * decrease;
         }
     }
     else if (valve_state == Exhale) {
         const float decrease = .9; // abs(get_time_ms()-valve_exhale_ms)/100.; // <1% after 500ms
-        Paw_cmH2O = PEP_cmH2O + (Paw_cmH2O-PEP_cmH2O) * decrease;
+        Paw_cmH2O = get_setting_PEP_cmH2O() + (Paw_cmH2O-get_setting_PEP_cmH2O()) * decrease;
     }
     return Paw_cmH2O;
 }
@@ -250,3 +255,12 @@ float read_Patmo_mbar()
 {
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }
+
+
+
+
+int read_Battery_level()
+{
+    return 2; // TODO simulate lower battery levels
+}
+

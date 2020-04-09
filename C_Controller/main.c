@@ -10,7 +10,6 @@
 //Recovid include
 #include "platform.h"
 #include "controller.h"
-#include "controller_settings.h"
 #include "alarms.h"
 #include "ihm_communication.h"
 #include "hardware_simulation.h"
@@ -47,14 +46,6 @@ int main(int argc, const char** argv)
         return 1;
     }
 
-    // TODO replace with STM32 code that will:
-    // - initialize the hardware
-    // - schedule cyclic tasks
-    // - set init_str (controller.h), then:
-
-    snprintf(init_str, INIT_STR_SIZE, "Start simulation self-tests:%o", result);
-    send_INIT(init_str);
-	printf("%s\n", init_str);
 	for(int task_idx=0; task_idx < size_task_array; task_idx++)
 	{ 
 		// Now set up two tasks to run independently.
