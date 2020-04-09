@@ -240,7 +240,7 @@ float read_Paw_cmH2O()
         if (motor_dir > 0) {
             // Pressure augments as volume decreases according to PV=k ('loi des gaz parfait')
             // Pi=P0*V0/Vi
-            Paw_cmH2O = PEP_cmH2O * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX);
+            Paw_cmH2O = get_setting_PEP_cmH2O() + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
         }
         else {
             // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
