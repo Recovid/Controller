@@ -211,15 +211,20 @@ float BAVU_Q_Lpm()
 float read_Pdiff_Lpm()
 {
     static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
+    static float nonzero_abs_Q_Lpm; // to handle exponential decrease during exhalation
 
     if (valve_state == Inhale) {
         abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
+		if(abs_Q_Lpm != 0.) { 
+			nonzero_abs_Q_Lpm = abs_Q_Lpm;
+		}
         return abs_Q_Lpm;
     }
     else if (valve_state == Exhale) {
+		
         const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
-        abs_Q_Lpm *= decrease;
-        return -abs_Q_Lpm;
+        nonzero_abs_Q_Lpm *= decrease;
+		return -nonzero_abs_Q_Lpm;
     }
     else {
         return 0.;
