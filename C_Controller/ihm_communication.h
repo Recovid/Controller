@@ -1,13 +1,41 @@
 #ifndef IHM_COMMUNICATION_H
 #define IHM_COMMUNICATION_H
 
-#include <stdbool.h>
+#include "platform.h"
+
+// ------------------------------------------------------------------------------------------------
+//! Public read-only access to settings coming from UI
+
+int   get_setting_FR_pm       ();
+int   get_setting_VT_mL       ();
+int   get_setting_PEP_cmH2O   ();
+int   get_setting_Vmax_Lpm    ();
+float get_setting_EoI_ratio   ();
+long  get_setting_Tplat_ms    ();
+
+int   get_setting_Pmax_cmH2O  ();
+int   get_setting_Pmin_cmH2O  ();
+int   get_setting_VTmin_mL    ();
+int   get_setting_FRmin_pm    ();
+int   get_setting_VMmin_Lm    ();
+int   get_setting_PEPmax_cmH2O();
+int   get_setting_PEPmin_cmH2O();
+
+// ------------------------------------------------------------------------------------------------
+//! Public read-only access to commands coming from UI
+
+long get_command_Tpins_ms();
+long get_command_Tpexp_ms();
+long get_command_Tpbip_ms();
+
+bool is_soft_reset_asked ();
+
 
 // ------------------------------------------------------------------------------------------------
 //! Public interface to send event/data to the IHM and process read messages
 
-bool send_DATA(int P, int VolM, int Vol, int Pplat, int PEP);
-bool send_RESP(int IE, int FR, int VTe, int VM, int Pcrete, int Pplat, int PEP);
+bool send_DATA(float P, float VolM, float Vol, float Pplat, float PEP);
+bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP);
 
 bool send_INIT(const char* information);
 
@@ -15,6 +43,6 @@ bool send_INIT(const char* information);
 //! - update controller settings and acknowledge modified value
 //! - answer to INIT
 //! \returns false if soft reset received
-bool send_and_recv();
+void send_and_recv();
 
 #endif // IHM_COMMUNICATION_H
