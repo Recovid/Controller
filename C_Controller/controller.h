@@ -10,8 +10,6 @@
 //! \warning critical failures should result in a safe stop
 int self_tests();
 
-void sense_and_compute();
-
 void cycle_respiration();
 
 const char *get_init_str();
