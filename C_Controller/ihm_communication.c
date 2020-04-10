@@ -256,7 +256,7 @@ bool send_INIT(const char* information)
            && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lm);
 }
 
-bool process(char const** ppf, const char* field, int size, int16_t* value)
+bool process(char const** ppf, const char* field, int size, uint16_t* value)
 {
     if (strncmp(*ppf, field, strlen(field))!=0) return false;
 
@@ -306,7 +306,8 @@ void send_and_recv()
         if (!pcs8) continue;
 
         unsigned int cs8 = 0;
-        if (sscanf(pcs8, CS8 CS8_VALUE, &cs8)!=1) continue;
+        if (!strncmp(pcs8, CS8, sizeof(CS8))) continue;
+        cs8 = strtol(pcs8 + sizeof(CS8), 0, 16);
 
         unsigned char cs8computed = checksum8(frame);
         if (cs8!=cs8computed) continue;
