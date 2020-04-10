@@ -55,11 +55,13 @@ set(SHARED_SOURCES ${SHARED_SOURCES}
     TaskSensing.c
     TaskAlarm.c
     )
-
-include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
 endif()
 
 add_executable(${EXECUTABLE} ${SHARED_SOURCES})
+
+if(NOT CMAKE_HOST_WIN32)
+include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR} ${LOWLEVEL_INC_DIR})
 

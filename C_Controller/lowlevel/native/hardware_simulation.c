@@ -29,6 +29,7 @@ ihm_mode_t current_ihm_mode = IHM_MODE_MAX;
 //! Simulated clock for testing purposes
 static long clock_ms = 0; // will not overflow before 24 simulated days
 
+#ifdef WIN32
 long get_time_ms()
 {
     return clock_ms;
@@ -38,6 +39,7 @@ long wait_ms(long t_ms)
 {
     return clock_ms += t_ms; // simulated clock for testing purposes
 }
+#endif
 
 bool soft_reset()
 {
