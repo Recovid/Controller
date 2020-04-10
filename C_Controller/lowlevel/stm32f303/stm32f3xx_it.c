@@ -25,8 +25,10 @@
 #include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdint.h>
 /* USER CODE END Includes */
-
+   
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
 
@@ -58,9 +60,9 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_tim17_ch1_up;
+// extern DMA_HandleTypeDef hdma_tim17_ch1_up;
 /* USER CODE BEGIN EV */
-
+extern TIM_HandleTypeDef htim16;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -78,20 +80,61 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
+ typedef struct
+  {
+    uint32_t r0;
+    uint32_t r1;
+    uint32_t r2;
+    uint32_t r3;
+    uint32_t r12;
+    uint32_t lr;
+    uint32_t pc;
+    uint32_t psr;
+#if  defined(__ARM_ARCH_7EM__)
+    uint32_t s[16];
+#endif
+  } ExceptionStackFrame;
 
+void HardFault_Handler_C(
+        ExceptionStackFrame * frame __attribute__((unused)), uint32_t lr __attribute__((unused)))
+{
+    // TODO Add Critical event
+
+    printf("### Hard Fault (pc=0x%.8lx / lr=0x%.8lx) ###",
+            frame->pc,
+            frame->lr);
+    printf("               (r0=0x%.8lx / r1=0x%.8lx / r2=0x%.8lx) ###",
+            frame->r0,
+            frame->r1,
+            frame->r2);
+    printf("               (r3=0x%.8lx / r12=0x%.8lx / psr=0x%.8lx) ###",
+            frame->r3,
+            frame->r12,
+            frame->psr);
+
+      __asm("BKPT #0\n") ; // Break into the debugger
+
+}
 /**
   * @brief This function handles Hard fault interrupt.
   */
 void HardFault_Handler(void)
 {
-  /* USER CODE BEGIN HardFault_IRQn 0 */
 
-  /* USER CODE END HardFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-    /* USER CODE END W1_HardFault_IRQn 0 */
-  }
+  __asm volatile(
+      " tst lr,#4       \n"
+      " ite eq          \n"
+      " mrseq r0,msp    \n"
+      " mrsne r0,psp    \n"
+      " mov r1,lr       \n"
+      " ldr r2,=HardFault_Handler_C \n"
+      " bx r2"
+
+      : /* Outputs */
+      : /* Inputs */
+      : /* Clobbers */
+  );
+
 }
 
 /**
@@ -140,19 +183,6 @@ void UsageFault_Handler(void)
 }
 
 /**
-  * @brief This function handles System service call via SWI instruction.
-  */
-void SVC_Handler(void)
-{
-  /* USER CODE BEGIN SVCall_IRQn 0 */
-
-  /* USER CODE END SVCall_IRQn 0 */
-  /* USER CODE BEGIN SVCall_IRQn 1 */
-
-  /* USER CODE END SVCall_IRQn 1 */
-}
-
-/**
   * @brief This function handles Debug monitor.
   */
 void DebugMon_Handler(void)
@@ -165,40 +195,6 @@ void DebugMon_Handler(void)
   /* USER CODE END DebugMonitor_IRQn 1 */
 }
 
-/**
-  * @brief This function handles Pendable request for system service.
-  */
-void PendSV_Handler(void)
-{
-  /* USER CODE BEGIN PendSV_IRQn 0 */
-
-  /* USER CODE END PendSV_IRQn 0 */
-  /* USER CODE BEGIN PendSV_IRQn 1 */
-
-  /* USER CODE END PendSV_IRQn 1 */
-}
-
-/**
-  * @brief This function handles System tick timer.
-  */
-void SysTick_Handler(void)
-{
-  /* USER CODE BEGIN SysTick_IRQn 0 */
-
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-#if (INCLUDE_xTaskGetSchedulerState == 1 )
-  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
-  {
-#endif /* INCLUDE_xTaskGetSchedulerState */
-  xPortSysTickHandler();
-#if (INCLUDE_xTaskGetSchedulerState == 1 )
-  }
-#endif /* INCLUDE_xTaskGetSchedulerState */
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-
-  /* USER CODE END SysTick_IRQn 1 */
-}
 
 /******************************************************************************/
 /* STM32F3xx Peripheral Interrupt Handlers                                    */
@@ -215,7 +211,7 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
 
   /* USER CODE END DMA1_Channel1_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_tim17_ch1_up);
+  // HAL_DMA_IRQHandler(&hdma_tim17_ch1_up);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
 
   /* USER CODE END DMA1_Channel1_IRQn 1 */
@@ -234,7 +230,19 @@ void EXTI9_5_IRQHandler(void)
 
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
+/**
+  * @brief This function handles TIM1 update and TIM16 interrupts.
+  */
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
 
+  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim16);
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
+}
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */

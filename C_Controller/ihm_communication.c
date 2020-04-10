@@ -1,4 +1,5 @@
 #include <FreeRTOS.h>
+#include "portmacro.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -261,6 +262,5 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-		vPortYield();
     }
 }

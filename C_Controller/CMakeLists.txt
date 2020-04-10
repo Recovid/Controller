@@ -3,7 +3,7 @@
 SET(CMAKE_SYSTEM_NAME Generic)
 SET(CMAKE_SYSTEM_VERSION 1)
 cmake_minimum_required(VERSION 3.7)
-project(C_Controller)
+project(C_Controller C ASM)
 
 
 if(NOT TARGET)
@@ -17,6 +17,8 @@ if(${TARGET} STREQUAL "stm32f303")
 else()
 	SET(EXECUTABLE simulateur)
 endif()
+
+add_definitions(-D${TARGET})
 SET(SOURCES platform.h
     main.c
     controller.h
@@ -30,7 +32,7 @@ SET(SOURCES platform.h
     tasks_recovid.c
     tasks_recovid.h
     ${LOWLEVEL_INC_DIR}/hardware_simulation.h
-      ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+    ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
     ${LOWLEVEL_INC_DIR}/hardware_serial.h
     ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     unit_tests.h
