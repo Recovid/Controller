@@ -205,15 +205,15 @@ bool send_SET(const char* field, int size, int value)
         return false;
     char frame[sizeof(SET_) + 6 + 4 + sizeof(CS8) + sizeof(CS8_VALUE)];
     char* curr = frame;
-    strncpy(curr, SET_, sizeof(SET_));
-    curr += sizeof(SET_);
+    strncpy(curr, SET_, sizeof(SET_) - 1);
+    curr += sizeof(SET_) - 1;
     for (int i = 0; i < 6 + size; ++i)
         curr[i] = '.';
     curr += 6 + size;
-    strncpy(curr, CS8, sizeof(CS8));
-    curr += sizeof(CS8);
-    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE));
-    curr += sizeof(CS8_VALUE);
+    strncpy(curr, CS8, sizeof(CS8) - 1);
+    curr += sizeof(CS8) - 1;
+    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE) - 1);
+    curr += sizeof(CS8_VALUE) - 1;
     *curr = '\0';
 
     strncpy(strchr(frame, '.'), field, 6);
@@ -230,14 +230,14 @@ bool send_INIT(const char* information)
 {
     char frame[MAX_FRAME+1] = "";
     char* curr = frame;
-    strncpy(curr, INIT, sizeof(INIT));
-    curr += sizeof(INIT);
+    strncpy(curr, INIT, sizeof(INIT) - 1);
+    curr += sizeof(INIT) - 1;
     strncpy(curr, information, strlen(information));
     curr += strlen(information);
-    strncpy(curr, CS8, sizeof(CS8));
-    curr += sizeof(CS8);
-    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE));
-    curr += sizeof(CS8_VALUE);
+    strncpy(curr, CS8, sizeof(CS8) - 1);
+    curr += sizeof(CS8) - 1;
+    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE) - 1);
+    curr += sizeof(CS8_VALUE) - 1;
     *curr = '\0';
 
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
@@ -300,18 +300,18 @@ void send_and_recv()
             }
         }
         if ((frame+MAX_FRAME)<=pf) continue;
-        *(++pf)='\0';
+        *(pf++)='\n';
+        *(pf++)='\0';
 
         char* pcs8 = strstr(frame, CS8);
         if (!pcs8) continue;
 
         unsigned int cs8 = 0;
-        if (!strncmp(pcs8, CS8, sizeof(CS8))) continue;
-        cs8 = strtol(pcs8 + sizeof(CS8), 0, 16);
+        cs8 = strtol(pcs8 + sizeof(CS8) - 1, 0, 16);
 
         unsigned char cs8computed = checksum8(frame);
         if (cs8!=cs8computed) continue;
-        *(pcs8 + strlen(CS8)) = '\0';
+        *(pcs8 + strlen(CS8) - 1) = '\0';
 
         uint16_t ignored_Tplat_ms;
         const char *pl = NULL;
