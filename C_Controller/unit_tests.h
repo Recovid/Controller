@@ -5,4 +5,6 @@
 
 bool unit_tests_passed();
 
+bool blink();
+
 #endif // UNIT_TESTS_H

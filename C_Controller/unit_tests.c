@@ -1,4 +1,5 @@
 #include "unit_tests.h"
+#include "leds.h"
 
 #include "ihm_communication.h"
 
@@ -40,6 +41,16 @@ bool test_default_settings()
         TEST_EQUALS(  0.f, is_soft_reset_asked     ()) &&
         true;
 }
+
+bool blink() {
+    leds_init();
+    while(1) {
+        led_onnucleo_toggle();
+        HAL_Delay(500);
+    }
+    return true;
+}
+
 
 bool unit_tests_passed()
 {
