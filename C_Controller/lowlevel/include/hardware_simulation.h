@@ -26,6 +26,8 @@ bool soft_reset();
 // ------------------------------------------------------------------------------------------------
 //! UI communication
 
+//! \returns false only if communication is not possible for some reason
+//! \warning since IHM may not be started yet, do not expect any answer yet
 bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile);
 
 //! \returns true if frame sent

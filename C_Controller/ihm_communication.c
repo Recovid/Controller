@@ -1,4 +1,9 @@
+#include "ihm_communication.h"
+
+#ifndef WIN32
+//FreeRTOS Include
 #include <FreeRTOS.h>
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -6,25 +11,25 @@
 #include <stdlib.h>
 
 #include "controller.h"
-#include "ihm_communication.h"
 #include "hardware_simulation.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Settings
 
-//! Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
+//! \warning Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
+//! \warning Non volatile memory may be limited to uint16_t by the corresponding driver
 
-static int setting_FR_pm      =  18;
-static int setting_VT_mL      = 300;
-static int setting_PEP_cmH2O  =   5;
-static int setting_Vmax_Lpm   =  60;
-static int setting_EoI_ratio  =   2;
+static uint16_t setting_FR_pm      =  18;
+static uint16_t setting_VT_mL      = 300;
+static uint16_t setting_PEP_cmH2O  =   5;
+static uint16_t setting_Vmax_Lpm   =  60;
+static uint16_t setting_EoI_ratio  =   2;
 
-static int setting_Pmax_cmH2O =  60;
-static int setting_Pmin_cmH2O =  20;
-static int setting_VTmin_mL   = 400;
-static int setting_FRmin_pm   =  10;
-static int setting_VMmin_Lm   =   5;
+static uint16_t setting_Pmax_cmH2O =  60;
+static uint16_t setting_Pmin_cmH2O =  20;
+static uint16_t setting_VTmin_mL   = 400;
+static uint16_t setting_FRmin_pm   =  10;
+static uint16_t setting_VMmin_Lm   =   5;
 
 const int setting_PEPmax_cmH2O = 2;
 const int setting_PEPmin_cmH2O = 2;
@@ -261,6 +266,8 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-		vPortYield();
+#ifndef WIN32
+        vPortYield();
+#endif
     }
 }

@@ -1,6 +1,10 @@
+#include "hardware_simulation.h"
+
+#ifndef WIN32
 //FreeRTOS include
 #include <FreeRTOS.h>
 #include <task.h>
+#endif
 
 //STD include
 #include <time.h>
@@ -8,14 +12,32 @@
 #include <math.h>
 
 //Recovid include
-#include "hardware_simulation.h"
 #include "configuration.h"
-#include "portmacro.h"
 #include "ihm_communication.h"
+
+//Low-level include
+#ifndef WIN32
 #include "hardware_serial.h"
+#include "portmacro.h"
+#endif
+
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
+
 ihm_mode_t current_ihm_mode = IHM_MODE_MAX;
+
+//! Simulated clock for testing purposes
+static long clock_ms = 0; // will not overflow before 24 simulated days
+
+long get_time_ms()
+{
+    return clock_ms;
+}
+
+long wait_ms(long t_ms)
+{
+    return clock_ms += t_ms; // simulated clock for testing purposes
+}
 
 bool soft_reset()
 {
@@ -48,15 +70,16 @@ bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOu
         else
             out = stdout;
     }
+#ifndef WIN32
     else
     {
-        printf("Serial oppened in Serial Mode \n");
+        printf("Serial opened in Serial Mode \n");
         if(!hardware_serial_init(pathInputFile))
         {
             return false;
         }
     }
-
+#endif
     current_ihm_mode = ihm_mode;
 
     return true;
@@ -72,11 +95,12 @@ bool send_ihm(const char* frame)
     {
         is_data_send = fputs(frame, out) >= 0;
     }
+#ifndef WIN32
     else
     {
         is_data_send = hardware_serial_write_data(frame, strlen(frame));
     }
-
+#endif
     return is_data_send;
 }
 
@@ -97,6 +121,7 @@ int recv_ihm()
             return blocking_read;
         }
     }
+#ifndef WIN32
     else
     {
         if (last_blocked_s+5 < t_s) {
@@ -108,6 +133,7 @@ int recv_ihm()
             return blocking_read;
         }
     }
+#endif
     return EOF;
 }
 
@@ -260,9 +286,6 @@ float read_Patmo_mbar()
 {
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }
-
-
-
 
 int read_Battery_level()
 {

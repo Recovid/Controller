@@ -6,6 +6,8 @@
 // ------------------------------------------------------------------------------------------------
 //! Public read-only access to settings coming from UI
 
+// TODO Use float to avoid integer division when using these functions in computations
+
 int   get_setting_FR_pm       ();
 int   get_setting_VT_mL       ();
 int   get_setting_PEP_cmH2O   ();
