@@ -2,7 +2,7 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION 1)
 cmake_minimum_required(VERSION 3.7)
 
-project(C_Controller)
+project(C_Controller C ASM)
 
 if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
     set(TARGET native)
@@ -21,8 +21,10 @@ else()
     set(EXECUTABLE simulateur)
 endif()
 
+add_definitions(-D${TARGET})
+
 # high-level
-set(SOURCES
+set(SHARED_SOURCES
     platform.h
     main.c
     unit_tests.h
@@ -42,7 +44,7 @@ set(SOURCES
 )
 # low-level
 if(NOT CMAKE_HOST_WIN32)
-set(SOURCES ${SOURCES}
+set(SHARED_SOURCES ${SHARED_SOURCES}
     ${LOWLEVEL_INC_DIR}/hardware_serial.h
     ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     tasks_recovid.c
@@ -53,10 +55,10 @@ set(SOURCES ${SOURCES}
     TaskAlarm.c
     )
 
-    include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
+include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
 endif()
 
-add_executable(${EXECUTABLE} ${SOURCES})
+add_executable(${EXECUTABLE} ${SHARED_SOURCES})
 
 include_directories(${CMAKE_SOURCE_DIR} ${LOWLEVEL_INC_DIR})
 

@@ -3,6 +3,7 @@
 #ifndef WIN32
 //FreeRTOS Include
 #include <FreeRTOS.h>
+#include "portmacro.h"
 #endif
 
 #include <stdio.h>
@@ -43,9 +44,9 @@ float get_setting_EoI_ratio () { return setting_EoI_ratio   ; }
 long  get_setting_Tplat_ms  ()
 {
     const float T_ms  = 60000.f / get_setting_FR_pm();
-	//Faux ??
-    const float Ti_ms = ((float)get_setting_VT_mL()) / (((float)get_setting_Vmax_Lpm() *1000/ 4) / 60000);
-    const float Te_ms = Ti_ms / get_setting_EoI_ratio();
+    const float Ti_ms = ((float)get_setting_VT_mL()) / (((float)get_setting_Vmax_Lpm() *1000) / 60000);
+    const float Tplat_ms= (T_ms/(1+(1/get_setting_EoI_ratio()))) - Ti_ms;
+    const float Te_ms = (Ti_ms+Tplat_ms) / (get_setting_EoI_ratio());
     return T_ms - (Ti_ms+Te_ms);
 }
 

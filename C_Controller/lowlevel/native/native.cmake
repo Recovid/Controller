@@ -8,6 +8,7 @@ set(CMAKE_OBJCOPY objcopy)
 set(CMAKE_OBJDUMP objdump)
 set(SIZE size)
 
+SET(LOWLEVEL_SRC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/${TARGET})
 SET(FREERTOS_DIR_X86 ${LOWLEVEL_SRC_DIR}/FreeRTOS-Sim/)
 SET(FREERTOS_SRC_DIR_X86 ${FREERTOS_DIR_X86}/Source/)
 SET(FREERTOS_INC_DIR_X86 ${FREERTOS_DIR_X86}/Source/include/)
@@ -23,5 +24,11 @@ set(FREERTOS_SRC_X86
 	${FREERTOS_SRC_DIR_X86}/portable/MemMang/heap_3.c
 	${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX/port.c)
 
+set(LOWLEVEL_SOURCES 
+	${LOWLEVEL_INC_DIR}/hardware_simulation.h
+	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+	${LOWLEVEL_INC_DIR}/hardware_serial.h
+	${LOWLEVEL_SRC_DIR}/hardware_serial.c)
+
 include_directories(${LOWLEVEL_SRC_DIR} ${FREERTOS_INC_DIR_X86} ${FREERTOS_SRC_DIR_X86} ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX/)
-target_sources(${EXECUTABLE} PRIVATE ${SOURCES} ${FREERTOS_SRC_X86})
+target_sources(${EXECUTABLE} PRIVATE ${SHARED_SOURCES} ${FREERTOS_SRC_X86} ${LOWLEVEL_SOURCES})
