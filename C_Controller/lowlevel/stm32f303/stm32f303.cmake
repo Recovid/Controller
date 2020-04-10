@@ -1,3 +1,4 @@
+SET(LOWLEVEL_SRC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/${TARGET})
 SET(HAL_DIR ${LOWLEVEL_SRC_DIR}/HAL/)
 SET(LINKER_SCRIPT ${HAL_DIR}/stm32f303retx.ld)
 # specify cross compilers and tools
@@ -10,7 +11,6 @@ set(CMAKE_AR arm-none-eabi-ar)
 set(CMAKE_OBJCOPY arm-none-eabi-objcopy)
 set(CMAKE_OBJDUMP arm-none-eabi-objdump)
 set(SIZE arm-none-eabi-size)
-
 
 SET(FREERTOS_DIR_STM32 ${LOWLEVEL_SRC_DIR}/FreeRTOS/)
 SET(FREERTOS_SRC_DIR_STM32 ${FREERTOS_DIR_STM32}/Source/)
@@ -50,10 +50,14 @@ set(SOURCES_STM32 ${SOURCES_STM32}
 	${FREERTOS_SRC_DIR_STM32}/portable/MemMang/heap_4.c
 	${FREERTOS_SRC_DIR_STM32}/portable/GCC/ARM_CM4F/port.c	
 	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp.c
-	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp_tick.c)
+	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp_tick.c
+	${LOWLEVEL_INC_DIR}/hardware_simulation.h
+	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+	${LOWLEVEL_INC_DIR}/hardware_serial.h
+	${LOWLEVEL_SRC_DIR}/hardware_serial.c)
 
 
-target_sources(${EXECUTABLE} PRIVATE ${SOURCES} ${SOURCES_STM32})
+target_sources(${EXECUTABLE} PRIVATE ${SHARED_SOURCES} ${SOURCES_STM32})
 
 
 SET(COMMON_FLAGS " -mcpu=cortex-m4 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F303xE -DUSE_FULL_LL_DRIVER -Os -g -ffunction-sections -fdata-sections -Wall -fstack-usage  -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb")
