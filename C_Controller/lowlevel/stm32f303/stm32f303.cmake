@@ -21,6 +21,7 @@ set(SOURCES_STM32 ${SOURCES_STM32}
 	${HAL_DIR}/syscalls.c
 	${HAL_DIR}/sysmem.c
 	${HAL_DIR}/system_stm32f3xx.c
+	${LOWLEVEL_SRC_DIR}/stm32f3xx_it.c
 	${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c
 	${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_dma.c
 	${HAL_DIR}/Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_exti.c
@@ -48,17 +49,18 @@ set(SOURCES_STM32 ${SOURCES_STM32}
     ${FREERTOS_SRC_DIR_STM32}/list.c
 	${FREERTOS_SRC_DIR_STM32}/portable/MemMang/heap_4.c
 	${FREERTOS_SRC_DIR_STM32}/portable/GCC/ARM_CM4F/port.c	
-	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp.c)
+	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp.c
+	${LOWLEVEL_SRC_DIR}/stm32f3xx_hal_msp_tick.c)
 
 
 target_sources(${EXECUTABLE} PRIVATE ${SOURCES} ${SOURCES_STM32})
 
 
-SET(COMMON_FLAGS "-mcpu=cortex-m4 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F303xE -DUSE_FULL_LL_DRIVER -Os -ffunction-sections -fdata-sections -Wall -fstack-usage  -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb")
+SET(COMMON_FLAGS " -mcpu=cortex-m4 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F303xE -DUSE_FULL_LL_DRIVER -Os -g -ffunction-sections -fdata-sections -Wall -fstack-usage  -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb")
 
 SET(CMAKE_C_FLAGS "${COMMON_FLAGS}")
 
-SET(CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT} --specs=nosys.specs -Wl,--gc-sections")
+SET(CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT} -Wl,-Map=stm32f303_memory.map --specs=nosys.specs -Wl,--gc-sections")
 
 add_definitions(-D__weak=__attribute__\(\(weak\)\) -D__packed=__attribute__\(\(__packed__\)\) -DUSE_HAL_DRIVER -DSTM32F303xE)
 

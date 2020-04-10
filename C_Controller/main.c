@@ -21,13 +21,6 @@
 
 int main(int argc, const char** argv)
 {
-#ifndef NDEBUG
-    if (!unit_tests_passed())
-        return -2;
-#endif
-    int result = self_tests();
-    // if (result & 0b111111)
-    //     return -1;
     #ifdef native
     if (argc == 1) {
         init_ihm(0, 0, NULL);
@@ -49,16 +42,27 @@ int main(int argc, const char** argv)
         init_ihm(IHM_MODE_SERIAL, 0, 0);
     #endif
 
+#ifndef NDEBUG
+    if (!unit_tests_passed())
+        return -2;
+#endif
+    int result = self_tests();
+    // if (result & 0b111111)
+    //     return -1;
+
 	for(int task_idx=0; task_idx < size_task_array; task_idx++)
 	{ 
 		// Now set up two tasks to run independently.
-		xTaskCreate(
+		if(xTaskCreate(
 				task_array[task_idx].task,
 				task_array[task_idx].name,   // A name just for humans
-				128, // This stack size can be checked & adjusted by reading the Stack Highwater
+				256, // This stack size can be checked & adjusted by reading the Stack Highwater
 				&task_array[task_idx],
 				task_array[task_idx].priority,  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-				NULL );
+				NULL ) != pdPASS)
+        {
+            return -1;
+        }
 	}
 
 	// start scheduler
