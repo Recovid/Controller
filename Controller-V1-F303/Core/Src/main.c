@@ -24,6 +24,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "../../Controller/Inc/controller.h"
+#include "ihm_communication.h"
+#include "hardware_simulation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +54,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim17;
 DMA_HandleTypeDef hdma_tim17_ch1_up;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -131,7 +134,24 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+/*
+  init_ihm(0,0);
 
+  float pres = 0;
+  float deb =0;
+  float vol =0;
+
+  while(1){
+
+	  pres= pres >100 ? 0  : pres+1;
+	  deb= deb >50 ? -50 : deb+1;
+	  vol= vol >500 ? 0 : vol+1;
+	  HAL_Delay(1);
+	  send_and_recv();
+	  HAL_Delay(10);
+	  send_DATA(pres, deb, vol, 0, 0);
+  }
+*/
   controller_run();
 
   /* USER CODE END 2 */
@@ -625,6 +645,8 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }
 
