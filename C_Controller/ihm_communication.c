@@ -78,38 +78,93 @@ bool is_soft_reset_asked () { return command_soft_reset; }
 char sign(int i) { return i<0 ? '-' : '+'; }
 
 #define CS8 "\tCS8:"
-#define CS8_VALUE "%02X\n"
+#define CS8_VALUE "..\n"
 
 unsigned char checksum8(const char* s)
 {
+    size_t len = strlen(s) - 3; // strlen(CS8_VALUE)
     unsigned long cs8 = 0ul;
-    for (; s && *s!='\0' ; s++) {
-        cs8 += *s;
+    for (size_t i = 0; i < len; ++i)
+    {
+        cs8 += s[i];
     }
     return (unsigned char)(cs8 % 256);
 }
 
 bool send(const char* frame)
 {
-    char checked_frame[MAX_FRAME+1] = "";
-    return snprintf(checked_frame, MAX_FRAME, "%s" CS8_VALUE, frame, checksum8(frame)) > 0
-           && send_ihm(checked_frame)>0;
+    return send_ihm(frame) > 0;
+}
+
+void replace_int_with_padding(char* frame, int value, int size, int base)
+{
+    static const char baseChar[] = "0123456789ABCDEF";
+    value = abs(value);
+    char* curr = strchr(frame, '.');
+    while (size > 0)
+    {
+        curr[size - 1] = baseChar[value % base];
+        value /= base;
+        --size;
+    }
 }
 
 bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, float PEP_cmH2O)
 {
-    char frame[MAX_FRAME+1] = "";
-    return snprintf(frame, MAX_FRAME, "DATA msec_:%06d Vol__:%04d Deb__:%c%03d Paw__:%c%03d" CS8,
-			(int)(get_time_ms() % 1000000l), (int)Vol_mL, sign(VolM_Lpm), abs((int)VolM_Lpm), sign(P_cmH2O), abs((int)P_cmH2O)) > 0
-		&& send(frame);
+    static const char dataFrame[] = "DATA msec_:...... Vol__:.... Deb__:.... Paw__:...." CS8 CS8_VALUE;
+
+    char frame[sizeof(dataFrame)];
+    strcpy(frame, dataFrame);
+
+    if (Vol_mL >= 10000 || Vol_mL < 0
+        || VolM_Lpm <= -1000 || VolM_Lpm >= 1000
+        || P_cmH2O <= -1000 || P_cmH2O >= 1000)
+    {
+        printf("Value passed to send_DATA are out of range");
+        return false;
+    }
+
+    replace_int_with_padding(frame, get_time_ms() % 1000000l, 6, 10);
+    replace_int_with_padding(frame, Vol_mL, 4, 10);
+    *strchr(frame, '.') = sign(VolM_Lpm);
+    replace_int_with_padding(frame, VolM_Lpm, 3, 10);
+    *strchr(frame, '.') = sign(P_cmH2O);
+    replace_int_with_padding(frame, P_cmH2O, 3, 10);
+
+    replace_int_with_padding(frame, checksum8(frame), 2, 16);
+
+    return send(frame);
 }
 
 bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O)
 {
-    char frame[MAX_FRAME+1] = "";
-    return snprintf(frame, MAX_FRAME, "RESP IE___:%02d FR___:%02d VTe__:%03d PCRET:%02d VM___:%c%02d PPLAT:%02d PEP__:%02d" CS8,
-                   (int)(EoI_ratio*10), (int)FR_pm, (int)VTe_mL, (int)Pcrete_cmH2O, sign(VM_Lpm), abs((int)VM_Lpm), (int)Pplat_cmH2O, (int)PEP_cmH2O) > 0
-           && send(frame);
+    static const char respFrame[] = "RESP IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
+    char tmp[8];
+    char frame[sizeof(respFrame)];
+    strcpy(frame, respFrame);
+
+    if (EoI_ratio < 2 || EoI_ratio > 6
+        || FR_pm < 0 || FR_pm >= 100
+        || VTe_mL < 0 || VTe_mL >= 1000
+        || VM_Lpm <= -100 || VM_Lpm >= 100
+        || Pplat_cmH2O < 0 || Pplat_cmH2O >= 100
+        || PEP_cmH2O < 0 || PEP_cmH2O >= 100)
+    {
+        printf("Value passed to send_RESP are out of range");
+        return false;
+    }
+    replace_int_with_padding(frame, EoI_ratio * 10, 2, 10);
+    replace_int_with_padding(frame, FR_pm, 2, 10);
+    replace_int_with_padding(frame, VTe_mL, 3, 10);
+    *strchr(frame, '.') = sign(Pcrete_cmH2O);
+    replace_int_with_padding(frame, Pcrete_cmH2O, 2, 10);
+    *strchr(frame, '.') = sign(VM_Lpm);
+    replace_int_with_padding(frame, VM_Lpm, 2, 10);
+    replace_int_with_padding(frame, Pplat_cmH2O, 2, 10);
+    replace_int_with_padding(frame, PEP_cmH2O, 2, 10);
+    replace_int_with_padding(frame, checksum8(frame), 2, 16);
+
+    return send(frame);
 }
 
 #define SET_  "SET_ "
@@ -118,7 +173,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 #define FR___ "FR___:"
 #define PEP__ "PEP__:"
 #define VMAX_ "Vmax_:"
-#define EoI__ "EoI__:"
+#define EoI__ "IE___:"
 #define TPLAT "Tplat:"
 #define VTMIN "VTmin:"
 #define PMAX_ "Pmax_:"
@@ -126,25 +181,41 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 #define FRMIN "FRmin:"
 #define VMMIN "VMmin:"
 
-#define VT____FMT "%03d"
-#define FR____FMT "%02d"
-#define PEP___FMT "%02d"
-#define VMAX__FMT "%02d"
-#define EoI___FMT "%02d"
-#define TPLAT_FMT "%04d"
-#define VTMIN_FMT "%04d"
-#define PMAX__FMT "%03d"
-#define PMIN__FMT "%03d"
-#define FRMIN_FMT "%02d"
-#define VMMIN_FMT "%04d"
+#define VT____FMT 3
+#define FR____FMT 2
+#define PEP___FMT 2
+#define VMAX__FMT 2
+#define EoI___FMT 2
+#define TPLAT_FMT 4
+#define VTMIN_FMT 4
+#define PMAX__FMT 3
+#define PMIN__FMT 3
+#define FRMIN_FMT 2
+#define VMMIN_FMT 4
 
-bool send_SET(const char* field, const char* fmt, int value)
+bool send_SET(const char* field, int size, int value)
 {
-    char frame[MAX_FRAME] = "";
-    char val  [MAX_FRAME] = "";
-    return snprintf(val, MAX_FRAME, fmt, value) > 0
-           && snprintf(frame, MAX_FRAME, SET_ "%s%s" CS8, field, val) > 0
-           && send(frame);
+    if (size > 4 || strlen(field) != 6)
+        return false;
+    char frame[sizeof(SET_) + 6 + 4 + sizeof(CS8) + sizeof(CS8_VALUE)];
+    char* curr = frame;
+    strncpy(curr, SET_, sizeof(SET_));
+    curr += sizeof(SET_);
+    for (int i = 0; i < 6 + size; ++i)
+        curr[i] = '.';
+    curr += 6 + size;
+    strncpy(curr, CS8, sizeof(CS8));
+    curr += sizeof(CS8);
+    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE));
+    curr += sizeof(CS8_VALUE);
+    *curr = '\0';
+
+    strncpy(strchr(frame, '.'), field, 6);
+    replace_int_with_padding(frame, value, size, 10);
+
+    replace_int_with_padding(frame, checksum8(frame), 2, 16);
+
+    return send(frame);
 }
 
 #define INIT "INIT "
@@ -152,34 +223,47 @@ bool send_SET(const char* field, const char* fmt, int value)
 bool send_INIT(const char* information)
 {
     char frame[MAX_FRAME+1] = "";
-    return snprintf(frame, MAX_FRAME, INIT "%s" CS8, information) > 0
-           && send(frame)
-           && send_SET(VT___, VT____FMT, setting_VT_mL     )
-           && send_SET(FR___, FR____FMT, setting_FR_pm     )
-           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O )
-           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm  )
-           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio )
+    char* curr = frame;
+    strncpy(curr, INIT, sizeof(INIT));
+    curr += sizeof(INIT);
+    strncpy(curr, information, strlen(information));
+    curr += strlen(information);
+    strncpy(curr, CS8, sizeof(CS8));
+    curr += sizeof(CS8);
+    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE));
+    curr += sizeof(CS8_VALUE);
+    *curr = '\0';
+
+    replace_int_with_padding(frame, checksum8(frame), 2, 16);
+
+    return send(frame)
+           && send_SET(VT___, VT____FMT, setting_VT_mL)
+           && send_SET(FR___, FR____FMT, setting_FR_pm)
+           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O)
+           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm)
+           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio)
            && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
-           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL  )
+           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL)
            && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O)
            && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O)
-           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm  )
-           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lm  );
+           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm)
+           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lm);
 }
 
-bool process(char const ** ppf, const char* field, const char* fmt, int* value)
+bool process(char const** ppf, const char* field, int size, int* value)
 {
     if (strncmp(*ppf, field, strlen(field))!=0) return false;
 
     *ppf += strlen(field);
-    return sscanf(*ppf, fmt, value)==1 && send_SET(field, fmt, *value);
+    *value = atoi(*ppf);
+    return send_SET(field, size, *value);
 }
 
 #define PINS "PINS "
 #define PEXP "PEXP "
 #define PBIP "PBIP "
 
-#define P_FMT "%05d"
+#define P_FMT 5
 
 #define SRST "SRST "
 
@@ -218,11 +302,11 @@ void send_and_recv()
         unsigned int cs8 = 0;
         if (sscanf(pcs8, CS8 CS8_VALUE, &cs8)!=1) continue;
 
-        *(pcs8+strlen(CS8))='\0';
         unsigned char cs8computed = checksum8(frame);
         if (cs8!=cs8computed) continue;
+        *(pcs8 + strlen(CS8)) = '\0';
 
-		int ignored_Tplat_ms;
+        int ignored_Tplat_ms;
         const char *pl = NULL;
         if ((pl = payload(frame, INIT)) || !initSent) {
             initSent = send_INIT(get_init_str());
