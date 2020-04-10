@@ -43,8 +43,9 @@ bool update_alarms()
             if (pressureMax_cmH2O_q[(pressureMax_startIdx + cycle) % 2] >= MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10))
             {
                 --Pmax_cycles;
-                if (Pmax_cycles == 0)
+                if (Pmax_cycles == 0) {
                     ; // Pmax Alarm
+                }
             }
             else
                 Pmax_cycles = 0; // deactivate Pmax Alarm
@@ -56,8 +57,9 @@ bool update_alarms()
             {
                 if (Pmin_startFailing_ms == -1)
                     Pmin_startFailing_ms = Pcrete_time_ms_q[Pcrete_idx];
-                else if (Pmin_startFailing_ms - Pcrete_time_ms_q[Pcrete_idx] > 15)
+                else if (Pmin_startFailing_ms - Pcrete_time_ms_q[Pcrete_idx] > 15) {
                     ; // Pmin Alarm
+                }
             }
             else
                 Pmin_startFailing_ms = 0; // deactivate Pmin Alarm
@@ -67,8 +69,9 @@ bool update_alarms()
             if (VTe_ml_q[VTe_startIdx % 3] < get_setting_VTmin_mL())
             {
                 --VTmin_cycles;
-                if (VTmin_cycles == 0)
+                if (VTmin_cycles == 0) {
                     ; // VTmin Alarm
+                }
             }
             else
                 VTmin_cycles = 0; // deactivate VTmin Alarm
@@ -78,8 +81,9 @@ bool update_alarms()
             if (FR_pm_q[VTe_startIdx % 3] < get_setting_FRmin_pm())
             {
                 --FRmin_cycles;
-                if (FRmin_cycles == 0)
+                if (FRmin_cycles == 0) {
                     ; // FRmin Alarm
+                }
             }
             else
                 FRmin_cycles = 0; // deactivate FRmin Alarm
@@ -89,8 +93,9 @@ bool update_alarms()
             if (VM_Lm_q[VTe_startIdx % 3] < get_setting_VMmin_Lm())
             {
                 --VMmin_cycles;
-                if (VMmin_cycles == 0)
+                if (VMmin_cycles == 0) {
                     ; // VMmin Alarm
+                }
             }
             else
                 VMmin_cycles = 0; // deactivate VMmin Alarm
@@ -100,8 +105,9 @@ bool update_alarms()
             if (PEP_cmH2O_q[PEP_startIdx] >= get_setting_PEP_cmH2O() + 2)
             {
                 --PEPmax_cycles;
-                if (PEPmax_cycles == 0)
+                if (PEPmax_cycles == 0) {
                     ; // PEPmax Alarm
+                }
             }
             else
                 PEPmax_cycles = 0; // deactivate PEPmax Alarm
@@ -111,8 +117,9 @@ bool update_alarms()
             if (PEP_cmH2O_q[PEP_startIdx] <= get_setting_PEP_cmH2O() - 2)
             {
                 --PEPmin_cycles;
-                if (PEPmin_cycles == 0)
+                if (PEPmin_cycles == 0) {
                     ; // PEPmin Alarm
+                }
             }
             else
                 PEPmin_cycles = 0; // deactivate PEPmin Alarm

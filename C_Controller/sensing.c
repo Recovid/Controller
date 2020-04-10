@@ -1,6 +1,9 @@
 #include "sensing.h"
 
+#include <math.h>
+
 #include "hardware_simulation.h"
+#include "ihm_communication.h"
 
 // DATA
 
@@ -8,9 +11,9 @@ float VolM_Lpm = 0.f;
 float P_cmH2O  = 0.f;
 float Vol_mL   = 0.f;
 
-float get_sensed_P_cmH2O()  { return P_cmH2O;  };
-float get_sensed_VolM_Lpm() { return VolM_Lpm; };
-float get_sensed_Vol_mL()   { return Vol_mL;   };
+float get_sensed_P_cmH2O()  { return P_cmH2O ; }
+float get_sensed_VolM_Lpm() { return VolM_Lpm; }
+float get_sensed_Vol_mL()   { return Vol_mL  ; }
 
 void sense_and_compute()
 {

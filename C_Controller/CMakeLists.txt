@@ -6,6 +6,7 @@ project(C_Controller C ASM)
 
 if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
     set(TARGET native)
+    set(CMAKE_C_FLAGS -Wpedantic)
 elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
 endif()

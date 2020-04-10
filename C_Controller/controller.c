@@ -5,11 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#define MAX(a,b) ((a)>(b) ? (a) : (b))
 
 #include "ihm_communication.h"
-#include "TaskSensing.h"
-
+#include "sensing.h"
 #include "hardware_simulation.h"
 
 // INIT

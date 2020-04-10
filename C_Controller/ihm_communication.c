@@ -173,7 +173,7 @@ bool send_INIT(const char* information)
            && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lm  );
 }
 
-bool process(char const ** ppf, const char* field, const char* fmt, int* value)
+bool process(char const ** ppf, const char* field, const char* fmt, uint16_t* value)
 {
     if (strncmp(*ppf, field, strlen(field))!=0) return false;
 
@@ -228,7 +228,7 @@ void send_and_recv()
         unsigned char cs8computed = checksum8(frame);
         if (cs8!=cs8computed) continue;
 
-		int ignored_Tplat_ms;
+        uint16_t ignored_Tplat_ms;
         const char *pl = NULL;
         if ((pl = payload(frame, INIT)) || !initSent) {
             initSent = send_INIT(get_init_str());
@@ -247,17 +247,17 @@ void send_and_recv()
             process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lm  );
         }
         else if ((pl = payload(frame, PINS))) {
-            int pause_ms = 0;
+            uint16_t pause_ms = 0;
             process(&pl, "", P_FMT, &pause_ms);
             command_Tpins_ms = get_time_ms()+pause_ms;
         }
         else if ((pl = payload(frame, PEXP))) {
-            int pause_ms = 0;
+            uint16_t pause_ms = 0;
             process(&pl, "", P_FMT, &pause_ms);
             command_Tpexp_ms = get_time_ms()+pause_ms;
         }
         else if ((pl = payload(frame, PBIP))) {
-            int pause_ms = 0;
+            uint16_t pause_ms = 0;
             process(&pl, "", P_FMT, &pause_ms);
             command_Tpbip_ms = get_time_ms()+pause_ms;
         }
