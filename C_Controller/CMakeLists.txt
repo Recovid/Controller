@@ -11,7 +11,7 @@ if(NOT TARGET)
 endif()
 
 SET(LOWLEVEL_INC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/include)
-SET(LOWLEVEL_SRC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/${TARGET})
+
 if(${TARGET} STREQUAL "stm32f303")
 	SET(EXECUTABLE ${PROJECT_NAME}.${TARGET}.elf)
 else()
@@ -19,7 +19,7 @@ else()
 endif()
 
 add_definitions(-D${TARGET})
-SET(SOURCES platform.h
+SET(SHARED_SOURCES platform.h
     main.c
     controller.h
     controller.c
@@ -31,10 +31,6 @@ SET(SOURCES platform.h
     ihm_communication.c
     tasks_recovid.c
     tasks_recovid.h
-    ${LOWLEVEL_INC_DIR}/hardware_simulation.h
-    ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
-    ${LOWLEVEL_INC_DIR}/hardware_serial.h
-    ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     unit_tests.h
     unit_tests.c
 	TaskMessageManagement.c
@@ -43,7 +39,7 @@ SET(SOURCES platform.h
 	TaskAlarm.c
 )
 
-add_executable(${EXECUTABLE} ${SOURCES})
+add_executable(${EXECUTABLE} ${SHARED_SOURCES})
 
 include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
 
