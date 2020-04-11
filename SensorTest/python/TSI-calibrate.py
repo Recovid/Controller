@@ -58,6 +58,7 @@ def read_recovid(dev, bdrate):
             # t, = struct.unpack('H', ser.read(2))
             dp, = struct.unpack('f', ser.read(4))
             paw, = struct.unpack('f', ser.read(4))
+            vol, = struct.unpack('f', ser.read(4))
             samples.append([millis, dp, paw])
             count += 1
             c = ser.read()
@@ -68,7 +69,8 @@ def read_recovid(dev, bdrate):
 
 
 samples_cnt = 1000
-T = 50
+T = 10
+
 stop_event = threading.Event()
 
 def main(argv):
@@ -85,6 +87,7 @@ def main(argv):
     fig, ax = plt.subplots(1, 1)
 
     ftsi = ax.plot(tsi[:,0], tsi[:,1])
+    #freco = ax.plot(recovid[:, 0], recovid[:, 1], 's' ) # pr afficher les points
     freco = ax.plot(recovid[:, 0], recovid[:, 1])
     plt.legend(['F TSI', 'F Recovid'])
     ax.set(xlabel='time (ms)', ylabel='?', title='Sensors')
