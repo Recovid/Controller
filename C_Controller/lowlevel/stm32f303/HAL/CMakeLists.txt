@@ -50,3 +50,7 @@ target_include_directories(hal PUBLIC
     Drivers/CMSIS/Device/ST/STM32F3xx/Include
     Drivers/CMSIS/Include
 )
+
+target_compile_options(hal PRIVATE
+    -Wno-unused-parameter
+)
