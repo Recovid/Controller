@@ -46,7 +46,11 @@ bool blink() {
     leds_init();
     while(1) {
         led_onnucleo_toggle();
-        HAL_Delay(500);
+        #ifdef stm32f303
+            HAL_Delay(500);
+        #else
+            vTaskDelay(500);
+        #endif
     }
     return true;
 }

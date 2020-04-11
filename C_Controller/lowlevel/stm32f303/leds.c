@@ -1,7 +1,10 @@
+#include "leds.h"
+
+#include "stm32f3xx_hal.h"
+
 #define LED_OnNucleo_Pin GPIO_PIN_3
 #define LED_OnNucleo_GPIO_Port GPIOB
 
-#include "stm32f3xx_hal.h"
 
 void leds_init() {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
