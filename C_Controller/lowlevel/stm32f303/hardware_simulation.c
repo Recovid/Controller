@@ -44,8 +44,10 @@ void SystemClock_Config(void)
     }
     /** Initializes the CPU, AHB and APB busses clocks
     */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                  |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK
+                                | RCC_CLOCKTYPE_SYSCLK
+                                | RCC_CLOCKTYPE_PCLK1
+                                | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -81,7 +83,7 @@ PUTCHAR_PROTOTYPE
     return ch;
 }
 
- /**
+/**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM16 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -91,15 +93,15 @@ PUTCHAR_PROTOTYPE
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  /* USER CODE BEGIN Callback 0 */
+    /* USER CODE BEGIN Callback 0 */
 
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM16) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
+    /* USER CODE END Callback 0 */
+    if (htim->Instance == TIM16) {
+        HAL_IncTick();
+    }
+    /* USER CODE BEGIN Callback 1 */
 
-  /* USER CODE END Callback 1 */
+    /* USER CODE END Callback 1 */
 }
 
 // ------------------------------------------------------------------------------------------------

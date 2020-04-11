@@ -48,4 +48,5 @@ bool unit_tests_passed()
         !test_failure_not_detected() &&
         test_default_settings();
     STDERR_PRINTF("Unit tests:%s", passed ? "passed" : "failed");
+    return passed;
 }

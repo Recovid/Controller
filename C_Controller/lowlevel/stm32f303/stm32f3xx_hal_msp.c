@@ -2,7 +2,7 @@
 /**
   ******************************************************************************
   * File Name          : stm32f3xx_hal_msp.c
-  * Description        : This file provides code for the MSP Initialization 
+  * Description        : This file provides code for the MSP Initialization
   *                      and de-Initialization codes.
   ******************************************************************************
   * @attention
@@ -34,7 +34,7 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN Define */
- 
+
 /* USER CODE END Define */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,7 +60,7 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
-                        
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                     /**
   * Initializes the Global MSP.
@@ -98,7 +98,7 @@ void HAL_MspInit(void)
 //   /* USER CODE END TIM17_MspInit 0 */
 //     /* Peripheral clock enable */
 //     __HAL_RCC_TIM17_CLK_ENABLE();
-  
+
 //     /* TIM17 DMA Init */
 //     /* TIM17_CH1_UP Init */
 //     hdma_tim17_ch1_up.Instance = DMA1_Channel1;
@@ -133,10 +133,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
   /* USER CODE BEGIN TIM17_MspPostInit 0 */
 
   /* USER CODE END TIM17_MspPostInit 0 */
-  
+
     __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**TIM17 GPIO Configuration    
-    PA7     ------> TIM17_CH1 
+    /**TIM17 GPIO Configuration
+    PA7     ------> TIM17_CH1
     */
     GPIO_InitStruct.Pin = MOTOR_STP_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;

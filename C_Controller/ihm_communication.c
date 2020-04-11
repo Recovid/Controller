@@ -123,9 +123,10 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, f
     char frame[sizeof(dataFrame)];
     strcpy(frame, dataFrame);
 
-    if (!(TEST_RANGE(    0, Vol_mL  , 10000) &&
-          TEST_RANGE(-1000, VolM_Lpm,  1000) &&
-          TEST_RANGE(-1000, P_cmH2O ,  1000)))
+    if ( !(TEST_RANGE(    0, Vol_mL  , 10000)
+        && TEST_RANGE(-1000, VolM_Lpm,  1000)
+        && TEST_RANGE(-1000, P_cmH2O ,  1000))
+    )
     {
         return false;
     }
@@ -149,12 +150,13 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
-    if (!(TEST_RANGE(   2, EoI_ratio  ,    6) &&
-          TEST_RANGE(   0, FR_pm      ,  100) &&
-          TEST_RANGE(   0, VTe_mL     , 1000) &&
-          TEST_RANGE(-100, VM_Lpm     ,  100) &&
-          TEST_RANGE(   0, Pplat_cmH2O,  100) &&
-          TEST_RANGE(   0, PEP_cmH2O  ,  100)))
+    if ( !(TEST_RANGE(   2, EoI_ratio  ,    6)
+        && TEST_RANGE(   0, FR_pm      ,  100)
+        && TEST_RANGE(   0, VTe_mL     , 1000)
+        && TEST_RANGE(-100, VM_Lpm     ,  100)
+        && TEST_RANGE(   0, Pplat_cmH2O,  100)
+        && TEST_RANGE(   0, PEP_cmH2O  ,  100))
+    )
     {
         return false;
     }
@@ -242,17 +244,17 @@ bool send_INIT(const char* information)
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
     return send(frame)
-           && send_SET(VT___, VT____FMT, setting_VT_mL         )
-           && send_SET(FR___, FR____FMT, setting_FR_pm         )
-           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O     )
-           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm      )
-           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio     )
-           && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
-           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
-           && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
-           && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
-           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
-           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
+        && send_SET(VT___, VT____FMT, setting_VT_mL         )
+        && send_SET(FR___, FR____FMT, setting_FR_pm         )
+        && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O     )
+        && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm      )
+        && send_SET(EoI__, EoI___FMT, setting_EoI_ratio     )
+        && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
+        && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
+        && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
+        && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
+        && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
+        && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
 bool process(char const** ppf, const char* field, int size, uint16_t* value)
@@ -287,12 +289,13 @@ void send_and_recv()
     char frame[MAX_FRAME+1] = "";
     while (true) {
         char *pf = frame;
-        for (int c = EOF; (c = recv_ihm())!='\n'; pf++) { // read until \n to make sure frame starts at a new line
+        for (int c = EOF; (c = recv_ihm()) != '\n'; pf++) { // read until \n to make sure frame starts at a new line
             if (c == EOF) {
                 return;
             }
-            else if (c<' ' && c!='\t' || 126<c ) { // filter out frames with C0, C1 characters but \t
-                pf = frame+MAX_FRAME;
+            else if ((c < ' ' && c != '\t') || (c > '~')) {
+                // filter out frames with C0, C1 characters but \t
+                pf = frame + MAX_FRAME;
             }
             else if (pf<(frame+MAX_FRAME)) {
                 *pf = c;
@@ -318,6 +321,7 @@ void send_and_recv()
             initSent = send_INIT(get_init_str());
         }
         else if ((pl = payload(frame, SET_))) {
+            bool processed =
             process(&pl, VT___, VT____FMT, &setting_VT_mL     ) ||
             process(&pl, FR___, FR____FMT, &setting_FR_pm     ) ||
             process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O ) ||

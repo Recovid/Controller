@@ -362,7 +362,7 @@ int hardware_serial_init(const char * serial_port)
 
     if (HAL_DMA_Init(&uart_object[UART_COM_IHM].hdma_usart_rx) != HAL_OK)
     {
-      return IFL_HAL_UART_ERROR;
+        return IFL_HAL_UART_ERROR;
     }
 
     __HAL_LINKDMA(&uart_object[UART_COM_IHM].husart, hdmarx, uart_object[UART_COM_IHM].hdma_usart_rx);

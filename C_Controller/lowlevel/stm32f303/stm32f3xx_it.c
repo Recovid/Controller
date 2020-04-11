@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdint.h>
 /* USER CODE END Includes */
-   
+
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
 
@@ -36,7 +36,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -66,7 +66,7 @@ extern TIM_HandleTypeDef htim16;
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M4 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles Non maskable interrupt.
@@ -80,7 +80,7 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
- typedef struct
+typedef struct
   {
     uint32_t r0;
     uint32_t r1;
@@ -93,7 +93,7 @@ void NMI_Handler(void)
 #if  defined(__ARM_ARCH_7EM__)
     uint32_t s[16];
 #endif
-  } ExceptionStackFrame;
+} ExceptionStackFrame;
 
 void HardFault_Handler_C(
         ExceptionStackFrame * frame __attribute__((unused)), uint32_t lr __attribute__((unused)))

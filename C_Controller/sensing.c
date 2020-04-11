@@ -17,8 +17,8 @@ float get_sensed_Vol_mL()   { return Vol_mL  ; }
 
 void sense_and_compute()
 {
-    static long last_sense_ms = 0;
-    static long sent_DATA_ms = 0;
+    static unsigned long last_sense_ms = 0;
+    static unsigned long sent_DATA_ms = 0;
 
     P_cmH2O = read_Paw_cmH2O();
     // TODO float Patmo_mbar = read_Patmo_mbar();

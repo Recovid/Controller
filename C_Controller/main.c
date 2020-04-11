@@ -60,7 +60,7 @@ int main(int argc, const char** argv)
     //     return -1;
 
 #ifndef WIN32
-    for(int task_idx=0; task_idx < size_task_array; task_idx++)
+    for (size_t task_idx = 0; task_idx < size_task_array; task_idx++)
     {
         // Now set up two tasks to run independently.
         if(xTaskCreate(
