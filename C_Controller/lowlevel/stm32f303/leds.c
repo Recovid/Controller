@@ -2,8 +2,8 @@
 
 #include "stm32f3xx_hal.h"
 
-#define LED_OnNucleo_Pin GPIO_PIN_3
-#define LED_OnNucleo_GPIO_Port GPIOB
+#define LED_OnNucleo_Pin GPIO_PIN_5
+#define LED_OnNucleo_GPIO_Port GPIOA
 
 
 void leds_init() {
