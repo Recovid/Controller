@@ -62,22 +62,22 @@ int main(int argc, const char** argv)
 #ifndef WIN32
     for(int task_idx=0; task_idx < size_task_array; task_idx++)
     {
-		// Now set up two tasks to run independently.
-		if(xTaskCreate(
-				task_array[task_idx].task,
-				task_array[task_idx].name,   // A name just for humans
-				256, // This stack size can be checked & adjusted by reading the Stack Highwater
-				&task_array[task_idx],
-				task_array[task_idx].priority,  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-				NULL ) != pdPASS)
+        // Now set up two tasks to run independently.
+        if(xTaskCreate(
+                task_array[task_idx].task,
+                task_array[task_idx].name,   // A name just for humans
+                256, // This stack size can be checked & adjusted by reading the Stack Highwater
+                &task_array[task_idx],
+                task_array[task_idx].priority,  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+                NULL ) != pdPASS)
         {
             return -1;
         }
-	}
+    }
 
-	// start scheduler
+    // start scheduler
     DEBUG_PRINT("Start tasks");
-	vTaskStartScheduler();
+    vTaskStartScheduler();
 #else
     // Deterministic simulation for test purposes
     for (long t_ms=0; true; t_ms+=wait_ms(1)) { // 1kHz

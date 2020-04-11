@@ -80,7 +80,7 @@ bool is_soft_reset_asked () { return command_soft_reset; }
 //! Communication
 
 #define MAX_FRAME 100
- 
+
 char sign(int i) { return i<0 ? '-' : '+'; }
 
 #define CS8 "\tCS8:"
