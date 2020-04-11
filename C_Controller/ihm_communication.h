@@ -8,12 +8,12 @@
 
 // TODO Use float to avoid integer division when using these functions in computations
 
-int   get_setting_FR_pm       ();
-int   get_setting_VT_mL       ();
-int   get_setting_PEP_cmH2O   ();
-int   get_setting_Vmax_Lpm    ();
-float get_setting_EoI_ratio   ();
-long  get_setting_Tplat_ms    ();
+float    get_setting_FR_pm    ();
+float    get_setting_VT_mL    ();
+float    get_setting_PEP_cmH2O();
+float    get_setting_Vmax_Lpm ();
+float    get_setting_EoI_ratio();
+uint16_t get_setting_Tplat_ms ();
 
 int   get_setting_Pmax_cmH2O  ();
 int   get_setting_Pmin_cmH2O  ();

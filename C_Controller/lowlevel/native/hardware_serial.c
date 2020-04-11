@@ -1,8 +1,4 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include "hardware_serial.h"
 
 #include <errno.h>
 #include <fcntl.h> 

@@ -1,10 +1,12 @@
 #ifndef HARDWARE_SIMULATION_H
 #define HARDWARE_SIMULATION_H
 
-#include <stdbool.h>
 #include "platform.h"
 
 // Public interface to send event/data to the hardware simulation
+
+// TODO Adapt motor map vol->pos
+// Ti, débit -> map dt->steps
 
 // ------------------------------------------------------------------------------------------------
 //! OS simulation
@@ -16,17 +18,18 @@ typedef enum ihm_mode_t
 	IHM_MODE_SERIAL,
 
 	IHM_MODE_MAX,
-}ihm_mode_t;
+} ihm_mode_t;
 
-long get_time_ms();
-long wait_ms(long t_ms);
+uint32_t get_time_ms();
+uint32_t wait_ms(uint32_t t_ms);
 
+//! Triggers a soft reset that will restart the Controller in a fresh state with the same memorised settings
 bool soft_reset();
 
 // ------------------------------------------------------------------------------------------------
 //! UI communication
 
-//! \returns false only if communication is not possible for some reason
+//! \returns false only if communication will never be possible for some reason
 //! \warning since IHM may not be started yet, do not expect any answer yet
 bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile);
 
@@ -41,12 +44,20 @@ int recv_ihm();
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
-#define MOTOR_MAX 2000
+#define MOTOR_MAX (2000)
+
+//! Press the BAVU to insufflate air to the patient according to get_setting_Vmax_Lpm()
 bool motor_press();
-bool motor_stop();
+
+//! Release the BAVU to prepare next insufflation at any appropriate speed
 bool motor_release();
 
-#define MOTOR_PEP_MAX 100
+bool motor_stop();
+
+// ------------------------------------------------------------------------------------------------
+
+#define MOTOR_PEP_MAX (100)
+
 //! Move up if steps > 0 else down
 //! \warning after init, only ask for small moves controlling PEP during next cycles before moving again
 //! \remark unless some calibration procedure or data is added, the only relationship between steps and cm
@@ -54,23 +65,36 @@ bool motor_release();
 //! \remark any read_PEP_cmH2O() changes > .1 should be checked during following cycles unless you calibrated steps/cm
 bool motor_pep_move(int steps);
 
+// ------------------------------------------------------------------------------------------------
+
+//! Positions electrovalve to connect patient with PEP to allow him to exhale
 bool valve_exhale();
+
+//! Positions electrovalve to connect patient with BAVU to insufflate him or keep its airway pressure higher than PEP
 bool valve_inhale();
 
-enum OnOff { On, Off };
+// ------------------------------------------------------------------------------------------------
 
-bool light_yellow(enum OnOff new); // onboard + 4m visible leds
-bool light_red   (enum OnOff new); // onboard + 4m visible leds
-bool buzzer      (enum OnOff new); // onboard
+typedef enum OnOff { On, Off } OnOff;
+
+bool light_yellow(OnOff new); // 4m visible leds
+bool light_red   (OnOff new); // 4m visible leds
+bool light_green (OnOff new); // 4m visible leds
+bool buzzer      (OnOff new); // onboard
 
 // ------------------------------------------------------------------------------------------------
 //! HW sensors
 
+//! \returns the airflow corresponding to a pressure difference in Liters / minute
 float read_Pdiff_Lpm();
+
+//! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
 float read_Paw_cmH2O();
+
+//! \returns the atmospheric pressure in mbar
 float read_Patmo_mbar();
 
-//! \returns 0 if battery is about to stop, 1 if battery is low
+//! \returns 0 if battery is about to stop, 1 if battery is critically low
 int read_Battery_level();
 
 

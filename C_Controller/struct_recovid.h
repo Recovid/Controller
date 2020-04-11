@@ -1,6 +1,7 @@
 #ifndef STRUCT_H
 #define STRUCT_H
-#include <stdbool.h>
+
+#include "platform.h"
 
 enum alarm_type { 
 	NO_ALARM,

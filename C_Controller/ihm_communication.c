@@ -35,18 +35,18 @@ static uint16_t setting_VMmin_Lm   =   5;
 const int setting_PEPmax_cmH2O = 2;
 const int setting_PEPmin_cmH2O = 2;
 
-int   get_setting_FR_pm     () { return setting_FR_pm       ; }
-int   get_setting_VT_mL     () { return setting_VT_mL       ; }
-int   get_setting_PEP_cmH2O () { return setting_PEP_cmH2O   ; }
-int   get_setting_Vmax_Lpm  () { return setting_Vmax_Lpm    ; }
-float get_setting_EoI_ratio () { return setting_EoI_ratio   ; }
+float get_setting_FR_pm    () { return setting_FR_pm    ; }
+float get_setting_VT_mL    () { return setting_VT_mL    ; }
+float get_setting_PEP_cmH2O() { return setting_PEP_cmH2O; }
+float get_setting_Vmax_Lpm () { return setting_Vmax_Lpm ; }
+float get_setting_EoI_ratio() { return setting_EoI_ratio; }
 
-long  get_setting_Tplat_ms  ()
+uint16_t get_setting_Tplat_ms  ()
 {
     const float T_ms  = 60000.f / get_setting_FR_pm();
-    const float Ti_ms = ((float)get_setting_VT_mL()) / (((float)get_setting_Vmax_Lpm() *1000) / 60000);
-    const float Tplat_ms= (T_ms/(1+(1/get_setting_EoI_ratio()))) - Ti_ms;
-    const float Te_ms = (Ti_ms+Tplat_ms) / (get_setting_EoI_ratio());
+    const float Ti_ms = get_setting_VT_mL() / (get_setting_Vmax_Lpm() / 60.f); // FIXME Lpm/60=Lps and 1/Lps=s not ms
+    const float Tplat_ms= (T_ms/(1.f+(1.f/get_setting_EoI_ratio()))) - Ti_ms;  // Check Tplat=(T-Te)-Ti => T-Te=T/(1+E/I) ???
+    const float Te_ms = (Ti_ms+Tplat_ms) / get_setting_EoI_ratio();            // FIXME Te=(Ti+Tplat)/(E/I)=1/2 if user enters E/I=2
     return T_ms - (Ti_ms+Te_ms);
 }
 

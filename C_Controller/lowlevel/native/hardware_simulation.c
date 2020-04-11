@@ -27,14 +27,14 @@
 ihm_mode_t current_ihm_mode = IHM_MODE_MAX;
 
 //! Simulated clock for testing purposes
-static long clock_ms = 0; // will not overflow before 24 simulated days
+static uint32_t clock_ms = 0; // will not overflow before 24 simulated days
 
-long get_time_ms()
+uint32_t get_time_ms()
 {
     return clock_ms;
 }
 
-long wait_ms(long t_ms)
+uint32_t wait_ms(uint32_t t_ms)
 {
     return clock_ms += t_ms; // simulated clock for testing purposes
 }
@@ -52,7 +52,7 @@ FILE *out;
 
 bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile)
 {
-    if(ihm_mode >= IHM_MODE_MAX)
+    if (ihm_mode >= IHM_MODE_MAX)
     {
         printf("Wrong ihm mode \n");
         return false;
