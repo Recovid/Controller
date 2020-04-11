@@ -42,8 +42,6 @@ add_library(hal OBJECT
     Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_utils.c
 )
 
-
-
 target_include_directories(hal PUBLIC
     .
     Core/Inc
