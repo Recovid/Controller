@@ -95,4 +95,6 @@ add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
         COMMENT "Building ${HEX_FILE}"
 )
 
-Setup_OpenOCD_for(${HEX_FILE})
+if(${TARGET} STREQUAL "stm32f303")
+    Setup_OpenOCD_for(${HEX_FILE})
+endif()
