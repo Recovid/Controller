@@ -24,7 +24,7 @@ PRIVATE uint16_t setting_FR_pm      =  18;
 PRIVATE uint16_t setting_VT_mL      = 300;
 PRIVATE uint16_t setting_PEP_cmH2O  =   5;
 PRIVATE uint16_t setting_Vmax_Lpm   =  60;
-PRIVATE uint16_t setting_EoI_ratio  =   2;
+PRIVATE uint16_t setting_EoI_ratio  =   20;
 
 PRIVATE uint16_t setting_Pmax_cmH2O =  60;
 PRIVATE uint16_t setting_Pmin_cmH2O =  20;
@@ -39,7 +39,7 @@ float get_setting_FR_pm    () { return setting_FR_pm    ; }
 float get_setting_VT_mL    () { return setting_VT_mL    ; }
 float get_setting_PEP_cmH2O() { return setting_PEP_cmH2O; }
 float get_setting_Vmax_Lpm () { return setting_Vmax_Lpm ; }
-float get_setting_EoI_ratio() { return setting_EoI_ratio; }
+float get_setting_EoI_ratio() { return setting_EoI_ratio / 10.f; }
 float get_setting_IoE_ratio() { return 1.f/get_setting_EoI_ratio(); }
 
 uint16_t get_setting_Tplat_ms  ()
