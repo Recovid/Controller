@@ -1,8 +1,9 @@
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_VERSION 1)
 cmake_minimum_required(VERSION 3.7)
 
-project(C_Controller C ASM)
+###############################################################################
+# Compilers setup
+
+set(Lowlevel_dir  ${CMAKE_SOURCE_DIR}/lowlevel)
 
 if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
     set(TARGET native)
@@ -11,59 +12,85 @@ elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
 endif()
 
-set(LOWLEVEL_INC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/include)
-set(LOWLEVEL_SRC_DIR ${CMAKE_SOURCE_DIR}/lowlevel/${TARGET})
+SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
 
-if(CMAKE_HOST_WIN32)
-    set(EXECUTABLE simulateur.exe)
-elseif(${TARGET} STREQUAL "stm32f303")
+add_compile_definitions(${TARGET})
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
+endif(CCACHE_FOUND)
+
+###############################################################################
+# Project
+
+project(C_Controller C CXX ASM)
+
+###############################################################################
+# CFlags
+
+add_compile_options(
+    -fdiagnostics-color=always
+    -Wall
+    -Wextra
+    -Wno-unused-parameter
+    -Wno-unused-variable
+)
+
+# TODO: Remove this because lowlevel shouldn't include top-level
+include_directories(.)
+
+###############################################################################
+# Libraries
+
+add_subdirectory(lowlevel)
+if (NOT TARGET lowlevel)
+    message(FATAL_ERROR "lowlevel target ${TARGET} does not define a 'lowlevel' library")
+endif()
+
+###############################################################################
+# Top-level Targets
+
+if(${TARGET} STREQUAL "stm32f303")
     set(EXECUTABLE ${PROJECT_NAME}.${TARGET}.elf)
 else()
     set(EXECUTABLE simulateur)
 endif()
 
-add_definitions(-D${TARGET})
-
-# high-level
-set(SHARED_SOURCES
-    platform.h
+SET(SHARED_SOURCES
     main.c
-    unit_tests.h
     unit_tests.c
-    sensing.h
     sensing.c
-    controller.h
     controller.c
-    configuration.h
     configuration.c
-    alarms.h
     alarms.c
-    ihm_communication.h
     ihm_communication.c
-    ${LOWLEVEL_INC_DIR}/lowlevel.h
-    ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
 )
 # low-level
 if(NOT CMAKE_HOST_WIN32)
-set(SHARED_SOURCES ${SHARED_SOURCES}
-    ${LOWLEVEL_INC_DIR}/hardware_serial.h
-    ${LOWLEVEL_SRC_DIR}/hardware_serial.c
-    tasks_recovid.c
-    tasks_recovid.h
-    TaskMessageManagement.c
-    TaskRespirationCycle.c
-    TaskSensing.c
-    TaskAlarm.c
+    set(SHARED_SOURCES ${SHARED_SOURCES}
+        tasks_recovid.c
+        TaskMessageManagement.c
+        TaskRespirationCycle.c
+        TaskSensing.c
+        TaskAlarm.c
     )
 endif()
 
 add_executable(${EXECUTABLE} ${SHARED_SOURCES})
 
-if(NOT CMAKE_HOST_WIN32)
-include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)
-endif()
-
-include_directories(${CMAKE_SOURCE_DIR} ${LOWLEVEL_INC_DIR})
-
-target_link_libraries(${EXECUTABLE} m)
 set_target_properties(${EXECUTABLE} PROPERTIES LINKER_LANGUAGE C)
+
+
+target_link_libraries(${EXECUTABLE} m lowlevel)
+
+
+set(HEX_FILE ${EXECUTABLE}.hex)
+set(BIN_FILE ${EXECUTABLE}.bin)
+
+add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${EXECUTABLE}> ${HEX_FILE}
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${EXECUTABLE}> ${BIN_FILE}
+        COMMENT "Building ${HEX_FILE}"
+)

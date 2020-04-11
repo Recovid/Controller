@@ -1,4 +1,5 @@
 #include "unit_tests.h"
+#include "leds.h"
 
 #include "ihm_communication.h"
 
@@ -40,6 +41,22 @@ bool test_default_settings()
         TEST_EQUALS(  0.f, is_soft_reset_asked     ()) &&
         true;
 }
+
+#ifndef WIN32
+bool blink() {
+    leds_init();
+    while(1) {
+        led_onnucleo_toggle();
+        // FIXME: does vTaskDelay work correctly on stm32 ?
+        #ifdef stm32f303
+            HAL_Delay(500);
+        #else
+            vTaskDelay(500);
+        #endif
+    }
+    return true;
+}
+#endif
 
 bool unit_tests_passed()
 {
