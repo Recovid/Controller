@@ -12,6 +12,7 @@ float    get_setting_FR_pm    ();
 float    get_setting_VT_mL    ();
 float    get_setting_PEP_cmH2O();
 float    get_setting_Vmax_Lpm ();
+float    get_setting_IoE_ratio();
 float    get_setting_EoI_ratio();
 uint16_t get_setting_Tplat_ms ();
 

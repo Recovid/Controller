@@ -52,6 +52,8 @@
 #define TEST_RANGE(_min,_evaluated,_max) ((!!(((_min)<=(_evaluated)) && (_evaluated)<=(_max))) || \
   (fprintf(stderr,"Expected [" #_min ".." #_max "] " #_evaluated ":%.1f at:" __FILE__ "(%d)\n",(double)(_evaluated),__LINE__),false))
 
+#define TEST_FEQUALS(_expected,_evaluated) TEST_RANGE((_expected)-.1f,(_expected),(_expected)+.1f)
+
 #define TEST_EQUALS(_expected,_evaluated) ((!!((_expected)==(_evaluated))) || \
   (fprintf(stderr,"Expected:" #_expected " " #_evaluated ":%.1f at:" __FILE__ "(%d)\n",(double)(_evaluated),__LINE__),false))
 

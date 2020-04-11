@@ -28,18 +28,19 @@ PRIVATE uint16_t setting_EoI_ratio  =   2;
 
 PRIVATE uint16_t setting_Pmax_cmH2O =  60;
 PRIVATE uint16_t setting_Pmin_cmH2O =  20;
-PRIVATE uint16_t setting_VTmin_mL   = 400;
+PRIVATE uint16_t setting_VTmin_mL   = 150;
 PRIVATE uint16_t setting_FRmin_pm   =  10;
-PRIVATE uint16_t setting_VMmin_Lm   =   5;
+PRIVATE uint16_t setting_VMmin_Lpm  =   3;
 
-const int setting_PEPmax_cmH2O = 2;
-const int setting_PEPmin_cmH2O = 2;
+const int setting_PEPmax_cmH2O =  2;
+const int setting_PEPmin_cmH2O = -2;
 
 float get_setting_FR_pm    () { return setting_FR_pm    ; }
 float get_setting_VT_mL    () { return setting_VT_mL    ; }
 float get_setting_PEP_cmH2O() { return setting_PEP_cmH2O; }
 float get_setting_Vmax_Lpm () { return setting_Vmax_Lpm ; }
 float get_setting_EoI_ratio() { return setting_EoI_ratio; }
+float get_setting_IoE_ratio() { return 1.f/get_setting_EoI_ratio(); }
 
 uint16_t get_setting_Tplat_ms  ()
 {
@@ -54,7 +55,7 @@ float get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O  ; }
 float get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O  ; }
 float get_setting_VTmin_mL    () { return setting_VTmin_mL    ; }
 float get_setting_FRmin_pm    () { return setting_FRmin_pm    ; }
-float get_setting_VMmin_Lm    () { return setting_VMmin_Lm    ; }
+float get_setting_VMmin_Lm    () { return setting_VMmin_Lpm   ; }
 
 float get_setting_PEPmax_cmH2O() { return setting_PEPmax_cmH2O; }
 float get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O; }
@@ -241,17 +242,17 @@ bool send_INIT(const char* information)
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
     return send(frame)
-           && send_SET(VT___, VT____FMT, setting_VT_mL)
-           && send_SET(FR___, FR____FMT, setting_FR_pm)
-           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O)
-           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm)
-           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio)
+           && send_SET(VT___, VT____FMT, setting_VT_mL         )
+           && send_SET(FR___, FR____FMT, setting_FR_pm         )
+           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O     )
+           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm      )
+           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio     )
            && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
-           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL)
-           && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O)
-           && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O)
-           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm)
-           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lm);
+           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
+           && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
+           && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
+           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
+           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
 bool process(char const** ppf, const char* field, int size, uint16_t* value)
@@ -327,7 +328,7 @@ void send_and_recv()
             process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O) ||
             process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O) ||
             process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm  ) ||
-            process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lm  );
+            process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm );
         }
         else if ((pl = payload(frame, PINS))) {
             uint16_t pause_ms = 0;

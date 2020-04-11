@@ -47,9 +47,11 @@ int recv_ihm();
 #define MOTOR_MAX (2000)
 
 //! Press the BAVU to insufflate air to the patient according to get_setting_Vmax_Lpm()
+//! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_press();
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
+//! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_release();
 
 bool motor_stop();
