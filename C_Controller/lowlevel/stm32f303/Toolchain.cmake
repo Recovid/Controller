@@ -75,6 +75,8 @@ set(HAL_LFLAGS "\
 ")
 
 
+# May not work on old openocd versions
+set(OPENOCD_CFG board/st_nucleo_f3.cfg)
 
 ###############################################################################
 # Conclusion
