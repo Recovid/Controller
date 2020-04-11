@@ -356,7 +356,7 @@ void send_and_recv()
             DEBUG_PRINTF("%s", frame); // Unknown
         }
 #ifndef WIN32
-        vPortYield();
+        // vPortYield();
 #endif
     }
 }
