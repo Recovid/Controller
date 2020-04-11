@@ -12,6 +12,7 @@
 #include <string.h>
 
 //Recovid include
+#include "unit_tests.h"
 #include "sensing.h"
 #include "alarms.h"
 #include "controller.h"
@@ -53,8 +54,9 @@ int main(int argc, const char** argv)
     init_ihm(IHM_MODE_SERIAL, 0, 0);
 #endif
 
-    int result = self_tests();
-    // if (result & 0b111111)
+    assert(unit_tests_passed());
+    int self_tests_result = self_tests();
+    // TODO TEST(self_tests_result & 0b111111)
     //     return -1;
 
 #ifndef WIN32
@@ -74,7 +76,7 @@ int main(int argc, const char** argv)
 	}
 
 	// start scheduler
-	printf("Start the tasks");
+    DEBUG_PRINT("Start tasks");
 	vTaskStartScheduler();
 #else
     // Deterministic simulation for test purposes

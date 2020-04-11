@@ -20,17 +20,17 @@
 //! \warning Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
 //! \warning Non volatile memory may be limited to uint16_t by the corresponding driver
 
-static uint16_t setting_FR_pm      =  18;
-static uint16_t setting_VT_mL      = 300;
-static uint16_t setting_PEP_cmH2O  =   5;
-static uint16_t setting_Vmax_Lpm   =  60;
-static uint16_t setting_EoI_ratio  =   2;
+PRIVATE uint16_t setting_FR_pm      =  18;
+PRIVATE uint16_t setting_VT_mL      = 300;
+PRIVATE uint16_t setting_PEP_cmH2O  =   5;
+PRIVATE uint16_t setting_Vmax_Lpm   =  60;
+PRIVATE uint16_t setting_EoI_ratio  =   2;
 
-static uint16_t setting_Pmax_cmH2O =  60;
-static uint16_t setting_Pmin_cmH2O =  20;
-static uint16_t setting_VTmin_mL   = 400;
-static uint16_t setting_FRmin_pm   =  10;
-static uint16_t setting_VMmin_Lm   =   5;
+PRIVATE uint16_t setting_Pmax_cmH2O =  60;
+PRIVATE uint16_t setting_Pmin_cmH2O =  20;
+PRIVATE uint16_t setting_VTmin_mL   = 400;
+PRIVATE uint16_t setting_FRmin_pm   =  10;
+PRIVATE uint16_t setting_VMmin_Lm   =   5;
 
 const int setting_PEPmax_cmH2O = 2;
 const int setting_PEPmin_cmH2O = 2;
@@ -50,29 +50,29 @@ uint16_t get_setting_Tplat_ms  ()
     return T_ms - (Ti_ms+Te_ms);
 }
 
-int get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O  ; }
-int get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O  ; }
-int get_setting_VTmin_mL    () { return setting_VTmin_mL    ; }
-int get_setting_FRmin_pm    () { return setting_FRmin_pm    ; }
-int get_setting_VMmin_Lm    () { return setting_VMmin_Lm    ; }
+float get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O  ; }
+float get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O  ; }
+float get_setting_VTmin_mL    () { return setting_VTmin_mL    ; }
+float get_setting_FRmin_pm    () { return setting_FRmin_pm    ; }
+float get_setting_VMmin_Lm    () { return setting_VMmin_Lm    ; }
 
-int get_setting_PEPmax_cmH2O() { return setting_PEPmax_cmH2O; }
-int get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O; }
+float get_setting_PEPmax_cmH2O() { return setting_PEPmax_cmH2O; }
+float get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O; }
 
 // ------------------------------------------------------------------------------------------------
 //! Commands
 
 //! Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
 
-long command_Tpins_ms = -1;
-long command_Tpexp_ms = -1;
-long command_Tpbip_ms = -1;
+PRIVATE uint32_t command_Tpins_ms = 0;
+PRIVATE uint32_t command_Tpexp_ms = 0;
+PRIVATE uint32_t command_Tpbip_ms = 0;
 
 bool command_soft_reset = false;
 
-long get_command_Tpins_ms() { return command_Tpins_ms  ; }
-long get_command_Tpexp_ms() { return command_Tpexp_ms  ; }
-long get_command_Tpbip_ms() { return command_Tpbip_ms  ; }
+uint32_t get_command_Tpins_ms() { return command_Tpins_ms; }
+uint32_t get_command_Tpexp_ms() { return command_Tpexp_ms; }
+uint32_t get_command_Tpbip_ms() { return command_Tpbip_ms; }
 
 bool is_soft_reset_asked () { return command_soft_reset; }
 
@@ -122,11 +122,10 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, f
     char frame[sizeof(dataFrame)];
     strcpy(frame, dataFrame);
 
-    if (Vol_mL >= 10000 || Vol_mL < 0
-        || VolM_Lpm <= -1000 || VolM_Lpm >= 1000
-        || P_cmH2O <= -1000 || P_cmH2O >= 1000)
+    if (!(TEST_RANGE(    0, Vol_mL  , 10000) &&
+          TEST_RANGE(-1000, VolM_Lpm,  1000) &&
+          TEST_RANGE(-1000, P_cmH2O ,  1000)))
     {
-        printf("Value passed to send_DATA are out of range");
         return false;
     }
 
@@ -149,14 +148,13 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
-    if (EoI_ratio < 2 || EoI_ratio > 6
-        || FR_pm < 0 || FR_pm >= 100
-        || VTe_mL < 0 || VTe_mL >= 1000
-        || VM_Lpm <= -100 || VM_Lpm >= 100
-        || Pplat_cmH2O < 0 || Pplat_cmH2O >= 100
-        || PEP_cmH2O < 0 || PEP_cmH2O >= 100)
+    if (!(TEST_RANGE(   2, EoI_ratio  ,    6) &&
+          TEST_RANGE(   0, FR_pm      ,  100) &&
+          TEST_RANGE(   0, VTe_mL     , 1000) &&
+          TEST_RANGE(-100, VM_Lpm     ,  100) &&
+          TEST_RANGE(   0, Pplat_cmH2O,  100) &&
+          TEST_RANGE(   0, PEP_cmH2O  ,  100)))
     {
-        printf("Value passed to send_RESP are out of range");
         return false;
     }
     replace_int_with_padding(frame, EoI_ratio * 10, 2, 10);

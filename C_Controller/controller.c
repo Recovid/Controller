@@ -80,7 +80,7 @@ bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 
 int self_tests()
 {
-    printf("Start self-tests\n");
+    DEBUG_PRINT("Start self tests");
     int test_bits = 0xFFFFFFFF;
 
     // TODO test 'Arret imminent' ?

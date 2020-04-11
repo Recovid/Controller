@@ -15,22 +15,22 @@ float    get_setting_Vmax_Lpm ();
 float    get_setting_EoI_ratio();
 uint16_t get_setting_Tplat_ms ();
 
-int   get_setting_Pmax_cmH2O  ();
-int   get_setting_Pmin_cmH2O  ();
-int   get_setting_VTmin_mL    ();
-int   get_setting_FRmin_pm    ();
-int   get_setting_VMmin_Lm    ();
-int   get_setting_PEPmax_cmH2O();
-int   get_setting_PEPmin_cmH2O();
+float    get_setting_Pmax_cmH2O  ();
+float    get_setting_Pmin_cmH2O  ();
+float    get_setting_VTmin_mL    ();
+float    get_setting_FRmin_pm    ();
+float    get_setting_VMmin_Lm    ();
+float    get_setting_PEPmax_cmH2O();
+float    get_setting_PEPmin_cmH2O();
 
 // ------------------------------------------------------------------------------------------------
 //! Public read-only access to commands coming from UI
 
-long get_command_Tpins_ms();
-long get_command_Tpexp_ms();
-long get_command_Tpbip_ms();
+uint32_t get_command_Tpins_ms();
+uint32_t get_command_Tpexp_ms();
+uint32_t get_command_Tpbip_ms();
 
-bool is_soft_reset_asked ();
+bool     is_soft_reset_asked ();
 
 
 // ------------------------------------------------------------------------------------------------
