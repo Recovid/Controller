@@ -85,6 +85,11 @@ void Error_Handler(void);
 #define SWO_GPIO_Port GPIOB
 #define MOTOR_DIR_Pin GPIO_PIN_6
 #define MOTOR_DIR_GPIO_Port GPIOB
+#define SENSOR_SCL_Pin GPIO_PIN_8
+#define SENSOR_SCL_GPIO_Port GPIOB
+#define SENSOR_SDA_Pin GPIO_PIN_9
+#define SENSOR_SDA_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

@@ -9,6 +9,7 @@
 #include "configuration.h"
 #include "lowlevel.h"
 #include "ihm_communication.h"
+#include "stm32f3xx_hal_rcc_ex.h"
 // ------------------------------------------------------------------------------------------------
 
 bool soft_reset()
@@ -48,9 +49,10 @@ void SystemClock_Config(void)
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
     {
     }
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2;
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
     PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
     PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+    PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
     }
@@ -225,28 +227,7 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
-float read_Pdiff_Lpm()
-{
-    static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
-    static float nonzero_abs_Q_Lpm; // to handle exponential decrease during exhalation
 
-    if (valve_state == Inhale) {
-        abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
-        if(abs_Q_Lpm != 0.) {
-            nonzero_abs_Q_Lpm = abs_Q_Lpm;
-        }
-        return abs_Q_Lpm;
-    }
-    else if (valve_state == Exhale) {
-
-        const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
-        nonzero_abs_Q_Lpm *= decrease;
-        return -nonzero_abs_Q_Lpm;
-    }
-    else {
-        return 0.;
-    }
-}
 
 float read_Paw_cmH2O()
 {

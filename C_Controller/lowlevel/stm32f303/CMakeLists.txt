@@ -7,7 +7,9 @@ add_library(lowlevel STATIC
     stm32f3xx_it.c
 
     hardware_simulation.c
+    hardware_real.c
     hardware_serial.c
+    i2c.c
     leds.c
 )
 
