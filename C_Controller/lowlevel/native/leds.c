@@ -1,9 +1,11 @@
 #include "leds.h"
 
+#include <stdio.h>
+
 void leds_init() {
 }
 
-static led_onnucleo_state = 0;
+static int led_onnucleo_state = 0;
 
 void led_onnucleo_printf() {
     printf("led_on_nucleo %s\n", led_onnucleo_state == 0 ? "off" : "on");

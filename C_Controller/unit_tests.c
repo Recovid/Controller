@@ -42,6 +42,7 @@ bool test_default_settings()
         true;
 }
 
+#ifndef WIN32
 bool blink() {
     leds_init();
     while(1) {
@@ -55,7 +56,7 @@ bool blink() {
     }
     return true;
 }
-
+#endif
 
 bool unit_tests_passed()
 {

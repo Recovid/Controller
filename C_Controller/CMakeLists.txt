@@ -55,11 +55,7 @@ endif()
 if(${TARGET} STREQUAL "stm32f303")
     set(EXECUTABLE ${PROJECT_NAME}.${TARGET}.elf)
 else()
-    if(CMAKE_HOST_WIN32)
-        set(EXECUTABLE simulateur.exe)
-    else()
-        set(EXECUTABLE simulateur)
-    endif()
+    set(EXECUTABLE simulateur)
 endif()
 
 SET(SHARED_SOURCES

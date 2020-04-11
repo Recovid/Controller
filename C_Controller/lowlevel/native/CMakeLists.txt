@@ -1,3 +1,4 @@
+if(NOT CMAKE_HOST_WIN32)
 set(FREERTOS_DIR_X86        FreeRTOS-Sim)
 set(FREERTOS_SRC_DIR_X86    ${FREERTOS_DIR_X86}/Source)
 set(FREERTOS_INC_DIR_X86    ${FREERTOS_DIR_X86}/Source/include)
@@ -23,15 +24,19 @@ target_include_directories(freertos_x86 PUBLIC
     ${LOWLEVEL_INC_DIR}
 )
 target_link_libraries(freertos_x86 PUBLIC pthread)
+endif()
 
 add_library(lowlevel STATIC
     lowlevel_simulation.c
-    hardware_serial.c
     leds.c
 )
+
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
 
 if(NOT CMAKE_HOST_WIN32)
-    target_link_libraries(lowlevel PUBLIC freertos_x86)
+target_sources(lowlevel PRIVATE
+	hardware_serial.c
+)
+target_link_libraries(lowlevel PUBLIC freertos_x86)
 endif()
