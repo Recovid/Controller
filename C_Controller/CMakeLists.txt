@@ -40,8 +40,8 @@ set(SHARED_SOURCES
     alarms.c
     ihm_communication.h
     ihm_communication.c
-    ${LOWLEVEL_INC_DIR}/hardware_simulation.h
-    ${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+    ${LOWLEVEL_INC_DIR}/lowlevel.h
+    ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
 )
 # low-level
 if(NOT CMAKE_HOST_WIN32)
