@@ -22,6 +22,9 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
 endif(CCACHE_FOUND)
 
+# Export compile_commands.json for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS true)
+
 ###############################################################################
 # Project
 
