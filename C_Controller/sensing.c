@@ -1,6 +1,6 @@
 #include "sensing.h"
 
-#include <math.h>
+#include <stdlib.h>
 
 #include "lowlevel.h"
 #include "ihm_communication.h"
