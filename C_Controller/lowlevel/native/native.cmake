@@ -25,8 +25,8 @@ set(FREERTOS_SRC_X86
 	${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX/port.c)
 
 set(LOWLEVEL_SOURCES 
-	${LOWLEVEL_INC_DIR}/hardware_simulation.h
-	${LOWLEVEL_SRC_DIR}/hardware_simulation.c
+	${LOWLEVEL_INC_DIR}/lowlevel.h
+	${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
 	${LOWLEVEL_INC_DIR}/hardware_serial.h
 	${LOWLEVEL_SRC_DIR}/hardware_serial.c)
 
