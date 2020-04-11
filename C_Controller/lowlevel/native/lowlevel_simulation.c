@@ -47,7 +47,7 @@ bool soft_reset()
 }
 
 // ------------------------------------------------------------------------------------------------
-//! IHM simulation based on stdin/stdout or Serial 
+//! IHM simulation based on stdin/stdout or Serial
 
 FILE *in ;
 FILE *out;
@@ -243,16 +243,16 @@ float read_Pdiff_Lpm()
 
     if (valve_state == Inhale) {
         abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
-		if(abs_Q_Lpm != 0.) { 
-			nonzero_abs_Q_Lpm = abs_Q_Lpm;
-		}
+        if(abs_Q_Lpm != 0.) {
+            nonzero_abs_Q_Lpm = abs_Q_Lpm;
+        }
         return abs_Q_Lpm;
     }
     else if (valve_state == Exhale) {
-		
+
         const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
         nonzero_abs_Q_Lpm *= decrease;
-		return -nonzero_abs_Q_Lpm;
+        return -nonzero_abs_Q_Lpm;
     }
     else {
         return 0.;
@@ -293,4 +293,3 @@ int read_Battery_level()
 {
     return 2; // TODO simulate lower battery levels
 }
-

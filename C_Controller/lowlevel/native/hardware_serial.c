@@ -1,7 +1,7 @@
 #include "hardware_serial.h"
 
 #include <errno.h>
-#include <fcntl.h> 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,17 +71,17 @@ int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
 
     if(data == NULL)
     {
-    	printf("Invalid parameter !! \n");
+        printf("Invalid parameter !! \n");
     }
     else
     {
-	    read_return = read(serial_handle, data, data_size);
+        read_return = read(serial_handle, data, data_size);
 
-	    if(read_return < 0)
-	    {
-	        printf("ERROR: Reading data. %s\n",strerror(errno));
-	        // exit(-1);
-	    }
+        if(read_return < 0)
+        {
+            printf("ERROR: Reading data. %s\n",strerror(errno));
+            // exit(-1);
+        }
     }
 
     return read_return;
@@ -93,30 +93,30 @@ int hardware_serial_write_data(const unsigned char * data, uint16_t data_size)
 
     if(data == NULL)
     {
-    	printf("Invalid parameter !! \n");
+        printf("Invalid parameter !! \n");
     }
     else
     {
-    	write_return = write(serial_handle, data, data_size);
+        write_return = write(serial_handle, data, data_size);
 
-	    if(write_return < 0)
-	    {
-	        printf("ERROR: Writing data. %s\n",strerror(errno));
-	        // exit(-1);
-	    }
-	}
-	return write_return;
+        if(write_return < 0)
+        {
+            printf("ERROR: Writing data. %s\n",strerror(errno));
+            // exit(-1);
+        }
+    }
+    return write_return;
 }
 
 int hardware_serial_init(const char * serial_port)
-{    
+{
     if(serial_port == NULL)
     {
-    	printf("Wrong Parameter");
+        printf("Wrong Parameter");
     }
     else
     {
-    	strcpy(current_serial_port, serial_port);
+        strcpy(current_serial_port, serial_port);
     }
 
     serial_handle = open(serial_port, O_RDWR | O_NOCTTY | O_SYNC);

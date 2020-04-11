@@ -14,10 +14,10 @@
 
 typedef enum ihm_mode_t
 {
-	IHM_MODE_FILE = 0,
-	IHM_MODE_SERIAL,
+    IHM_MODE_FILE = 0,
+    IHM_MODE_SERIAL,
 
-	IHM_MODE_MAX,
+    IHM_MODE_MAX,
 } ihm_mode_t;
 
 uint32_t get_time_ms();

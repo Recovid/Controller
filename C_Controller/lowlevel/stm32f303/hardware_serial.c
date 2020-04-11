@@ -2,7 +2,7 @@
 // @Date:   2020-04-08 17:14:01
 // @Last Modified by:   Inventhys
 // @Last Modified time: 2020-04-08 17:14:01
-// 
+//
 // --------------------------------------------------------------------------------------------------------------------
 // ----- includes
 // --------------------------------------------------------------------------------------------------------------------
@@ -31,9 +31,9 @@
 #define DEFAULT_RX_LINE_TIMEOUT         (30)
 #define UART_RX_DMA_BUFFER_SIZE         (512)
 
-#define UART_COM_IHM 					(0)
+#define UART_COM_IHM                    (0)
 
-#define UART_ID_MAX 					(1)
+#define UART_ID_MAX                     (1)
 
 // --------------------------------------------------------------------------------------------------------------------
 // ----- local function macros
@@ -45,8 +45,8 @@
 // --------------------------------------------------------------------------------------------------------------------
 typedef enum ifl_hal_uart_result_t
 {
-	IFL_HAL_UART_ERROR = 0,
-	IFL_HAL_UART_SUCCESS,
+    IFL_HAL_UART_ERROR = 0,
+    IFL_HAL_UART_SUCCESS,
 }ifl_hal_uart_result_t;
 typedef enum idle_line_state_t
 {
@@ -94,14 +94,14 @@ static ifl_hal_uart_result_t ifl_hal_uart_process_rx_data(idle_line_state_t idle
     __disable_irq();
 
     if((idle_line_state == IDLE_LINE_DETECTED) && (current_size == UART_RX_DMA_BUFFER_SIZE))
-    { 
+    {
         __enable_irq();
         return IFL_HAL_UART_SUCCESS;
     }
-    
+
     start_read = (last_size[id] < UART_RX_DMA_BUFFER_SIZE) ? (uint16_t)(UART_RX_DMA_BUFFER_SIZE - last_size[id]) : 0;
-    
-    if(idle_line_state == IDLE_LINE_DETECTED) 
+
+    if(idle_line_state == IDLE_LINE_DETECTED)
     {
         length_to_read = (last_size[id] < UART_RX_DMA_BUFFER_SIZE) ? (uint16_t)(last_size[id] - current_size) : (uint16_t)(UART_RX_DMA_BUFFER_SIZE - current_size);
         last_size[id] = current_size;
@@ -111,14 +111,14 @@ static ifl_hal_uart_result_t ifl_hal_uart_process_rx_data(idle_line_state_t idle
         length_to_read = (uint16_t)(UART_RX_DMA_BUFFER_SIZE - start_read);
         last_size[id] = UART_RX_DMA_BUFFER_SIZE;
     }
-    
-   
+
+
     for(uint16_t i = start_read; i < (length_to_read + start_read); i++)
     {
         IFL_DEQUE_PUSH_BACK(&uart_object[id].uart_rx_buffer, &uart_object[id].dma_buffer_rx[i % UART_RX_DMA_BUFFER_SIZE]);
     }
 
-    if(idle_line_state == IDLE_LINE_DETECTED || length_to_read == UART_RX_DMA_BUFFER_SIZE) 
+    if(idle_line_state == IDLE_LINE_DETECTED || length_to_read == UART_RX_DMA_BUFFER_SIZE)
     {
 
     }
@@ -128,8 +128,8 @@ static ifl_hal_uart_result_t ifl_hal_uart_process_rx_data(idle_line_state_t idle
 
 static ifl_hal_uart_result_t ifl_hal_uart_process_tx_data(uint8_t const id)
 {
-    if (!IFL_DEQUE_EMPTY(&uart_object[id].uart_tx_buffer) && 
-        (HAL_UART_GetState(&uart_object[id].husart) != HAL_UART_STATE_BUSY_TX) && 
+    if (!IFL_DEQUE_EMPTY(&uart_object[id].uart_tx_buffer) &&
+        (HAL_UART_GetState(&uart_object[id].husart) != HAL_UART_STATE_BUSY_TX) &&
         (HAL_UART_GetState(&uart_object[id].husart) != HAL_UART_STATE_BUSY_TX_RX))
     {
         // nothing in buffer, and UART is ready: start a new DMA request
@@ -251,12 +251,12 @@ __attribute__((used)) void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
             }
             break;
         }
-    }    
+    }
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-	__asm("BKPT #0\n") ; 
+    __asm("BKPT #0\n") ;
     printf("[UART_COM_IHM] UART Error: %ld \r\n", HAL_UART_GetError(huart));
 }
 
@@ -267,16 +267,16 @@ int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
 
     if(!IFL_DEQUE_EMPTY(&uart_object[UART_COM_IHM].uart_rx_buffer))
     {
-	    __disable_irq();
-	    while (!IFL_DEQUE_EMPTY(&uart_object[UART_COM_IHM].uart_rx_buffer) && (count < data_size))
-	    {
-	        uint8_t* ch = NULL;
-	        IFL_DEQUE_FRONT(&uart_object[UART_COM_IHM].uart_rx_buffer, ch);
-	        IFL_DEQUE_POP_FRONT(&uart_object[UART_COM_IHM].uart_rx_buffer);
-	        data[count] = *ch;
-	        count++;
-	    }
-	    __enable_irq();
+        __disable_irq();
+        while (!IFL_DEQUE_EMPTY(&uart_object[UART_COM_IHM].uart_rx_buffer) && (count < data_size))
+        {
+            uint8_t* ch = NULL;
+            IFL_DEQUE_FRONT(&uart_object[UART_COM_IHM].uart_rx_buffer, ch);
+            IFL_DEQUE_POP_FRONT(&uart_object[UART_COM_IHM].uart_rx_buffer);
+            data[count] = *ch;
+            count++;
+        }
+        __enable_irq();
 
     }
     return count;
@@ -291,7 +291,7 @@ int hardware_serial_write_data(unsigned char * data, uint16_t data_size)
         IFL_DEQUE_PUSH_BACK(&uart_object[UART_COM_IHM].uart_tx_buffer, &data[i]);
         if(IFL_DEQUE_FULL(&uart_object[UART_COM_IHM].uart_tx_buffer))
         {
-        	__asm("BKPT #0\n") ; 
+            __asm("BKPT #0\n") ;
         }
     }
 
@@ -310,7 +310,7 @@ int hardware_serial_write_data(unsigned char * data, uint16_t data_size)
 }
 int hardware_serial_init(const char * serial_port)
 {
-	(void) serial_port;
+    (void) serial_port;
 
     GPIO_InitTypeDef GPIO_InitStruct;
 
@@ -331,7 +331,7 @@ int hardware_serial_init(const char * serial_port)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     uart_object[UART_COM_IHM].husart.Instance = USART2;
-    
+
     // initialization of DMA for TX
     uart_object[UART_COM_IHM].hdma_usart_tx.Instance = DMA1_Channel7;
     uart_object[UART_COM_IHM].hdma_usart_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
@@ -368,7 +368,7 @@ int hardware_serial_init(const char * serial_port)
     __HAL_LINKDMA(&uart_object[UART_COM_IHM].husart, hdmarx, uart_object[UART_COM_IHM].hdma_usart_rx);
 
     uart_object[UART_COM_IHM].husart.Init.WordLength = UART_WORDLENGTH_8B;
-	uart_object[UART_COM_IHM].husart.Init.BaudRate = 115200;
+    uart_object[UART_COM_IHM].husart.Init.BaudRate = 115200;
     uart_object[UART_COM_IHM].husart.Init.Mode = UART_MODE_TX_RX;
     uart_object[UART_COM_IHM].husart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     uart_object[UART_COM_IHM].husart.Init.OverSampling = UART_OVERSAMPLING_16;
