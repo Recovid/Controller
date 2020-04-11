@@ -22,6 +22,7 @@ target_include_directories(freertos_x86 PUBLIC
     ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
     ${LOWLEVEL_INC_DIR}
 )
+target_link_libraries(freertos_x86 PUBLIC pthread)
 
 add_library(lowlevel STATIC
     lowlevel_simulation.c
