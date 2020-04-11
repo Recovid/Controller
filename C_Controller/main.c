@@ -23,10 +23,6 @@
 #include "TaskSensing.h"
 #endif
 
-#ifndef NDEBUG
-#include "unit_tests.h"
-#endif
-
 int main(int argc, const char** argv)
 {
 #ifdef native
@@ -39,14 +35,10 @@ int main(int argc, const char** argv)
     else if(argc == 3 && strstr(argv[1], "-s")) {
         init_ihm(IHM_MODE_SERIAL, argv[2], NULL);
     }
-    else if(argc == 2 && strstr(argv[1], "--unit-tests")) {
-        return unit_tests_passed();
-    }
     else {
         printf("Usage: %s Default file mode\n", argv[0]);
         printf("Usage : -f [inputFile outputFile] for ihm in file mode\n");
         printf("Usage : -s [serialPort] for ihm in serial mode\n");
-        printf("Usage : --unit-tests to run unit tests and get result\n");
 
         return 1;
     }
@@ -54,7 +46,6 @@ int main(int argc, const char** argv)
     init_ihm(IHM_MODE_SERIAL, 0, 0);
 #endif
 
-    assert(unit_tests_passed());
     int self_tests_result = self_tests();
     // TODO TEST(self_tests_result & 0b111111)
     //     return -1;

@@ -22,14 +22,11 @@ else()
     set(EXECUTABLE simulateur)
 endif()
 
-add_definitions(-D${TARGET})
+add_compile_definitions(${TARGET})
 
 # high-level
 set(SHARED_SOURCES
     platform.h
-    main.c
-    unit_tests.h
-    unit_tests.c
     sensing.h
     sensing.c
     controller.h
@@ -41,11 +38,14 @@ set(SHARED_SOURCES
     ihm_communication.h
     ihm_communication.c
     ${LOWLEVEL_INC_DIR}/lowlevel.h
+    )
+if(CMAKE_HOST_WIN32) # simulation only
+set(LOWLEVEL_SOURCES
     ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
-)
-# low-level
-if(NOT CMAKE_HOST_WIN32)
-set(SHARED_SOURCES ${SHARED_SOURCES}
+    )
+else() # mixture of simulation and implementation
+set(LOWLEVEL_SOURCES
+    ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
     ${LOWLEVEL_INC_DIR}/hardware_serial.h
     ${LOWLEVEL_SRC_DIR}/hardware_serial.c
     tasks_recovid.c
@@ -57,7 +57,12 @@ set(SHARED_SOURCES ${SHARED_SOURCES}
     )
 endif()
 
-add_executable(${EXECUTABLE} ${SHARED_SOURCES})
+add_executable(     ${EXECUTABLE}       main.c ${SHARED_SOURCES} ${LOWLEVEL_SOURCES})
+add_executable(test_${EXECUTABLE} tests/main.c ${SHARED_SOURCES} ${LOWLEVEL_SOURCES} unit_tests.c)
+target_compile_definitions(test_${EXECUTABLE} PUBLIC TESTS)
+
+enable_testing()
+add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 
 if(NOT CMAKE_HOST_WIN32)
 include(${CMAKE_SOURCE_DIR}/lowlevel/${TARGET}/${TARGET}.cmake)

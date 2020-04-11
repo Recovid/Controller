@@ -11,13 +11,7 @@
 #define STRINGIZE1(s) #s
 #define STRINGIZE(s) STRINGIZE1(s)
 
-#ifndef NDEBUG
-#define PRIVATE
-// Allow unit_tests to link the variable
-#else
-#define PRIVATE static
-#endif
-
+#define BOUNDED(_a,_b) ((_a)>(_b) ? (_a) : (_b))
 #define MAX(_a,_b) ((_a)>(_b) ? (_a) : (_b))
 #define MIN(_a,_b) ((_a)<(_b) ? (_a) : (_b))
 #define SIGN(_a)   ((_a)<  0  ?  -1  :   1 )
@@ -25,16 +19,15 @@
 // Assumes -DNDEBUG is passed to release builds like CMake does
 #ifndef NDEBUG
 #define DEBUG
-#define IS_DEBUG 1
+#define DEBUG_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
+#define DEBUG_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
 #else
-#define IS_DEBUG 0
+#define DEBUG_PRINTF(_fmt, ...) ((void)0)
+#define DEBUG_PRINT( _msg     ) ((void)0)
 #endif
 
-#define DEBUG_PRINTF(_fmt, ...) do { if (IS_DEBUG) fprintf(stderr, _fmt "\n", __VA_ARGS__); } while (0)
-#define DEBUG_PRINT( _msg     ) do { if (IS_DEBUG) fprintf(stderr,    "%s\n",      (_msg)); } while (0)
-
-#define STDERR_PRINTF(_fmt, ...) fprintf(stderr, _fmt "\n", __VA_ARGS__);
-#define STDERR_PRINT( _msg     ) fprintf(stderr,    "%s\n",      (_msg));
+#define STDERR_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
+#define STDERR_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
 
 #ifdef NDEBUG
 #define ASSERT_EQUALS(_expected,_evaluated) ((void)0)
@@ -49,15 +42,26 @@
 #define ASSERT_FALSE(_reason) ((void)(_assert(_reason,__FILE__,__LINE__),0))
 #endif
 
-#define TEST_RANGE(_min,_evaluated,_max) ((!!(((_min)<=(_evaluated)) && (_evaluated)<=(_max))) || \
-  (fprintf(stderr,"Expected [" #_min ".." #_max "] " #_evaluated ":%.1f at:" __FILE__ "(%d)\n",(double)(_evaluated),__LINE__),false))
+#define CHECK_RANGE(_min,_evaluated,_max) ((!!(((_min)<=(_evaluated)) && (_evaluated)<=(_max))) || \
+  (DEBUG_PRINTF("Expected [" #_min ".." #_max "] " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))
 
-#define TEST_FEQUALS(_expected,_evaluated) TEST_RANGE((_expected)-.1f,(_expected),(_expected)+.1f)
+#define CHECK_FLT_EQUALS(_expected,_evaluated) TEST_RANGE((_expected)-.06f,(_expected),(_expected)+.06f)
+
+#define CHECK_EQUALS(_expected,_evaluated) ((!!((_expected)==(_evaluated))) || \
+  (DEBUG_PRINTF("Expected:" #_expected " " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))
+
+#define CHECK(_predicate) ((!!(_predicate)) || \
+  (DEBUG_PRINTF("Failed:" #_predicate " at:" __FILE__ "(%d)",__LINE__),false))
+
+#define TEST_RANGE(_min,_evaluated,_max) ((!!(((_min)<=(_evaluated)) && (_evaluated)<=(_max))) || \
+  (STDERR_PRINTF("Expected [" #_min ".." #_max "] " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))
+
+#define TEST_FLT_EQUALS(_expected,_evaluated) TEST_RANGE((_expected)-.06f,(_expected),(_expected)+.06f)
 
 #define TEST_EQUALS(_expected,_evaluated) ((!!((_expected)==(_evaluated))) || \
-  (fprintf(stderr,"Expected:" #_expected " " #_evaluated ":%.1f at:" __FILE__ "(%d)\n",(double)(_evaluated),__LINE__),false))
+  (STDERR_PRINTF("Expected:" #_expected " " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))
 
 #define TEST(_predicate) ((!!(_predicate)) || \
-  (fprintf(stderr,"Failed:" #_predicate " at:" __FILE__ "(%d)\n",__LINE__),false))
+  (STDERR_PRINTF("Failed:" #_predicate " at:" __FILE__ "(%d)",__LINE__),false))
 
 #endif // PLATFORM_H
