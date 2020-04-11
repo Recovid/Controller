@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #include "controller.h"
-#include "hardware_simulation.h"
+#include "lowlevel.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Settings

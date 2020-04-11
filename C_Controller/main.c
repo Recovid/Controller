@@ -16,7 +16,7 @@
 #include "alarms.h"
 #include "controller.h"
 #include "ihm_communication.h"
-#include "hardware_simulation.h"
+#include "lowlevel.h"
 #ifndef WIN32
 #include "tasks_recovid.h"
 #include "TaskSensing.h"

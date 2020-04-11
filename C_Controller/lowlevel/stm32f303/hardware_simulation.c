@@ -1,4 +1,4 @@
-#include "hardware_simulation.h"
+#include "lowlevel.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include "hardware_serial.h"
 #include "stm32f3xx_hal.h"
 #include "configuration.h"
-#include "hardware_simulation.h"
+#include "lowlevel.h"
 #include "ihm_communication.h"
 // ------------------------------------------------------------------------------------------------
 /*

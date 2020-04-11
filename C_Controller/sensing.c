@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-#include "hardware_simulation.h"
+#include "lowlevel.h"
 #include "ihm_communication.h"
 
 // DATA
