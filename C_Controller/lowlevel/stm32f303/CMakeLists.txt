@@ -1,7 +1,7 @@
 add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
-add_library(lowlevel OBJECT
+add_library(lowlevel STATIC
     stm32f3xx_hal_msp_tick.c
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
