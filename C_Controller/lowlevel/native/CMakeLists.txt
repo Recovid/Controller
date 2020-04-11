@@ -32,4 +32,6 @@ add_library(lowlevel STATIC
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
 
-target_link_libraries(lowlevel PUBLIC freertos_x86)
+if(NOT CMAKE_HOST_WIN32)
+    target_link_libraries(lowlevel PUBLIC freertos_x86)
+endif()

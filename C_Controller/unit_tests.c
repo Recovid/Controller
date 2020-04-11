@@ -46,6 +46,7 @@ bool blink() {
     leds_init();
     while(1) {
         led_onnucleo_toggle();
+        // FIXME: does vTaskDelay work correctly on stm32 ?
         #ifdef stm32f303
             HAL_Delay(500);
         #else
