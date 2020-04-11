@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 
 ###############################################################################
-# Use Toolchain file
+# Compilers setup
 
 set(Lowlevel_dir  ${CMAKE_SOURCE_DIR}/lowlevel)
 
@@ -15,6 +15,12 @@ endif()
 SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) # Less useful to do it for linking, see edit2
+endif(CCACHE_FOUND)
 
 ###############################################################################
 # Project
