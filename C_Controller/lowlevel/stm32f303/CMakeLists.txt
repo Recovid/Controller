@@ -38,6 +38,8 @@ function(Setup_Programming_for)
             COMMENT "Objcopy ${HEX_FILE}"
         )
 
+        add_custom_target("${exe}.binary" DEPENDS ${BIN_FILE})
+
         set(target_name "${exe}.flash")
         message("Created target ${target_name}")
         add_custom_target("${target_name}"
