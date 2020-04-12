@@ -281,7 +281,7 @@ int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
     }
     return count;
 }
-int hardware_serial_write_data(unsigned char * data, uint16_t data_size)
+int hardware_serial_write_data(const unsigned char * data, uint16_t data_size)
 {
     __disable_irq();
 
@@ -362,7 +362,7 @@ int hardware_serial_init(const char * serial_port)
 
     if (HAL_DMA_Init(&uart_object[UART_COM_IHM].hdma_usart_rx) != HAL_OK)
     {
-      return IFL_HAL_UART_ERROR;
+        return IFL_HAL_UART_ERROR;
     }
 
     __HAL_LINKDMA(&uart_object[UART_COM_IHM].husart, hdmarx, uart_object[UART_COM_IHM].hdma_usart_rx);

@@ -8,7 +8,7 @@
 
 #include "ihm_communication.h"
 #include "sensing.h"
-#include "lowlevel.h"
+#include "lowlevel/include/lowlevel.h"
 
 // INIT
 
@@ -34,11 +34,13 @@ uint32_t Tpexp_ms = 0;
 bool pause_insp(int t_ms)
 {
     Tpins_ms = get_time_ms()+t_ms;
+    return true;
 }
 
 bool pause_exp(int t_ms)
 {
     Tpexp_ms = get_time_ms()+t_ms;
+    return true;
 }
 
 void check(int* bits, int bit, bool success)

@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #include "controller.h"
-#include "lowlevel.h"
+#include "lowlevel/include/lowlevel.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Settings
@@ -20,10 +20,10 @@
 //! \warning Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
 //! \warning Non volatile memory may be limited to uint16_t by the corresponding driver
 
-static uint16_t setting_FR_pm      =  18; //!< \see checked_FR_pm()     to set it within the range defined by     VT, Vmax, EoI
-static uint16_t setting_VT_mL      = 300; //!< \see checked_VT_mL()     to set it within the range defined by FR,     Vmax, EoI
-static uint16_t setting_Vmax_Lpm   =  60; //!< \see checked_Vmax_Lpm()  to set it within the range defined by FR, VT,       EoI
-static uint16_t setting_EoI_ratio  =   2; //!< \see checked_EoI_ratio() to set it within the range defined by FR, VT, Vmax
+static uint16_t setting_FR_pm          =  18; //!< \see checked_FR_pm()         to set it within the range defined by     VT, Vmax, EoI
+static uint16_t setting_VT_mL          = 300; //!< \see checked_VT_mL()         to set it within the range defined by FR,     Vmax, EoI
+static uint16_t setting_Vmax_Lpm       =  60; //!< \see checked_Vmax_Lpm()      to set it within the range defined by FR, VT,       EoI
+static uint16_t setting_EoI_ratio_x10  =  20; //!< \see checked_EoI_ratio_x10() to set it within the range defined by FR, VT, Vmax
 
 static uint16_t setting_PEP_cmH2O  =   5;
 
@@ -55,28 +55,28 @@ uint16_t checked_Vmax_Lpm (uint16_t desired)
     return MAX(min, desired);
 }
 //! \returns a value within the range defined by physical constraints and FR, VT, Vmax
-uint16_t checked_EoI_ratio(uint16_t desired)
+uint16_t checked_EoI_ratio_x10(uint16_t desired_x10)
 {
     uint16_t max = (get_setting_Vmax_Lpm() / (get_setting_VT_mL()/1000.f/*(L)*/) /*(Ipm)*/) * (1+get_setting_EoI_ratio());
-    return MIN(max, desired);
+    return MIN(max*10, desired_x10);
 }
 
-float get_setting_FR_pm    () { return setting_FR_pm    ; }
-float get_setting_VT_mL    () { return setting_VT_mL    ; }
+float get_setting_FR_pm       () { return setting_FR_pm           ; }
+float get_setting_VT_mL       () { return setting_VT_mL           ; }
 
-float get_setting_Vmax_Lpm () { return setting_Vmax_Lpm ; }
-float get_setting_EoI_ratio() { return setting_EoI_ratio; }
+float get_setting_Vmax_Lpm    () { return setting_Vmax_Lpm        ; }
+float get_setting_EoI_ratio   () { return setting_EoI_ratio_x10 / 10.f; }
 
-float get_setting_PEP_cmH2O() { return setting_PEP_cmH2O; }
+float get_setting_PEP_cmH2O   () { return setting_PEP_cmH2O       ; }
 
-float get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O  ; }
-float get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O  ; }
-float get_setting_VTmin_mL    () { return setting_VTmin_mL    ; }
-float get_setting_FRmin_pm    () { return setting_FRmin_pm    ; }
-float get_setting_VMmin_Lm    () { return setting_VMmin_Lpm   ; }
+float get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O      ; }
+float get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O      ; }
+float get_setting_VTmin_mL    () { return setting_VTmin_mL        ; }
+float get_setting_FRmin_pm    () { return setting_FRmin_pm        ; }
+float get_setting_VMmin_Lm    () { return setting_VMmin_Lpm       ; }
 
-float get_setting_PEPmax_cmH2O() { return setting_PEPmax_cmH2O; }
-float get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O; }
+float get_setting_PEPmax_cmH2O() { return setting_PEPmax_cmH2O    ; }
+float get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O    ; }
 
 // ------------------------------------------------------------------------------------------------
 //! Commands
@@ -141,9 +141,9 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, f
     char frame[sizeof(dataFrame)];
     strcpy(frame, dataFrame);
 
-    if (!(CHECK_RANGE(    0, Vol_mL  , 10000) &&
-          CHECK_RANGE(-1000, VolM_Lpm,  1000) &&
-          CHECK_RANGE(-1000, P_cmH2O ,  1000)))
+    if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
+        && CHECK_RANGE(-1000, VolM_Lpm,  1000)
+        && CHECK_RANGE(-1000, P_cmH2O ,  1000)))
     {
         return false;
     }
@@ -167,19 +167,18 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
-    if (!(CHECK_RANGE(   2, EoI_ratio  ,    6) &&
-          CHECK_RANGE(   0, FR_pm      ,  100) &&
-          CHECK_RANGE(   0, VTe_mL     , 1000) &&
-          CHECK_RANGE(-100, VM_Lpm     ,  100) &&
-          CHECK_RANGE(   0, Pplat_cmH2O,  100) &&
-          CHECK_RANGE(   0, PEP_cmH2O  ,  100)))
+    if (!( CHECK_RANGE(   2, EoI_ratio  ,    6)
+        && CHECK_RANGE(   0, FR_pm      ,  100)
+        && CHECK_RANGE(   0, VTe_mL     , 1000)
+        && CHECK_RANGE(-100, VM_Lpm     ,  100)
+        && CHECK_RANGE(   0, Pplat_cmH2O,  100)
+        && CHECK_RANGE(   0, PEP_cmH2O  ,  100)))
     {
         return false;
     }
     replace_int_with_padding(frame, EoI_ratio * 10, 2, 10);
     replace_int_with_padding(frame, FR_pm, 2, 10);
     replace_int_with_padding(frame, VTe_mL, 3, 10);
-    *strchr(frame, '.') = sign(Pcrete_cmH2O);
     replace_int_with_padding(frame, Pcrete_cmH2O, 2, 10);
     *strchr(frame, '.') = sign(VM_Lpm);
     replace_int_with_padding(frame, VM_Lpm, 2, 10);
@@ -195,7 +194,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 #define VT___ "VT___:"
 #define FR___ "FR___:"
 #define PEP__ "PEP__:"
-#define VMAX_ "Vmax_:"
+#define VMAX_ "FLOW_:"
 #define EoI__ "IE___:"
 #define TPLAT "Tplat:"
 #define VTMIN "VTmin:"
@@ -260,17 +259,17 @@ bool send_INIT(const char* information)
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
     return send(frame)
-           && send_SET(VT___, VT____FMT, setting_VT_mL         )
-           && send_SET(FR___, FR____FMT, setting_FR_pm         )
-           && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O     )
-           && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm      )
-           && send_SET(EoI__, EoI___FMT, setting_EoI_ratio     )
-           && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
-           && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
-           && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
-           && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
-           && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
-           && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
+        && send_SET(VT___, VT____FMT, setting_VT_mL         )
+        && send_SET(FR___, FR____FMT, setting_FR_pm         )
+        && send_SET(PEP__, PEP___FMT, setting_PEP_cmH2O     )
+        && send_SET(VMAX_, VMAX__FMT, setting_Vmax_Lpm      )
+        && send_SET(EoI__, EoI___FMT, setting_EoI_ratio_x10     )
+        && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
+        && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
+        && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
+        && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
+        && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
+        && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
 bool process(char const** ppf, const char* field, int size, uint16_t* value, uint16_t(*checked)(uint16_t))
@@ -306,7 +305,7 @@ void send_and_recv()
     char frame[MAX_FRAME+1] = "";
     while (true) {
         char *pf = frame;
-        for (int c = EOF; (c = recv_ihm())!='\n'; pf++) { // read until \n to make sure frame starts at a new line
+        for (int c = EOF; (c = recv_ihm()) != '\n'; pf++) { // read until \n to make sure frame starts at a new line
             if (c == EOF) {
                 return;
             }
@@ -337,17 +336,17 @@ void send_and_recv()
             initSent = send_INIT(get_init_str());
         }
         else if ((pl = payload(frame, SET_))) {
-            process(&pl, VT___, VT____FMT, &setting_VT_mL     , checked_VT_mL    ) ||
-            process(&pl, FR___, FR____FMT, &setting_FR_pm     , checked_FR_pm    ) ||
-            process(&pl, VMAX_, VMAX__FMT, &setting_Vmax_Lpm  , checked_Vmax_Lpm ) ||
-            process(&pl, EoI__, EoI___FMT, &setting_EoI_ratio , checked_EoI_ratio) ||
-            process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O , NULL) ||
-            process(&pl, TPLAT, TPLAT_FMT, &ignored_Tplat_ms  , NULL) ||
-            process(&pl, VTMIN, VTMIN_FMT, &setting_VTmin_mL  , NULL) ||
-            process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O, NULL) ||
-            process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O, NULL) ||
-            process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm  , NULL) ||
-            process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm , NULL);
+            process(&pl, VT___, VT____FMT, &setting_VT_mL         , checked_VT_mL        ) ||
+            process(&pl, FR___, FR____FMT, &setting_FR_pm         , checked_FR_pm        ) ||
+            process(&pl, VMAX_, VMAX__FMT, &setting_Vmax_Lpm      , checked_Vmax_Lpm     ) ||
+            process(&pl, EoI__, EoI___FMT, &setting_EoI_ratio_x10 , checked_EoI_ratio_x10) ||
+            process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
+            process(&pl, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
+            process(&pl, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
+            process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
+            process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
+            process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
+            process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
         }
         else if ((pl = payload(frame, PINS))) {
             uint16_t pause_ms = 0;
@@ -371,7 +370,7 @@ void send_and_recv()
             DEBUG_PRINTF("%s", frame); // Unknown
         }
 #ifndef WIN32
-        vPortYield();
+        // vPortYield();
 #endif
     }
 }
@@ -381,10 +380,10 @@ void send_and_recv()
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
 bool PRINT(test_checked_EoI)
-    setting_FR_pm     =  30;
-    setting_VT_mL     = 300;
-    setting_Vmax_Lpm  =  30;
-    setting_EoI_ratio = checked_EoI_ratio(1);
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 300;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(10);
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -400,10 +399,10 @@ bool PRINT(test_checked_EoI)
 }
 
 bool PRINT(test_checked_VM)
-    setting_FR_pm     =  30;
-    setting_VT_mL     = 600;
-    setting_EoI_ratio =   1;
-    setting_Vmax_Lpm  = checked_Vmax_Lpm(30);
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 600;
+    setting_EoI_ratio_x10 =  10;
+    setting_Vmax_Lpm      = checked_Vmax_Lpm(30);
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -419,10 +418,10 @@ bool PRINT(test_checked_VM)
 }
 
 bool PRINT(test_checked_VT)
-    setting_FR_pm     =  30;
-    setting_Vmax_Lpm  =  30;
-    setting_EoI_ratio =   1;
-    setting_VT_mL     = checked_VT_mL(600);
+    setting_FR_pm         = 30;
+    setting_Vmax_Lpm      = 30;
+    setting_EoI_ratio_x10 = 10;
+    setting_VT_mL         = checked_VT_mL(600);
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -438,10 +437,10 @@ bool PRINT(test_checked_VT)
 }
 
 bool PRINT(test_checked_FR)
-    setting_VT_mL     = 600;
-    setting_Vmax_Lpm  =  30;
-    setting_EoI_ratio =   1;
-    setting_FR_pm     = checked_FR_pm(30);
+    setting_VT_mL         = 600;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 =  10;
+    setting_FR_pm         = checked_FR_pm(30);
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding

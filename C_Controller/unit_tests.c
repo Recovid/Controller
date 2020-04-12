@@ -4,6 +4,7 @@
 
 #include "unit_tests.h"
 #include "ihm_communication.h"
+#include "lowlevel/include/leds.h"
 
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
@@ -56,6 +57,22 @@ bool PRINT(test_default_settings)
         true;
 }
 
+#ifndef WIN32
+bool blink() {
+    leds_init();
+    while(1) {
+        led_onnucleo_toggle();
+        // FIXME: does vTaskDelay work correctly on stm32 ?
+        #ifdef stm32f303
+            HAL_Delay(500);
+        #else
+            vTaskDelay(500);
+        #endif
+    }
+    return true;
+}
+#endif
+
 bool unit_tests_passed()
 {
     STDERR_PRINT("Start unit tests");
@@ -64,4 +81,5 @@ bool unit_tests_passed()
         test_default_settings() &&
         test_ihm();
     STDERR_PRINTF("Unit tests:%s", passed ? "passed" : "failed");
+    return passed;
 }

@@ -15,6 +15,7 @@ extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart1;
 extern I2C_HandleTypeDef  hi2c1;
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
 
 
 
@@ -22,7 +23,6 @@ extern TIM_HandleTypeDef htim2;
 // ------------------------------------------------------------
 // Sensors
 // ------------------------------------------------------------
-
 typedef enum {
 	STOPPED,
 	REQ_SDP_MEASUREMENT,
@@ -34,22 +34,32 @@ typedef enum {
 #define ADDR_NPA700B 	((uint16_t)(0x28 <<1))
 
 
-static const uint8_t _sdp_reset_req[1]  				= { 0xFE };
-static const uint8_t _sdp_measurement_req[1] 		= { 0xF1 };
-static uint8_t       _sdp_measurement_buffer[3] = { 0 };
+const uint8_t _sdp_reset_req[1]  = { 0xFE };
+const uint8_t _sdp_readAUR_req[1]  = { 0xE5 };
+uint8_t _sdp_writeAUR_req[3]  = { 0xE4, 0x00, 0x00};
 
-static uint8_t       _npa_measurement_buffer[2]	= { 0 };
+const uint8_t _sdp_measurement_req[1] 	= { 0xF1 };
+uint8_t       _sdp_measurement_buffer[3] = { 0 };
+uint8_t       _sdp_AUR_buffer[3] 		= { 0 };
 
-static volatile float _current_flow;
-static volatile float _current_pressure;
+uint8_t       _npa_measurement_buffer[2]	= { 0 };
 
-static volatile sensor_state_t _sensor_state;
+volatile float _current_flow;
+volatile float _current_pressure;
+volatile float _current_volume;
+
+volatile sensor_state_t _sensor_state;
+
+volatile uint16_t _hyperfrish_sdp_time;
+volatile uint16_t _hyperfrish_npa_time;
+
 
 bool sensors_init();
 void sensors_start();
 void sensors_stop();
 float get_flow() { return _current_flow; }
 float get_pressure() { return _current_pressure; }
+float get_volume() { return _current_volume; }
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
@@ -108,7 +118,7 @@ void motor_stop();
 void scan_I2C(void);
 
 void wait_btn_clicked();
-
+float linear_fit(float* samples, size_t samples_len, float time_step_sec, float* slope);
 
 // ------------------------------------------------------------
 // Breath Controller
@@ -134,16 +144,16 @@ float inhalation_volume[200];
 
 int32_t calibration(float* A, float* B);
 float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed);
-float A_calibrated;
-float B_calibrated;
-uint32_t min_angle = 10;
+float A_calibrated = 0.917;
+float B_calibrated = 1.;
+//uint32_t min_angle = 10;
 
 float flow_setpoint_slm = 60;
 void controller_run() {
 	uint32_t time;
 	uint16_t steps;
 	uint32_t t;
-
+	_current_volume = 0.;
 
 	printf("Recovid-F303\n");
 
@@ -152,6 +162,12 @@ void controller_run() {
 
 	motor_enable();
 	motor_home(HOME_SPEED);
+
+	htim3.Instance->CNT= 0;
+	HAL_TIM_Base_Start(&htim3);
+//	HAL_TIM_Base_Stop(&htim3);
+
+
 
 //	uint32_t nb_steps= (uint16_t) (STEPS_PER_REVOLUTION)*(200/360.0);
 //	double d = MAX_SPEED;
@@ -183,9 +199,14 @@ void controller_run() {
 	}
 	sensors_start();
 
+//	while(true){
+//		HAL_Delay(250);
+//		printf("NPA : %lu\n", _hyperfrish_npa_time);
+//		printf("SDP : %lu\n", _hyperfrish_sdp_time);
+//	}
+
 	// Calibration
 	calibration(&A_calibrated, &B_calibrated);
-
 
 	Va= 200;
 	steps= (uint32_t) (STEPS_PER_REVOLUTION)*(Va/360.0);
@@ -200,7 +221,7 @@ void controller_run() {
 		motor_speed_table[t]= (uint32_t)d;
 	}  */
 	for(long t=0; t<steps; ++t) {
-		d = compte_motor_step_time(t, 0.5, CALIBRATION_SPEED);
+		d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
 		Ti+=d;
 		//printf("d=%ld\n", (uint32_t)(d));
 		motor_speed_table[t]= (uint32_t)d;
@@ -216,14 +237,15 @@ void controller_run() {
 
 	motor_enable();
 	motor_home(HOME_SPEED);
-	motor_move(COMPRESS, HOME_SPEED, (uint32_t) (STEPS_PER_REVOLUTION)*(min_angle/360.0));
+	//motor_move(COMPRESS, HOME_SPEED, (uint32_t) (STEPS_PER_REVOLUTION)*(min_angle/360.0));
 	while(!motor_is_done());
-	//motor_stop();
-	//ctrl_state=STOPPED;
+	motor_stop();
+	ctrl_state = STOPPED;
 
-	reporting_start(70);
+	reporting_start(80);
 	float flow_avg;
 	while (1) {
+		_current_volume = 0.;
 		flow_avg = 0.;
 		uint32_t t = 0;
 		ctrl_state= CTRL_INHALE;
@@ -261,8 +283,8 @@ void controller_run() {
 		ctrl_state= CTRL_EXHALE;
 		printf("TPLAT\n");
 		HAL_Delay(700);
-
-
+		float volume_cycle = get_volume();
+		printf("Vi = %d ml\n", (uint32_t)(volume_cycle * 1000));
 		ctrl_state= CTRL_EXHALE;
 		printf("EXHALE\n");
 
@@ -284,8 +306,8 @@ void controller_run() {
 		// home will be set in EXTI interrupt handler. PWM will also be stopped.
 		while(!motor_is_home());
 		motor_stop();
-		motor_move(COMPRESS, HOME_SPEED, (uint32_t) (STEPS_PER_REVOLUTION)*(min_angle/360.0));
-
+		HAL_Delay(1000);
+		//motor_move(COMPRESS, HOME_SPEED, (uint32_t) (STEPS_PER_REVOLUTION)*(min_angle/360.0));
 		time= HAL_GetTick() - time;
 		if(time<2000-1) {
 			HAL_Delay(2000-time);
@@ -310,14 +332,14 @@ void controller_run() {
 // Calibration speed is motor step time in seconds
 // Desired flow is in sL/s
 float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed) {
-	float res = (0.9*A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
+	float res = (0.8*A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
 	res = res / desired_flow;
 	if (res * 1000000 < 150) {return 150;}
 	else {return res * 1000000.;}
 }
 
 int32_t calibration(float* A, float* B) {
-	uint16_t iterations = 2;
+	uint16_t iterations = 4;
 	uint32_t sensor_period = 10;  // period of sensor fetching in ms
 	float slope = 0; // slope of flow(t) cruve
 	float originFlow = 0; // origin flow of flow(t) curve
@@ -330,147 +352,142 @@ int32_t calibration(float* A, float* B) {
 	wait_btn_clicked();
 
 	// Calibrate slope
-	printf("Calibrating slope...\n");
-	// HIGH PEEP
-	HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, RESET);
-	//reporting_start(100);
+	printf("---------- Calibrating slope ---------------\n");
+	reporting_start(100);
 	for(int iter=0; iter<iterations; ++iter) {
+		_current_volume = 0.;
+		// HIGH PEEP
+		HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, RESET);
 		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(200/360.0);
 		double speed = CALIBRATION_SPEED*1000000;
-		time= HAL_GetTick();
-		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(20/360.0);
+//		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(20/360.0);
+//		motor_move(COMPRESS, speed, steps);
+//		while(!motor_is_done());
+//		reporting_start(100);
+//		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(180/360.0);
 		motor_move(COMPRESS, speed, steps);
-		while(!motor_is_done());
-		reporting_start(10);
-		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(180/360.0);
-		motor_move(COMPRESS, speed, steps);
-
-		float volume=0;
 		t=0;
 		while(!motor_is_done()) {
 			HAL_Delay(sensor_period);
-			inhalation_flow[t] =get_flow();
-			volume += inhalation_flow[t];
-			inhalation_volume[t] = volume;
+			inhalation_flow[t] = get_flow()/60.;
 			++t;
 		}
-		reporting_stop();
-		// LOW PEEP
+//		reporting_stop();
+//		// LOW PEEP
 		HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, SET);
 		_is_home=false;
 		motor_run(RELEASE, HOME_SPEED);
 		while(!motor_is_home());
 		motor_stop();
-		time= HAL_GetTick()-time;
-		printf("t= %lu\n", t);
-		printf("volume=%dml\n", (uint32_t)(1000 * (sensor_period/1000.) * (volume/60.)));
+		HAL_Delay(2000);
+		float volumeIT = get_volume();
+		printf("volume = %luml\n", (uint32_t)(1000*volumeIT));
 
-		// compute slope of the curve we just obtained
-		float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
-		for(int i=0;i<t;i++)
-		    {
-		        sumx  = sumx + (float)i * (sensor_period/1000.);
-		        sumx2 = sumx2 + (float)i*(sensor_period/1000.)*(float)i*(sensor_period/1000.);
-		        sumy  = sumy + inhalation_flow[i]/60.;
-		        sumy2 = sumy2 + (inhalation_flow[i]/60.) * (inhalation_flow[i]/60.);
-		        sumxy = sumxy + (float)i*(sensor_period/1000.)*inhalation_flow[i]/60.;
-
-		    }
-		float denom = (t * sumx2 - (sumx * sumx));
-		if(denom == 0.) {
-			printf("Calibration of A is not possible\n");
-			return -1;
-		}
-		// compute slope a
-		float a = (t * sumxy  -  sumx * sumy) / denom;
-
-		// compute correlation coefficient
-		float r = (sumxy - sumx * sumy / t) / sqrtf((sumx2 - (sumx*sumx)/t) * (sumy2 - (sumy*sumy)/t));
-		// print result for debug
-		printf("a=%d\n", (uint32_t)(1000.*a));
-		printf("r=%d\n", (uint32_t)(1000.*r));
-
-		// Add values for averaging over iterations
+		float a = 0;
+		float r = linear_fit(inhalation_flow, t, 0.01, &a);
+		printf("a=%lu\n", (uint32_t)(1000.*a));
+		printf("r=%lu\n", (uint32_t)(1000.*r));
 		slope += a / (float)iterations;
-		correlation_coeff += r / (float)iterations;
 	}
-	reporting_stop();
-	// HIGH PEEP
-	HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, RESET);
 	*A = slope;
-	printf("A=%d\n", (uint32_t)(1000.* *A));
-	printf("R=%d\n", (uint32_t)(1000.*correlation_coeff));
+//	reporting_stop();
+	printf("A=%lu\n", (uint32_t)(1000.* *A));
 
 
 	// Calibrate originFlow
-	printf("Calibrating B...\n");
+	printf("---------- Calibrating B ---------------\n");
 	for(int iter=0; iter<iterations; ++iter) {
+		// HIGH PEEP
+		HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, RESET);
 		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(200/360.0);
-		double speed = 1000000/steps;
-		time= HAL_GetTick();
-		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(20/360.0);
-		motor_move(COMPRESS, speed, steps);
+//		reporting_start(100);
+		_current_volume = 0.;
+		motor_move(COMPRESS, CALIBRATION_SPEED*1000000., steps);
 		while(!motor_is_done());
-		reporting_start(10);
-		steps= (uint32_t) (STEPS_PER_REVOLUTION)*(180/360.0);
-		motor_move(COMPRESS, speed, steps);
-
-		float volume=0;
-		t=0;
-		while(!motor_is_done()) {
-			HAL_Delay(sensor_period);
-			inhalation_flow[t] =get_flow();
-			volume += inhalation_flow[t];
-			inhalation_volume[t] = volume;
-			++t;
-		}
+		motor_stop();
+		HAL_Delay(2000);
+		float volumeIT = get_volume();
 		// LOW PEEP
 		HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, SET);
 		_is_home=false;
 		motor_run(RELEASE, HOME_SPEED);
 		while(!motor_is_home());
 		motor_stop();
-		reporting_stop();
-		time= HAL_GetTick()-time;
-		volume = (sensor_period/1000.) * (volume/60.);
-		printf("t= %lu\n", t);
-		printf("volume=%dml\n", (uint32_t)(1000 * (sensor_period/1000.) * (volume/60.)));
-
-		float b = volume/((speed*0.000001) * steps) - (*A * (speed*0.000001)*steps / 2.);
+		printf("volume = %dml\n", (uint32_t)(volumeIT*1000));
+		float b = volumeIT/((CALIBRATION_SPEED) * steps) - (*A * (CALIBRATION_SPEED)*steps / 2.);
 		printf("b=%d\n", (int32_t)(1000*b));
 		// Add values for averaging over iterations
 		originFlow += b/(float)iterations;
 	}
-	*B = originFlow;
+	*B = 1.;
+//	*B = 1.3;
 	printf("B=%d\n", (int32_t)(1000*(*B)));
 	printf("Calibration...DONE\n");
+	reporting_stop();
 	return 0;
+}
+
+// Compute slope of samples fetched with specified time_step
+// Returns 	R  if fit is ok
+// 			-1 if fit is not possible
+float linear_fit(float* samples, size_t samples_len, float time_step_sec, float* slope){
+	float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
+	float* p = NULL;
+	for(int i=0;i<samples_len;i++) {
+		sumx  = sumx + (float)i * time_step_sec;
+		sumx2 = sumx2 + (float)i*time_step_sec*(float)i*time_step_sec;
+		sumy  = sumy + *(samples+i);
+		sumy2 = sumy2 + (*(samples+i)) * (*(samples+i));
+		sumxy = sumxy + (float)i*(time_step_sec)* (*(samples+i));
+	}
+	float denom = (samples_len * sumx2 - (sumx * sumx));
+	if(denom == 0.) {
+		printf("Calibration of A is not possible\n");
+		return 1;
+	}
+	// compute slope a
+	*slope = (samples_len * sumxy  -  sumx * sumy) / denom;
+
+	// compute correlation coefficient
+	return (sumxy - sumx * sumy / samples_len) / sqrtf((sumx2 - (sumx*sumx)/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
 }
 
 
 bool sensors_init() {
-  if(HAL_I2C_Master_Transmit(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_reset_req, sizeof(_sdp_reset_req), 1000 )!= HAL_I2C_ERROR_NONE) {
-  	return false;
-  }
-
-  // Sensors settle time
-  HAL_Delay(100);
-
-  if(HAL_I2C_Master_Transmit(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req), 1000 )!= HAL_I2C_ERROR_NONE) {
-  	return false;
-  } else {
-    if(HAL_I2C_Master_Receive(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000 )!= HAL_I2C_ERROR_NONE) {
-    	return false;
-    }
-  }
-  return true;
+	HAL_Delay(100);
+	// First reset SDP
+	if(HAL_I2C_Master_Transmit(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_reset_req, sizeof(_sdp_reset_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+		return false;
+	}
+	HAL_Delay(100);
+	// Now read sdp advanced user register
+	if(HAL_I2C_Master_Transmit(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_readAUR_req, sizeof(_sdp_readAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+		return false;
+	}
+	HAL_Delay(100);
+	if(HAL_I2C_Master_Receive(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_AUR_buffer, sizeof(_sdp_AUR_buffer), 1000 )!= HAL_I2C_ERROR_NONE) {
+		return false;
+	}
+	// print AUR (Advances User Register)
+	uint16_t sdp_aur = (uint16_t)((_sdp_AUR_buffer[0] << 8) | _sdp_AUR_buffer[1]);
+	printf("sdp AUR = %d\n", (uint16_t)(sdp_aur));
+	uint16_t sdp_aur_no_i2c_hold = sdp_aur & 0xFFFD;
+	_sdp_writeAUR_req[1] = (uint16_t)(sdp_aur_no_i2c_hold >> 8);
+	_sdp_writeAUR_req[2] = (uint16_t)(sdp_aur_no_i2c_hold & 0xFF);
+	// Now disable i2c hold master mode
+	if(HAL_I2C_Master_Transmit(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_writeAUR_req, sizeof(_sdp_writeAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+		return false;
+	}
+	// Sensors settle time
+	HAL_Delay(100);
+	return true;
 }
 
 void sensors_start() {
 	// Start sensor state machine.
 	// This state machine is managed in the I2C interupt routine.
-	_sensor_state= READ_SDP_MEASUREMENT;
-	HAL_I2C_Master_Transmit_IT(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+	_sensor_state= REQ_SDP_MEASUREMENT;
+	HAL_I2C_Master_Transmit_DMA(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
 }
 
 void sensors_stop() {
@@ -551,16 +568,13 @@ void motor_stop() {
 static uint8_t* SYNC="---START---\r\n";
 
 void reporting_start(uint32_t ms) {
-
 	HAL_UART_Transmit_IT(&huart2, SYNC, strlen(SYNC));
-
-  htim2.Init.Period = ms*1000;
-  HAL_TIM_Base_Init(&htim2);
+	htim2.Init.Period = ms*1000;
+	HAL_TIM_Base_Init(&htim2);
 	HAL_TIM_Base_Start_IT(&htim2);
-
 }
 
-static uint8_t data_buffer[9] = { '>', 0,0,0,0,0,0,0,0 };
+static uint8_t data_buffer[13] = { '>', 0,0,0,0,0,0,0,0,0,0,0,0 };
 
 void report_send() {
 	uint8_t* ptr= (uint8_t*)&_current_flow;
@@ -575,7 +589,13 @@ void report_send() {
 	data_buffer[7]= *ptr++;
 	data_buffer[8]= *ptr++;
 
-	HAL_UART_Transmit_IT(&huart1, data_buffer, 9);
+	ptr= (uint8_t*)&_current_volume;
+	data_buffer[9]= *ptr++;
+	data_buffer[10]= *ptr++;
+	data_buffer[11]= *ptr++;
+	data_buffer[12]= *ptr++;
+
+	HAL_UART_Transmit_IT(&huart1, data_buffer, 13);
 }
 
 void reporting_stop() {
@@ -613,54 +633,88 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 }
 
 
+
 void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
+	static	uint16_t hyperfrish_npa;
+	static	uint16_t hyperfrish_sdp;
 
 	switch (_sensor_state) {
 	case STOPPED:
 		return;
 	case READ_NPA_MEASUREMENT:
-		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
-			// TODO: Manage retries
+		if (HAL_I2C_GetError(&hi2c1) == HAL_I2C_ERROR_AF) {
+//			_sensor_state= STOPPED;
 			HAL_I2C_Master_Receive_IT(&hi2c1, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
-		} else {
-			if( (_npa_measurement_buffer[0]>>6)==0) {
-				uint16_t praw= (uint16_t) ((_npa_measurement_buffer[0] << 8 | _npa_measurement_buffer[1]) & 0x3FFF);
-				_current_pressure= 70.307 * ((float) ( praw - 1638.)/13107.);
-			} else if((_npa_measurement_buffer[0]>>6)==3) {
-				// TODO: Manage error status !!
-			}
-
-			_sensor_state= READ_SDP_MEASUREMENT;
-			HAL_I2C_Master_Receive_IT(&hi2c1, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
+			break;
 		}
+		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
+			// TODO: Manage error
+			_sensor_state= STOPPED;
+			break;
+		}
+		if( (_npa_measurement_buffer[0]>>6)==0) {
+			_hyperfrish_npa_time = (uint16_t)htim3.Instance->CNT - hyperfrish_npa;
+
+			hyperfrish_npa = (uint16_t)htim3.Instance->CNT;
+			uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
+			_current_pressure = 70.307 * ((float) ( praw - 1638.)/13107.);
+		} else if((_npa_measurement_buffer[0]>>6)==3) {
+			// TODO: Manage error status !!
+		}
+		_sensor_state= READ_SDP_MEASUREMENT;
+		HAL_I2C_Master_Receive_DMA(&hi2c1, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
+
 		break;
 
 	case REQ_SDP_MEASUREMENT:
-		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
-			// TODO: Manage retries
+		if (HAL_I2C_GetError(&hi2c1) == HAL_I2C_ERROR_AF) {
+//			_sensor_state= STOPPED;
 			HAL_I2C_Master_Transmit_IT(&hi2c1, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
-		} else {
-			_sensor_state= READ_NPA_MEASUREMENT;
-			HAL_I2C_Master_Receive_IT(&hi2c1, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
+			break;
 		}
+		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
+			// TODO: Manage error
+			_sensor_state= STOPPED;
+			break;
+		}
+		_sensor_state= READ_SDP_MEASUREMENT;
+		HAL_I2C_Master_Receive_DMA(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
 		break;
 
 	case READ_SDP_MEASUREMENT:
-		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
-			// TODO: Manage retries
-			HAL_I2C_Master_Receive_IT(&hi2c1, ADDR_SPD610 , (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
-		} else {
-			// Compute flow value
-			int16_t dp_raw   = ((int16_t)_sdp_measurement_buffer[0] << 8 | _sdp_measurement_buffer[1]);
-			_current_flow = (float)(dp_raw)/105.0;
 
+		if (HAL_I2C_GetError(&hi2c1) == HAL_I2C_ERROR_AF) {
+			_sensor_state= READ_NPA_MEASUREMENT;
+			HAL_I2C_Master_Receive_DMA(&hi2c1, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
+			break;
+		}
+		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_NONE) {
+			// TODO: Manage error
+			_sensor_state= STOPPED;
+			break;
+		}
+		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
+			_hyperfrish_sdp_time= (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
+			hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
+			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
+			_current_flow = -((float)dp_raw)/105.0;
+			_current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
 			_sensor_state= REQ_SDP_MEASUREMENT;
-			HAL_I2C_Master_Transmit_IT(&hi2c1, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+			HAL_I2C_Master_Transmit_DMA(&hi2c1, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+		} else {
+			_sensor_state= READ_NPA_MEASUREMENT;
+			HAL_I2C_Master_Receive_DMA(&hi2c1, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
 		}
 		break;
 	}
 }
 
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+	if (hi2c == &hi2c1) {
+		process_i2c_callback(hi2c);
+	}
+}
 
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if (hi2c == &hi2c1) {
@@ -673,7 +727,6 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 		process_i2c_callback(hi2c);
 	}
 }
-
 
 
 void wait_btn_clicked() {
