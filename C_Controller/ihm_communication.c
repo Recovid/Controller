@@ -57,8 +57,8 @@ uint16_t checked_Vmax_Lpm (uint16_t desired)
 //! \returns a value within the range defined by physical constraints and FR, VT, Vmax
 uint16_t checked_EoI_ratio_x10(uint16_t desired_x10)
 {
-    uint16_t max = (get_setting_Vmax_Lpm() / (get_setting_VT_mL()/1000.f/*(L)*/) /*(Ipm)*/) * (1+get_setting_EoI_ratio());
-    return MIN(max*10, desired_x10);
+    uint16_t max_x10 = 10*(((get_setting_Vmax_Lpm() / (get_setting_VT_mL()/1000.f/*(L)*/) /*(Ipm)*/) / get_setting_FR_pm()) - 1.f);
+    return MIN(max_x10, desired_x10);
 }
 
 float get_setting_FR_pm       () { return setting_FR_pm           ; }
@@ -380,11 +380,11 @@ void send_and_recv()
 #ifdef TESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
-bool PRINT(test_checked_EoI)
+bool PRINT(test_non_default_settings)
     setting_FR_pm         =  30;
     setting_VT_mL         = 300;
     setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(10);
+    setting_EoI_ratio_x10 =  10;
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -396,6 +396,25 @@ bool PRINT(test_checked_EoI)
         TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
         TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
         TEST_EQUALS    ( 400  , get_setting_Tplat_ms    ()) &&
+        true;
+}
+
+bool PRINT(test_checked_EoI)
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 300;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(30);
+    return
+        TEST_FLT_EQUALS(  30.f , get_setting_FR_pm    ()) &&
+        TEST_EQUALS    (2000   , get_setting_T_ms     ()) &&
+        TEST_FLT_EQUALS( 300.f , get_setting_VT_mL    ()) &&
+        TEST_FLT_EQUALS(  30.f , get_setting_Vmax_Lpm ()) &&
+        TEST_EQUALS    ( 600   , get_setting_Tinsu_ms ()) &&
+        TEST_FLT_EQUALS(   2.3f, get_setting_IoE_ratio()) &&
+        TEST_FLT_EQUALS(   0.4f, get_setting_EoI_ratio()) &&
+        TEST_RANGE     (1390   , get_setting_Texp_ms  (), 1400) &&
+        TEST_RANGE     ( 600   , get_setting_Tinspi_ms(),  610) &&
+        TEST_RANGE     (   0   , get_setting_Tplat_ms (),   10) &&
         true;
 }
 
@@ -458,6 +477,7 @@ bool PRINT(test_checked_FR)
 
 bool PRINT(test_ihm)
     return
+        test_non_default_settings() &&
         test_checked_EoI() &&
         test_checked_VM() &&
         test_checked_VT() &&

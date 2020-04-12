@@ -79,7 +79,8 @@ bool unit_tests_passed()
     bool passed =
         !test_failure_not_detected() &&
         test_default_settings() &&
-        test_ihm();
-    STDERR_PRINTF("Unit tests:%s", passed ? "passed" : "failed");
+        test_ihm() &&
+        test_sensing();
+    STDERR_PRINTF("Unit tests: %s", passed ? "(i) PASSED" : "/!\\ FAILED");
     return passed;
 }
