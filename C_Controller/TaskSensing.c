@@ -14,9 +14,9 @@ void TaskSensing(void* task_param)  // This is a task.
 {
   struct periodic_task* task = (struct periodic_task*) task_param;
   initTask(task);
-  for (;;) // A Task shall never return or exit.
+  while (true) // A Task shall never return or exit.
   {
-    int missed_tick = sleepPeriodic(task);
+    sleepPeriodic(task);
     sense_and_compute();
   }
 }

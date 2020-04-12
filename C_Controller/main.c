@@ -51,6 +51,8 @@ int main(int argc, const char** argv)
         return 1;
     }
 #else
+    (void) argc; (void) argv;
+
     init_ihm(IHM_MODE_SERIAL, 0, 0);
 #endif
 

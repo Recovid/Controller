@@ -149,7 +149,6 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, f
 bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O)
 {
     static const char respFrame[] = "RESP IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
-    char tmp[8];
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
@@ -335,6 +334,7 @@ void send_and_recv()
             process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O) ||
             process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm  ) ||
             process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm );
+            (void) processed;
         }
         else if ((pl = payload(frame, PINS))) {
             uint16_t pause_ms = 0;
