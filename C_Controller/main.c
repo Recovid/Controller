@@ -43,6 +43,9 @@ int main(int argc, const char** argv)
         return 1;
     }
 #else
+    UNUSED(argc)
+    UNUSED(argv)
+
     init_ihm(IHM_MODE_SERIAL, 0, 0);
 #endif
 

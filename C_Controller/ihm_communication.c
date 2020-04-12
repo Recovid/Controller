@@ -163,7 +163,6 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, f
 bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O)
 {
     static const char respFrame[] = "RESP IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
-    char tmp[8];
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
@@ -336,17 +335,19 @@ void send_and_recv()
             initSent = send_INIT(get_init_str());
         }
         else if ((pl = payload(frame, SET_))) {
-            process(&pl, VT___, VT____FMT, &setting_VT_mL         , checked_VT_mL        ) ||
-            process(&pl, FR___, FR____FMT, &setting_FR_pm         , checked_FR_pm        ) ||
-            process(&pl, VMAX_, VMAX__FMT, &setting_Vmax_Lpm      , checked_Vmax_Lpm     ) ||
-            process(&pl, EoI__, EoI___FMT, &setting_EoI_ratio_x10 , checked_EoI_ratio_x10) ||
-            process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
-            process(&pl, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
-            process(&pl, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
-            process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
-            process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
-            process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
-            process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
+            bool process_result =
+                process(&pl, VT___, VT____FMT, &setting_VT_mL         , checked_VT_mL        ) ||
+                process(&pl, FR___, FR____FMT, &setting_FR_pm         , checked_FR_pm        ) ||
+                process(&pl, VMAX_, VMAX__FMT, &setting_Vmax_Lpm      , checked_Vmax_Lpm     ) ||
+                process(&pl, EoI__, EoI___FMT, &setting_EoI_ratio_x10 , checked_EoI_ratio_x10) ||
+                process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
+                process(&pl, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
+                process(&pl, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
+                process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
+                process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
+                process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
+                process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
+            UNUSED(process_result)
         }
         else if ((pl = payload(frame, PINS))) {
             uint16_t pause_ms = 0;
@@ -451,7 +452,7 @@ bool PRINT(test_checked_FR)
         TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
         TEST_RANGE     (1200  , get_setting_Texp_ms     (), 1250) && // due to FR rounding
         TEST_RANGE     (1200  , get_setting_Tinspi_ms   (), 1250) && // due to FR rounding
-        TEST_RANGE     (   0  , get_setting_Tplat_ms    (),  100) && // due to FR rounding
+        TEST           (        get_setting_Tplat_ms    ()<= 100) && // due to FR rounding
         true;
 }
 

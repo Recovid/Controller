@@ -10,14 +10,6 @@
 #include "lowlevel/include/lowlevel.h"
 #include "ihm_communication.h"
 // ------------------------------------------------------------------------------------------------
-/*
-Config USART2_RY DMA1 Stream5 Mode Circular
-
-
-*/
-
-//! Simulated clock for testing purposes
-static long clock_ms = 0;
 
 bool soft_reset()
 {
@@ -109,6 +101,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile)
 {
+    (void) ihm_mode; (void) pathInputFile; (void) pathOutputFile;
     HAL_Init();
 
     SystemClock_Config();
@@ -124,8 +117,6 @@ bool send_ihm(const char* frame)
 
 int recv_ihm()
 {
-    static long last_blocked_s = 0;
-
     unsigned char blocking_read = 0;
 
     int t_s = hardware_serial_read_data(&blocking_read, sizeof(char));;
@@ -260,7 +251,7 @@ float read_Pdiff_Lpm()
 float read_Paw_cmH2O()
 {
     static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
-    const float PEP_cmH2O = get_setting_PEP_cmH2O();
+    // const float PEP_cmH2O = get_setting_PEP_cmH2O();
 
     if (valve_state == Inhale) {
         if (motor_dir > 0) {
