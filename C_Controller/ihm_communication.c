@@ -231,7 +231,7 @@ bool send_SET(const char* field, int size, int value)
     curr += sizeof(CS8_VALUE) - 1;
     *curr = '\0';
 
-    strncpy(strchr(frame, '.'), field, 6);
+    memcpy(strchr(frame, '.'), field, 6);
     replace_int_with_padding(frame, value, size, 10);
 
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
@@ -247,7 +247,7 @@ bool send_INIT(const char* information)
     char* curr = frame;
     strncpy(curr, INIT, sizeof(INIT) - 1);
     curr += sizeof(INIT) - 1;
-    strncpy(curr, information, strlen(information));
+    memcpy (curr, information, strlen(information));
     curr += strlen(information);
     strncpy(curr, CS8, sizeof(CS8) - 1);
     curr += sizeof(CS8) - 1;

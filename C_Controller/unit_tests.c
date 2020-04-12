@@ -1,10 +1,12 @@
+#include "unit_tests.h"
+
 #ifndef TESTS
-#error Only for test targets
+#   error Only for test targets
 #endif
 
 #include "unit_tests.h"
 #include "ihm_communication.h"
-#include "lowlevel/include/leds.h"
+#include "sensing.h"
 
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 

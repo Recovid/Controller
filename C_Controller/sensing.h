@@ -9,4 +9,8 @@ float get_sensed_Vol_mL  ();
 
 void sense_and_compute();
 
+#ifdef TESTS
+bool test_sensing();
+#endif
+
 #endif // SENSING_H

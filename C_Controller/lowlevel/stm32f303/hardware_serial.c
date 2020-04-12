@@ -261,7 +261,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 }
 
 
-int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
+int hardware_serial_read_data(char * data, uint16_t data_size)
 {
     uint16_t count = 0;
 
@@ -281,7 +281,7 @@ int hardware_serial_read_data(unsigned char * data, uint16_t data_size)
     }
     return count;
 }
-int hardware_serial_write_data(const unsigned char * data, uint16_t data_size)
+int hardware_serial_write_data(const char * data, uint16_t data_size)
 {
     __disable_irq();
 

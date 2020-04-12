@@ -10,6 +10,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 //Recovid include
 #include "configuration.h"
