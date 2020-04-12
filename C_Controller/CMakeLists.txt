@@ -88,16 +88,14 @@ if(NOT CMAKE_HOST_WIN32)
     )
 endif()
 
-add_executable(     ${EXECUTABLE} ${SHARED_SOURCES} main.c)
-add_executable(test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
+add_executable(         ${EXECUTABLE} ${SHARED_SOURCES} main.c)
+target_link_libraries(  ${EXECUTABLE} m lowlevel)
+
+add_executable(         test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
+target_link_libraries(  test_${EXECUTABLE} m lowlevel)
+
 target_compile_definitions(test_${EXECUTABLE} PUBLIC TESTS)
-
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
-
-set_target_properties(${EXECUTABLE} PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(${EXECUTABLE} m lowlevel)
-
-target_link_libraries(test_${EXECUTABLE} m lowlevel)
 
 # Targets for flashing on stm32
 if(${TARGET} STREQUAL "stm32f303")
