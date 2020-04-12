@@ -29,6 +29,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 project(C_Controller C CXX ASM)
 
+enable_testing()
+
 ###############################################################################
 # CFlags
 
@@ -39,6 +41,7 @@ add_compile_options(
     -Wno-unused-parameter
     -Wno-unused-variable
 )
+
 if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
     add_compile_options(-Wpedantic)
 endif()
@@ -57,13 +60,12 @@ endif()
 ###############################################################################
 # Top-level Targets
 
-if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
-    set(EXECUTABLE ${PROJECT_NAME}.exe)
-elseif(${TARGET} STREQUAL "stm32f303")
-    set(EXECUTABLE ${PROJECT_NAME}.${TARGET}.elf)
-else()
-    set(EXECUTABLE ${PROJECT_NAME})
-endif()
+# if(${TARGET} STREQUAL "stm32f303")
+#     set(EXE_EXT .${TARGET}.elf)
+# endif()
+set(EXECUTABLE ${PROJECT_NAME})
+
+
 
 # high-level
 set(SHARED_SOURCES
@@ -74,44 +76,30 @@ set(SHARED_SOURCES
     ihm_communication.c
 )
 
+
 # low-level
-if(CMAKE_HOST_WIN32) # simulation only
-    set(LOWLEVEL_SOURCES
-        ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
-    )
-else() # mixture of simulation and implementation
-    set(LOWLEVEL_SOURCES
-        ${LOWLEVEL_SRC_DIR}/lowlevel_simulation.c
-        ${LOWLEVEL_SRC_DIR}/hardware_serial.c
+if(NOT CMAKE_HOST_WIN32)
+    set(SHARED_SOURCES ${SHARED_SOURCES}
         tasks_recovid.c
         TaskMessageManagement.c
         TaskRespirationCycle.c
         TaskSensing.c
         TaskAlarm.c
-        )
+    )
 endif()
 
-add_executable(     ${EXECUTABLE}       main.c ${SHARED_SOURCES} ${LOWLEVEL_SOURCES})
-add_executable(test_${EXECUTABLE} tests/main.c ${SHARED_SOURCES} ${LOWLEVEL_SOURCES} unit_tests.c)
+add_executable(     ${EXECUTABLE} ${SHARED_SOURCES} main.c)
+add_executable(test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
 target_compile_definitions(test_${EXECUTABLE} PUBLIC TESTS)
 
-enable_testing()
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 
 set_target_properties(${EXECUTABLE} PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(${EXECUTABLE} m lowlevel)
 
-if(NOT CMAKE_HOST_WIN32)
-    set(HEX_FILE ${EXECUTABLE}.hex)
-    set(BIN_FILE ${EXECUTABLE}.bin)
+target_link_libraries(test_${EXECUTABLE} m lowlevel)
 
-    add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${EXECUTABLE}> ${HEX_FILE}
-        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${EXECUTABLE}> ${BIN_FILE}
-        COMMENT "Building ${HEX_FILE}"
-    )
-
-    if(${TARGET} STREQUAL "stm32f303")
-        Setup_OpenOCD_for(${HEX_FILE})
-    endif()
+# Targets for flashing on stm32
+if(${TARGET} STREQUAL "stm32f303")
+    Setup_Programming_for(${EXECUTABLE} test_${EXECUTABLE})
 endif()

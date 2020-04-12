@@ -3,6 +3,8 @@ if(NOT CMAKE_HOST_WIN32) # !POSIX cannot use FreeRTOS which requires sys/time.h 
     set(FREERTOS_SRC_DIR_X86    ${FREERTOS_DIR_X86}/Source)
     set(FREERTOS_INC_DIR_X86    ${FREERTOS_DIR_X86}/Source/include)
 
+
+
     add_library(freertos_x86 STATIC
         ${FREERTOS_SRC_DIR_X86}/croutine.c
         ${FREERTOS_SRC_DIR_X86}/event_groups.c
@@ -23,16 +25,21 @@ if(NOT CMAKE_HOST_WIN32) # !POSIX cannot use FreeRTOS which requires sys/time.h 
     target_link_libraries(freertos_x86 PUBLIC pthread)
 endif()
 
-add_library(lowlevel STATIC
+###############################################################################
+
+set(LOWLEVEL_SOURCES
     lowlevel_simulation.c
     leds.c
 )
 
+if(NOT CMAKE_HOST_WIN32)
+    set(LOWLEVEL_SOURCES ${LOWLEVEL_SOURCES} hardware_serial.c)
+endif()
+
+add_library(lowlevel STATIC ${LOWLEVEL_SOURCES})
+
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
 
 if(NOT CMAKE_HOST_WIN32)
-    target_sources(lowlevel PRIVATE
-        hardware_serial.c
-    )
     target_link_libraries(lowlevel PUBLIC freertos_x86)
 endif()
