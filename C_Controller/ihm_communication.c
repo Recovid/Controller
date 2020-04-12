@@ -380,6 +380,8 @@ void send_and_recv()
 #ifdef TESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
+#pragma GCC diagnostic ignored "-Wtype-limits"
+
 bool PRINT(test_non_default_settings)
     setting_FR_pm         =  30;
     setting_VT_mL         = 300;
