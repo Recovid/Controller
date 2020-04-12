@@ -29,7 +29,7 @@ endif()
 
 set(LOWLEVEL_SOURCES
     lowlevel_simulation.c
-    leds.c
+    simple_indicators.c
 )
 
 if(NOT CMAKE_HOST_WIN32)

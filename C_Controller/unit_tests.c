@@ -4,7 +4,8 @@
 #   error Only for test targets
 #endif
 
-#include "unit_tests.h"
+#include "lowlevel/include/simple_indicators.h"
+
 #include "ihm_communication.h"
 #include "sensing.h"
 
@@ -61,9 +62,11 @@ bool PRINT(test_default_settings)
 
 #ifndef WIN32
 bool blink() {
-    leds_init();
+    init_indicators();
+    int state = 0;
     while(1) {
-        led_onnucleo_toggle();
+        state = (state+1) % 2;
+        light_nucleo((++state) == 0 ? On : Off);
         // FIXME: does vTaskDelay work correctly on stm32 ?
         #ifdef stm32f303
             HAL_Delay(500);

@@ -189,21 +189,6 @@ bool valve_inhale()
     return true;
 }
 
-bool light_yellow(enum OnOff new)
-{
-    return true; // TODO
-}
-
-bool light_red(enum OnOff new)
-{
-    return true; // TODO
-}
-
-bool buzzer(enum OnOff new)
-{
-    return true; // TODO
-}
-
 //! Usable BAVU volume based on motor position
 //! \remark BAVU deformation/elasticity is simulated with a cos to easily derive Q
 float BAVU_V_mL()
