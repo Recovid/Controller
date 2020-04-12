@@ -39,7 +39,35 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
     -Wall \
 ")
 
+set(REDEFINED_SYMBOLS
+	HAL_MspInit
+	NMI_Handler
+	HardFault_Handler
+	MemManage_Handler
+	BusFault_Handler
+	UsageFault_Handler
+	SVC_Handler
+	DebugMon_Handler
+	PendSV_Handler
+	SysTick_Handler
+	DMA1_Channel1_IRQHandler
+	EXTI9_5_IRQHandler
+	DMA1_Stream5_IRQHandler
+	USART2_IRQHandler
+	HAL_MspInit
+	HAL_I2C_MspInit
+	HAL_I2C_MspDeInit
+	HAL_TIM_MspPostInit
+	HAL_TIM_Base_MspDeInit
+	HAL_SuspendTick
+	HAL_ResumeTick
+	HAL_InitTick
+)
+
+list(TRANSFORM REDEFINED_SYMBOLS PREPEND "-u")
+string (REPLACE ";" " " REDEFINED_SYMBOLS_FLAGS_STR "${REDEFINED_SYMBOLS}")
 set(COMMON_TOOLCHAIN_LFLAGS "\
+    ${REDEFINED_SYMBOLS_FLAGS_STR} \
     ${COMMON_TOOLCHAIN_CFLAGS} \
     -Wl,--gc-sections \
     --specs=nosys.specs \
