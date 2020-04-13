@@ -1,5 +1,4 @@
-#ifndef HARDWARE_SIMULATION_H
-#define HARDWARE_SIMULATION_H
+#pragma once
 
 #include "platform.h"
 
@@ -76,15 +75,6 @@ bool valve_exhale();
 bool valve_inhale();
 
 // ------------------------------------------------------------------------------------------------
-
-typedef enum OnOff { On, Off } OnOff;
-
-bool light_yellow(OnOff new); // 4m visible leds
-bool light_red   (OnOff new); // 4m visible leds
-bool light_green (OnOff new); // 4m visible leds
-bool buzzer      (OnOff new); // onboard
-
-// ------------------------------------------------------------------------------------------------
 //! HW sensors
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
@@ -98,6 +88,3 @@ float read_Patmo_mbar();
 
 //! \returns 0 if battery is about to stop, 1 if battery is critically low
 int read_Battery_level();
-
-
-#endif // HARDWARE_SIMULATION_H

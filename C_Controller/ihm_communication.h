@@ -108,6 +108,7 @@ void send_and_recv();
 
 #ifdef TESTS
 bool ihm_tests();
+bool test_ihm();
 #endif
 
 #endif // IHM_COMMUNICATION_H

@@ -8,7 +8,7 @@ add_library(lowlevel STATIC
 
     hardware_simulation.c
     hardware_serial.c
-    leds.c
+    simple_indicators.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
@@ -25,9 +25,18 @@ if(NOT CMAKE_HOST_WIN32)
     )
 endif()
 
-function(Setup_OpenOCD_for)
+function(Setup_Programming_for)
     set(list_var "${ARGV}")
     foreach(exe ${list_var})
+
+        set(HEX_FILE ${exe}.hex)
+        set(BIN_FILE ${exe}.bin)
+        add_custom_command(OUTPUT ${HEX_FILE} ${BIN_FILE}
+            COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${exe}> ${HEX_FILE}
+            COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${exe}> ${BIN_FILE}
+            COMMENT "Objcopy ${HEX_FILE}"
+        )
+
         set(target_name "${exe}.flash")
         message("Created target ${target_name}")
         add_custom_target("${target_name}"
@@ -37,6 +46,7 @@ function(Setup_OpenOCD_for)
                 -c "flash write_image erase ${exe}"
                 -c "reset"
                 -c "shutdown"
+            DEPENDS ${HEX_FILE}
         )
     endforeach()
 endfunction()

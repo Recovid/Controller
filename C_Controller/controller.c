@@ -8,7 +8,8 @@
 
 #include "ihm_communication.h"
 #include "sensing.h"
-#include "lowlevel/include/lowlevel.h"
+#include "lowlevel.h"
+#include "simple_indicators.h"
 
 // INIT
 

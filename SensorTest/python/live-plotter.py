@@ -61,7 +61,7 @@ data = [[], [], []]
 data = live_plotter(time, [flows, paws, vols], data, pause_time=0.001)
 
 
-with serial.Serial('/dev/ttyUSB0', 115200, timeout=None) as ser:
+with serial.Serial('/dev/ttyUSB2', 115200, timeout=None) as ser:
     while True:
         c = ser.read()
         while c == b'>':

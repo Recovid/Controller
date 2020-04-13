@@ -10,6 +10,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 //Recovid include
 #include "configuration.h"
@@ -198,21 +199,6 @@ bool valve_inhale()
     valve_state = Inhale;
     valve_exhale_ms = -1;
     return true;
-}
-
-bool light_yellow(enum OnOff new)
-{
-    return true; // TODO
-}
-
-bool light_red(enum OnOff new)
-{
-    return true; // TODO
-}
-
-bool buzzer(enum OnOff new)
-{
-    return true; // TODO
 }
 
 //! Usable BAVU volume based on motor position
