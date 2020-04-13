@@ -74,8 +74,8 @@ T = 10
 stop_event = threading.Event()
 
 def main(argv):
-    thread_tsi = threading.Thread(target=readTSI, args=('/dev/ttyUSB1', 38400, samples_cnt, T))
-    thread_covid = threading.Thread(target=read_recovid, args=('/dev/ttyUSB0', 115200))
+    thread_tsi = threading.Thread(target=readTSI, args=('/dev/ttyUSB0', 38400, samples_cnt, T))
+    thread_covid = threading.Thread(target=read_recovid, args=('/dev/ttyUSB2', 115200))
     thread_tsi.start()
     thread_covid.start()
     thread_tsi.join()

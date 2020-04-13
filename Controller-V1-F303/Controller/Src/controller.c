@@ -44,7 +44,7 @@ uint8_t       _sdp_AUR_buffer[3] 		= { 0 };
 
 uint8_t       _npa_measurement_buffer[2]	= { 0 };
 
-float inhalation_flow[400];		//  used as buffer for flow analysis and motor command computing
+float inhalation_flow_sls[400];		//  used as buffer for flow analysis and motor command computing
 volatile uint8_t sensor_logging = 0;
 volatile uint32_t sensor_logging_index = 0;
 volatile float sensor_logging_time_step_sum = 0;
@@ -129,6 +129,7 @@ void wait_btn_clicked();
 float linear_fit(float* samples, size_t samples_len, float time_step_sec, float* slope);
 int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
 
+
 // ------------------------------------------------------------
 // Breath Controller
 // ------------------------------------------------------------
@@ -150,15 +151,30 @@ float Va= 200; 	// Volume angle
 
 int32_t calibration(float* A, float* B, uint8_t iterations);
 float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed);
-float A_calibrated = 0.917;
-float B_calibrated = 1.;
-//uint32_t min_angle = 10;
+float A_calibrated = 1.275;
+float B_calibrated = 0.046;
+//float A_calibrated = 0.5;
+//float B_calibrated = 0.2;
 
-float flow_setpoint_slm = 60;
+// Cycle parameters
+float setpoint_flow_slm;
+float setpoint_bpm;
+float setpoint_IE;
+float setpoint_volume_ml; // in ml
+float setpoint_Ti_max_ms;
+
+// PID needed variables
+float P_plateau_slope = 0.05;
+float P_plateau_mean = 0.1;
+#define PID_I_SIZE  (5)
+float errors_mean[PID_I_SIZE]  = {0};
+float errors_slope[PID_I_SIZE] = {0};
+
 void controller_run() {
 	uint32_t time;
 	uint16_t steps;
 	_current_volume = 0.;
+
 
 	printf("Recovid-F303\n");
 
@@ -171,30 +187,6 @@ void controller_run() {
 	htim3.Instance->CNT= 0;
 	HAL_TIM_Base_Start(&htim3);
 
-
-
-//	uint32_t nb_steps= (uint16_t) (STEPS_PER_REVOLUTION)*(200/360.0);
-//	double d = MAX_SPEED;
-//	double Ti=d;
-//	double max = 0;
-//	for(long t=0; t<nb_steps; ++t) {
-//			d+=(0.15*sqrt((double)(t)/nb_steps));
-//			Ti+=d;
-//			if(d>max) max=d;
-//			motorSpeedTable[t]= (uint32_t)d;
-//	}
-//
-//	printf("Ti=%ld\n", (uint32_t)(Ti/1000));
-//	printf("period max=%ld\n", (uint32_t)max);
-//
-//	motor_move_table(CCW, motorSpeedTable, nb_steps);
-//
-//	while(!motor_is_done());
-//	motor_stop();
-//
-//	printf("DONE\n");
-//	while(1);
-
 	printf("Homed.\n");
 
 	if(!sensors_init()) {
@@ -203,19 +195,20 @@ void controller_run() {
 	}
 	sensors_start();
 
-//	while(true){
-//		HAL_Delay(250);
-//		printf("NPA : %lu\n", _hyperfrish_npa_time);
-//		printf("SDP : %lu\n", _hyperfrish_sdp_time);
-//	}
-
 	// Calibration
-	calibration(&A_calibrated, &B_calibrated, 2);
+//	calibration(&A_calibrated, &B_calibrated, 2);
+
+	// Setpoints
+	setpoint_flow_slm = 60.;
+	setpoint_bpm = 20;
+	setpoint_IE = 0.6;
+	setpoint_volume_ml = 400.; // in ml
+	setpoint_Ti_max_ms = setpoint_volume_ml/setpoint_flow_slm;
 
 	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
 	Ti = 0.;
 	for(long t=0; t<steps; ++t) {
-		float d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
+		float d = compte_motor_step_time(t, setpoint_flow_slm/60., CALIBRATION_SPEED);
 		Ti += d;
 		//printf("d=%ld\n", (uint32_t)(d));
 		motor_speed_table[t]= (uint32_t)d;
@@ -227,12 +220,12 @@ void controller_run() {
 
 	printf("Running\n");
 
-	motor_enable();
-	motor_home(HOME_SPEED);
-	while(!motor_is_done());
-	motor_stop();
-	ctrl_state = STOPPED;
-
+//	motor_enable();
+//	motor_home(HOME_SPEED);
+//	while(!motor_is_done());
+//	motor_stop();
+//	ctrl_state = STOPPED;
+	uint32_t cycles_cnt = 0;
 	reporting_start(100);
 	while (1) {
 //		reporting_start(100);
@@ -279,26 +272,24 @@ void controller_run() {
 //		float flow_error = flow_avg - flow_setpoint_slm;
 //		B_calibrated += 0.01 * flow_error;
 //		printf("error=%ld slm\n", (int32_t)(flow_error));
-		float P_plateau_slope = 0.1;
-		float P_plateau_mean = 0.2;
 		float timeStep = sensor_logging_time_step_sum/sensor_logging_index;
 		uint32_t low;
 		uint32_t high;
-		if(get_plateau(inhalation_flow, sensor_logging_index, timeStep, 10, &low, &high) == 0) {
+		if(get_plateau(inhalation_flow_sls, sensor_logging_index, timeStep, 10, &low, &high) == 0) {
 			printf("plateau found from sample %lu to %lu\n", low, high);
 		} else {
 			printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
 		}
-		float plateau_slope = linear_fit(inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
+		float plateau_slope = linear_fit(inhalation_flow_sls+low, high-low-1, timeStep, &plateau_slope);
 		float plateau_mean = 0;
 		for(int i=low; i<high; i++) {
-			plateau_mean += inhalation_flow[i];
+			plateau_mean += inhalation_flow_sls[i];
 		}
 		plateau_mean = plateau_mean/(high-low);
 		printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
 		printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
 
-		float error_mean = plateau_mean - (flow_setpoint_slm/60.);
+		float error_mean = plateau_mean - (setpoint_flow_slm/60.);
 
 		A_calibrated += plateau_slope * P_plateau_slope;
 		B_calibrated += error_mean * P_plateau_mean;
@@ -308,7 +299,7 @@ void controller_run() {
 		// Recompute motor steps
 		Ti = 0.;
 		for(long t=0; t<steps; ++t) {
-			float d = compte_motor_step_time(t, flow_setpoint_slm/60., CALIBRATION_SPEED);
+			float d = compte_motor_step_time(t, setpoint_flow_slm/60., CALIBRATION_SPEED);
 			Ti+=d;
 			//printf("d=%ld\n", (uint32_t)(d));
 			motor_speed_table[t]= (uint32_t)d;
@@ -323,9 +314,14 @@ void controller_run() {
 		if(time < 2000-1) {
 			HAL_Delay(2000-time);
 		}
-
-		printf("Cycle is_done*********************\n");
-		printf("Press button to make a new one.\n");
+		++cycles_cnt;
+		printf("Cycle %lu is_done*********************\n", cycles_cnt);
+//		printf("Press button to make a new one.\n");
+//		if(cycles_cnt%20 == 0) {
+//			setpoint_flow_slm += 5.;
+//			if(setpoint_flow_slm > 60.) {setpoint_flow_slm = 60.;}
+//			printf("***************************** NEW SETPOINT %lu SLM *****************************************\n", (uint32_t)setpoint_flow_slm);
+//		}
 //		reporting_stop();
 //		wait_btn_clicked();
 	}
@@ -344,6 +340,7 @@ float compte_motor_step_time(long step_number, float desired_flow, double calibr
 	else {return res * 1000000.;}
 }
 
+//Flow(t) = A*t + B
 int32_t calibration(float* A, float* B, uint8_t iterations) {
 	float slope = 0; // slope of flow(t) cruve
 	float originFlow = 0; // origin flow of flow(t) curve
@@ -385,7 +382,7 @@ int32_t calibration(float* A, float* B, uint8_t iterations) {
 		HAL_Delay(2000);
 
 		float a = 0;
-		float r = linear_fit(inhalation_flow, sensor_logging_index, sensor_logging_time_step_sum/sensor_logging_index, &a);
+		float r = linear_fit(inhalation_flow_sls, sensor_logging_index, sensor_logging_time_step_sum/sensor_logging_index, &a);
 		printf("a=%lu\n", (uint32_t)(1000.*a));
 		printf("r=%lu\n", (uint32_t)(1000.*r));
 		slope += a / (float)iterations;
@@ -406,7 +403,7 @@ int32_t calibration(float* A, float* B, uint8_t iterations) {
 		motor_move(COMPRESS, CALIBRATION_SPEED*1000000., steps);
 		while(!motor_is_done());
 		motor_stop();
-		HAL_Delay(2000);
+		HAL_Delay(1000);
 		float volumeIT = get_volume();
 		// LOW PEEP
 		HAL_GPIO_WritePin(PEEP_GPIO_Port, PEEP_Pin, SET);
@@ -460,7 +457,7 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
 	// Compute slope for time windows to detect when signal start increasing/decreasing
 	for(int window=0; window<windows_number; window++) {
 		float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
-		printf("%ld    ", (int32_t)(*(slopes+window) * 1000));
+		printf("%ld(%ld)    ", (int32_t)(*(slopes+window) * 1000), (int32_t)(r * 1000));
 	}
 	printf("\n");
 	for(int window=1; window<windows_number; window++) {
@@ -730,11 +727,11 @@ void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			_hyperfrish_sdp_time= (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
 			hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-			_current_flow = ((float)dp_raw)/105.0;
+			_current_flow = -((float)dp_raw)/105.0;
 			_current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
 			// log flow in global array if needed
-			if(sensor_logging == 1 && sensor_logging_index < sizeof(inhalation_flow)/sizeof(inhalation_flow[0])) {
-				inhalation_flow[sensor_logging_index] = _current_flow/60.;  // in sls
+			if(sensor_logging == 1 && sensor_logging_index < sizeof(inhalation_flow_sls)/sizeof(inhalation_flow_sls[0])) {
+				inhalation_flow_sls[sensor_logging_index] = _current_flow/60.;  // in sls
 				sensor_logging_time_step_sum += (float)_hyperfrish_sdp_time/1000000;
 				++sensor_logging_index;
 			}
