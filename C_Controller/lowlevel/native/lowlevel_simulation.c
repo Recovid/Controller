@@ -288,7 +288,7 @@ int read_Battery_level()
 }
 
 // ================================================================================================
-#ifdef TESTS
+#ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
 bool PRINT(test_Pdiff_exhale_stable)

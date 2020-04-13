@@ -377,7 +377,7 @@ void send_and_recv()
 }
 
 // ================================================================================================
-#ifdef TESTS
+#ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
 #pragma GCC diagnostic ignored "-Wtype-limits"
@@ -464,7 +464,7 @@ bool PRINT(test_checked_FR)
     setting_EoI_ratio_x10 =  10;
     setting_FR_pm         = checked_FR_pm(30);
     return
-        TEST_FLT_EQUALS(  25.f, get_setting_FR_pm       ()) &&
+        TEST_RANGE     (  24.f, get_setting_FR_pm       (), 25.f) &&
         TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding
         TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
         TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&

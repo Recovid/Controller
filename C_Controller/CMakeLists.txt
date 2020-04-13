@@ -60,10 +60,12 @@ endif()
 ###############################################################################
 # Top-level Targets
 
-# if(${TARGET} STREQUAL "stm32f303")
+if(CMAKE_HOST_WIN32)
+    set(EXE_EXT .exe)
+elseif(${TARGET} STREQUAL "stm32f303")
 #     set(EXE_EXT .${TARGET}.elf)
-# endif()
-set(EXECUTABLE ${PROJECT_NAME})
+endif()
+set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 
 
@@ -88,13 +90,13 @@ if(NOT CMAKE_HOST_WIN32)
     )
 endif()
 
-add_executable(         ${EXECUTABLE} ${SHARED_SOURCES} main.c)
-target_link_libraries(  ${EXECUTABLE} m lowlevel)
+add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} main.c)
+target_link_libraries(     ${EXECUTABLE} m lowlevel)
+target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
-add_executable(         test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
-target_link_libraries(  test_${EXECUTABLE} m lowlevel)
+add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
+target_link_libraries(test_${EXECUTABLE} m lowlevel)
 
-target_compile_definitions(test_${EXECUTABLE} PUBLIC TESTS)
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 
 # Targets for flashing on stm32

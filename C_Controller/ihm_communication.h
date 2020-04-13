@@ -106,7 +106,7 @@ bool send_INIT(const char* information);
 //! \returns false if soft reset received
 void send_and_recv();
 
-#ifdef TESTS
+#ifndef NTESTS
 bool ihm_tests();
 bool test_ihm();
 #endif

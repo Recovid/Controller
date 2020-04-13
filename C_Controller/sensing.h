@@ -9,7 +9,7 @@ float get_sensed_Vol_mL  ();
 
 void sense_and_compute();
 
-#ifdef TESTS
+#ifndef NTESTS
 bool test_sensing();
 #endif
 
