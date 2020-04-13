@@ -2,6 +2,10 @@
 
 #include <stdbool.h>
 
+#ifndef WIN32
+bool blink();
+#endif
+
 typedef enum { On, Off } OnOff;
 
 void init_indicators();

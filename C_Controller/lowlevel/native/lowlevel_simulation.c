@@ -13,6 +13,7 @@
 #include <string.h>
 
 //Recovid include
+#include "sensing.h"
 #include "configuration.h"
 #include "ihm_communication.h"
 
@@ -255,25 +256,25 @@ static uint32_t decrease_Paw_ms = 0;
 
 float read_Paw_cmH2O()
 {
-    const float PEP_cmH2O = get_setting_PEP_cmH2O();
-
+    const float PEP_cmH2O = get_sensed_PEP_cmH2O();
     if (valve_state == Inhale) {
         if (motor_dir > 0) {
             // Pressure augments as volume decreases according to PV=k ('loi des gaz parfait')
             // Pi=P0*V0/Vi
-            Paw_cmH2O = get_setting_PEP_cmH2O() + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
+            Paw_cmH2O = PEP_cmH2O + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
         }
         else {
             // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
             const float decrease = .6; // expf(- abs(get_time_ms()-motor_release_ms)/10.); // <1% after 50ms
-            const float Pplat_cmH2O = get_setting_PEP_cmH2O() + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
+            const float Pplat_cmH2O = PEP_cmH2O + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
             Paw_cmH2O = Pplat_cmH2O + (Paw_cmH2O-Pplat_cmH2O) * decrease;
         }
     }
     else if (valve_state == Exhale) {
         const float decrease = .9; // abs(get_time_ms()-valve_exhale_ms)/100.; // <1% after 500ms
-        Paw_cmH2O = get_setting_PEP_cmH2O() + (Paw_cmH2O-get_setting_PEP_cmH2O()) * decrease;
+        Paw_cmH2O = PEP_cmH2O + (Paw_cmH2O-PEP_cmH2O) * decrease;
     }
+    assert(Paw_cmH2O >= 0);
     return Paw_cmH2O;
 }
 
@@ -303,34 +304,32 @@ bool PRINT(test_Pdiff_exhale_stable)
     return true;
 }
 
+bool PRINT(test_Paw_exhale_stable)
+    if (!TEST(valve_inhale())) return false; // HW failure
+    abs_Q_Lpm = 0;
+    if (!TEST(valve_exhale())) return false; // HW failure
+    for (uint32_t t_ms=get_time_ms(); t_ms < 3000 ; t_ms=wait_ms(10)) {
+        if (!(TEST_FLT_EQUALS(0.f, read_Paw_cmH2O()))) {
+            return false; // unexpected variation
+        }
+    }
+    return true;
+}
+
 bool PRINT(test_Pdiff_exhale_decrease)
     for (float start = -100.f; start <= 100.f ; start += 40.f) { // magnitude decrease is independant from start
         for (uint32_t poll_ms=1; poll_ms < 20 ; poll_ms+=1) { // magnitude decrease is independant from polling rate
             if (!TEST(valve_inhale())) return false; // HW failure
-            nonzero_abs_Q_Lpm = abs_Q_Lpm = fabsf(start);
+            nonzero_abs_Q_Lpm = abs_Q_Lpm = -fabsf(start);
             if (!TEST(valve_exhale())) return false; // HW failure
 
-            const float last  = read_Pdiff_Lpm();
-            if (!(TEST_FLT_EQUALS(start, last))) return false;
+            float last = read_Pdiff_Lpm();
+            if (!(TEST_FLT_EQUALS(-fabsf(start), last))) return false;
 
             // TODO More meaningful test related to RCM-SW to be defined
-            uint32_t t_ms     = get_time_ms();
-            uint32_t t_2_ms   = 0;
-            uint32_t t_4_ms   = 0;
-            uint32_t t_10_ms  = 0;
-            uint32_t t_100_ms = 0;
-            uint32_t stop_ms  = t_ms+3000;
-            for (; t_ms < stop_ms ; t_ms=wait_ms(poll_ms)) {
-                const float current = read_Pdiff_Lpm();
-                if (!(TEST_RANGE(0.f, current, last))) return false; // same sign, no increase
-                if (!t_2_ms   && fabsf(current) < fabsf(start)/2  ) t_2_ms   = get_time_ms();
-                if (!t_4_ms   && fabsf(current) < fabsf(start)/4  ) t_4_ms   = get_time_ms();
-                if (!t_10_ms  && fabsf(current) < fabsf(start)/10 ) t_10_ms  = get_time_ms();
-                if (!t_100_ms && fabsf(current) < fabsf(start)/100) t_100_ms = get_time_ms();
-            }
-            //! \warning low polling rate may make this test fail
-            if (!(TEST_FLT_EQUALS(1.f, (t_2_ms -t_ms)/(t_4_ms  -t_2_ms )) &&
-                  TEST_FLT_EQUALS(1.f, (t_10_ms-t_ms)/(t_100_ms-t_10_ms)))) {
+            wait_ms(1000);
+            last = read_Pdiff_Lpm();
+            if (!(TEST_FLT_EQUALS(0.f, last))) {
                 return false;
             }
         }

@@ -12,7 +12,6 @@
 #include <string.h>
 
 //Recovid include
-#include "unit_tests.h"
 #include "sensing.h"
 #include "alarms.h"
 #include "controller.h"

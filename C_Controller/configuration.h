@@ -16,7 +16,7 @@ extern int BAVU_VALVE_RATIO;
 
 extern int EXHAL_VALVE_RATIO;
 
-extern int PATMO_VARIATION_MBAR;
+extern int PATMO_VARIATION_MBAR; // TODO Estimate required range to maintain precise measures and reliable alarms
 
 // ------------------------------------------------------------------------------------------------
 //! Dynamic configuration

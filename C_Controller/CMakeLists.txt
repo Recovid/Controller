@@ -94,7 +94,7 @@ add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} main.c)
 target_link_libraries(     ${EXECUTABLE} m lowlevel)
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
-add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} unit_tests.c tests/main.c)
+add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} tests/main.c)
 target_link_libraries(test_${EXECUTABLE} m lowlevel)
 
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})

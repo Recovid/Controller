@@ -127,3 +127,13 @@ bool update_alarms()
     }
     return false; // TODO
 }
+
+// ================================================================================================
+#ifndef NTESTS
+#define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
+
+bool PRINT(TEST_ALARMS)
+    return false; // TODO
+}
+
+#endif

@@ -16,6 +16,8 @@ float get_sensed_Vol_mL()   { return MAX(0.f,Vol_mL  ); }
 float get_sensed_VolM_Lpm() { return         VolM_Lpm ; }
 float get_sensed_P_cmH2O()  { return MAX(0.f,P_cmH2O ); }
 
+float get_sensed_PEP_cmH2O()  { return get_sensed_P_cmH2O(); } // TODO
+
 void sense_and_compute()
 {
     static unsigned long last_sense_ms = 0;
