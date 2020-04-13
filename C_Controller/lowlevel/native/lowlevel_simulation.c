@@ -236,11 +236,14 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
+static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
+static float nonzero_abs_Q_Lpm;
+
+static float last_Pdiff_change = 0.f;
+static uint32_t decrease_Pdiff_ms = 0; // to handle exponential decrease during exhalation independant from polling rate
+
 float read_Pdiff_Lpm()
 {
-    static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
-    static float nonzero_abs_Q_Lpm; // to handle exponential decrease during exhalation
-
     if (valve_state == Inhale) {
         abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
         if(abs_Q_Lpm != 0.) {
@@ -259,9 +262,13 @@ float read_Pdiff_Lpm()
     }
 }
 
+
+static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
+static float last_Paw_change = 0.f;
+static uint32_t decrease_Paw_ms = 0;
+
 float read_Paw_cmH2O()
 {
-    static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
     const float PEP_cmH2O = get_setting_PEP_cmH2O();
 
     if (valve_state == Inhale) {
@@ -293,3 +300,75 @@ int read_Battery_level()
 {
     return 2; // TODO simulate lower battery levels
 }
+
+// ================================================================================================
+#ifdef TESTS
+#define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
+
+bool PRINT(test_Pdiff_exhale_stable)
+    if (!TEST(valve_inhale())) return false; // HW failure
+    abs_Q_Lpm = 0;
+    if (!TEST(valve_exhale())) return false; // HW failure
+    for (uint32_t t_ms=get_time_ms(); t_ms < 3000 ; t_ms=wait_ms(10)) {
+        if (!(TEST_FLT_EQUALS(0.f, read_Pdiff_Lpm()))) {
+            return false; // unexpected variation
+        }
+    }
+    return true;
+}
+
+bool PRINT(test_Pdiff_exhale_decrease)
+    for (float start = -100.f; start <= 100.f ; start += 40.f) { // magnitude decrease is independant from start
+        for (uint32_t poll_ms=1; poll_ms < 20 ; poll_ms+=1) { // magnitude decrease is independant from polling rate
+            if (!TEST(valve_inhale())) return false; // HW failure
+            nonzero_abs_Q_Lpm = abs_Q_Lpm = fabsf(start);
+            if (!TEST(valve_exhale())) return false; // HW failure
+
+            const float last  = read_Pdiff_Lpm();
+            if (!(TEST_FLT_EQUALS(start, last))) return false;
+
+            // TODO More meaningful test related to RCM-SW to be defined
+            uint32_t t_ms     = get_time_ms();
+            uint32_t t_2_ms   = 0;
+            uint32_t t_4_ms   = 0;
+            uint32_t t_10_ms  = 0;
+            uint32_t t_100_ms = 0;
+            uint32_t stop_ms  = t_ms+3000;
+            for (; t_ms < stop_ms ; t_ms=wait_ms(poll_ms)) {
+                const float current = read_Pdiff_Lpm();
+                if (!(TEST_RANGE(0.f, current, last))) return false; // same sign, no increase
+                if (!t_2_ms   && fabsf(current) < fabsf(start)/2  ) t_2_ms   = get_time_ms();
+                if (!t_4_ms   && fabsf(current) < fabsf(start)/4  ) t_4_ms   = get_time_ms();
+                if (!t_10_ms  && fabsf(current) < fabsf(start)/10 ) t_10_ms  = get_time_ms();
+                if (!t_100_ms && fabsf(current) < fabsf(start)/100) t_100_ms = get_time_ms();
+            }
+            //! \warning low polling rate may make this test fail
+            if (!(TEST_FLT_EQUALS(1.f, (t_2_ms -t_ms)/(t_4_ms  -t_2_ms )) &&
+                  TEST_FLT_EQUALS(1.f, (t_10_ms-t_ms)/(t_100_ms-t_10_ms)))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool PRINT(test_Patmo_over_time)
+    float last_Patmo = 0.f;
+    for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
+        if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, read_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
+              TEST(last_Patmo != read_Patmo_mbar())))
+            return false;
+    }
+    return true;
+}
+
+bool PRINT(TEST_LOWLEVEL_SIMULATION)
+    return
+        test_Pdiff_exhale_stable() &&
+        test_Pdiff_exhale_decrease() &&
+        test_Patmo_over_time() &&
+        true;
+}
+
+#endif
+

@@ -12,9 +12,9 @@ static float VolM_Lpm = 0.f;
 static float P_cmH2O  = 0.f;
 static float Vol_mL   = 0.f;
 
-float get_sensed_Vol_mL()   { return fabsf(Vol_mL  ); }
-float get_sensed_VolM_Lpm() { return       VolM_Lpm ; }
-float get_sensed_P_cmH2O()  { return fabsf(P_cmH2O ); }
+float get_sensed_Vol_mL()   { return MAX(0.f,Vol_mL  ); }
+float get_sensed_VolM_Lpm() { return         VolM_Lpm ; }
+float get_sensed_P_cmH2O()  { return MAX(0.f,P_cmH2O ); }
 
 void sense_and_compute()
 {
@@ -32,6 +32,7 @@ void sense_and_compute()
 
     last_sense_ms = get_time_ms();
 }
+
 // ================================================================================================
 #ifdef TESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
@@ -45,7 +46,7 @@ bool PRINT(test_non_negative_sensing)
         true;
 }
 
-bool PRINT(test_sensing)
+bool PRINT(TEST_SENSING)
     return
         test_non_negative_sensing() &&
         true;

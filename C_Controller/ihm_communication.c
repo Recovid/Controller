@@ -410,8 +410,8 @@ bool PRINT(test_checked_EoI)
         TEST_FLT_EQUALS( 300.f , get_setting_VT_mL    ()) &&
         TEST_FLT_EQUALS(  30.f , get_setting_Vmax_Lpm ()) &&
         TEST_EQUALS    ( 600   , get_setting_Tinsu_ms ()) &&
-        TEST_FLT_EQUALS(   2.3f, get_setting_IoE_ratio()) &&
-        TEST_FLT_EQUALS(   0.4f, get_setting_EoI_ratio()) &&
+        TEST_FLT_EQUALS(   0.4f, get_setting_IoE_ratio()) &&
+        TEST_FLT_EQUALS(   2.3f, get_setting_EoI_ratio()) &&
         TEST_RANGE     (1390   , get_setting_Texp_ms  (), 1400) &&
         TEST_RANGE     ( 600   , get_setting_Tinspi_ms(),  610) &&
         TEST_RANGE     (   0   , get_setting_Tplat_ms (),   10) &&
@@ -427,7 +427,7 @@ bool PRINT(test_checked_VM)
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
         TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
-        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
+        TEST_FLT_EQUALS(  36.f, get_setting_Vmax_Lpm    ()) &&
         TEST_RANGE     ( 999  , get_setting_Tinsu_ms    (), 1000) && // due to Vmax rounding to floor
         TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
         TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
@@ -445,7 +445,7 @@ bool PRINT(test_checked_VT)
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
-        TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
+        TEST_FLT_EQUALS( 500.f, get_setting_VT_mL       ()) &&
         TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
         TEST_EQUALS    (1000  , get_setting_Tinsu_ms    ()) &&
         TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
@@ -462,7 +462,7 @@ bool PRINT(test_checked_FR)
     setting_EoI_ratio_x10 =  10;
     setting_FR_pm         = checked_FR_pm(30);
     return
-        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
+        TEST_FLT_EQUALS(  25.f, get_setting_FR_pm       ()) &&
         TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding
         TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
         TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
@@ -475,7 +475,7 @@ bool PRINT(test_checked_FR)
         true;
 }
 
-bool PRINT(test_ihm)
+bool PRINT(TEST_IHM)
     return
         test_non_default_settings() &&
         test_checked_EoI() &&
