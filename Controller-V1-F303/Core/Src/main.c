@@ -19,12 +19,14 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include <ihm_hardware.h>
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "controller.h"
+#include "ihm_communication.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +59,7 @@ DMA_HandleTypeDef hdma_tim8_ch4_trig_com;
 
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_uart4_rx;
 
 /* USER CODE BEGIN PV */
 
@@ -173,8 +176,28 @@ int main(void)
 //  motor_disable();
 //  printf("motor disabled\n");
 
+/*********** IHM INIT **************/
+init_ihm(0,0);
 
+/*************** IHM TEST **********************/
 
+/*
+    float pres = 0;
+    float deb =0;
+    float vol =0;
+
+    while(1){
+
+  	  pres= pres >100 ? 0  : pres+1;
+  	  deb= deb >50 ? -50 : deb+1;
+  	  vol= vol >500 ? 0 : vol+1;
+  	  HAL_Delay(1);
+  	  send_and_recv();
+  	  HAL_Delay(10);
+  	  send_DATA(pres, deb, vol, 0, 0);
+    }
+
+*/
 
   controller_run();
 
@@ -647,6 +670,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel2_IRQn);
+  /* DMA2_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
 
 }
 
