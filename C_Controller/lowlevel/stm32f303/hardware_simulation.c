@@ -135,7 +135,7 @@ static int motor_pos = 0;
 static int motor_dir = 0;
 static long motor_release_ms = -1;
 
-bool motor_press()
+bool motor_press(float VM_Lpm)
 {
     motor_release_ms = -1;
     motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
@@ -153,7 +153,7 @@ bool motor_stop()
     return true; // TODO simulate driver failure
 }
 
-bool motor_release()
+bool motor_release(uint32_t before_t_ms)
 {
     motor_release_ms = get_time_ms();
     motor_dir = -1;
@@ -164,7 +164,7 @@ bool motor_release()
     return true; // TODO simulate driver failure
 }
 
-bool motor_pep_move(int steps)
+bool motor_pep_move(float relative_move_cmH2O)
 {
     return false; // TODO
 }

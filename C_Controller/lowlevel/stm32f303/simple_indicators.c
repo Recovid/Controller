@@ -6,7 +6,7 @@
 #define LED_OnNucleo_GPIO_Port GPIOB
 
 
-void init_indicators() {
+bool init_indicators() {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -18,6 +18,7 @@ void init_indicators() {
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(LED_OnNucleo_GPIO_Port, &GPIO_InitStruct);
+    return true;
 }
 
 bool light_nucleo(OnOff val) {
