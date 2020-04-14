@@ -162,3 +162,7 @@ bool light_yellow(OnOff); //!< 4m visible leds
 bool light_red   (OnOff); //!< 4m visible leds
 bool light_green (OnOff); //!< 4m visible leds
 bool buzzer      (OnOff); //!< onboard
+
+#ifndef NTESTS
+bool TEST_LOWLEVEL_SIMULATION();
+#endif

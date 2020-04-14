@@ -62,8 +62,8 @@ endif()
 
 if(CMAKE_HOST_WIN32)
     set(EXE_EXT .exe)
-elseif(${TARGET} STREQUAL "stm32f303")
-#     set(EXE_EXT .${TARGET}.elf)
+elseif(NOT ${TARGET} STREQUAL "native")
+    set(EXE_EXT .${TARGET}.elf)
 endif()
 set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
