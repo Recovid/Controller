@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "motor.h"
 #include "sensors.h"
+#include "ihm_communication.h"
 
 #include <math.h>
 
@@ -34,6 +35,8 @@ void reporting_stop();
 // ------------------------------------------------------------
 // Bavu Motor
 // ------------------------------------------------------------
+
+//#define BOARDALONE
 
 #define USE_V2
 
@@ -95,7 +98,11 @@ static volatile bool  		_is_home;
 static uint16_t  bavu_motor_speed_table[6400];
 
 static void bavu_motor_home(uint16_t step_time_us);
+#ifndef BOARDALONE
 static bool bavu_motor_is_home() { return _is_home; }
+#else
+static bool bavu_motor_is_home() { return 1; }
+#endif
 
 
 
@@ -222,6 +229,7 @@ void controller_run() {
 
   motor_disable(&pep_motor);
 
+#ifndef BOARDALONE
 
 	printf("Scanning I2C bus\n");
 	sensors_scan(&hi2c1);
@@ -230,7 +238,7 @@ void controller_run() {
 		printf("I2C Error!!!\n");
 		while(true);
 	}
-
+#endif //BOARDALONE
 
 	printf("Press button to HOME bavu.\n");
 	wait_btn_clicked();
@@ -243,6 +251,7 @@ void controller_run() {
 
 //	motor_move(&bavu_motor, COMPRESS, 400, 4800);
 
+#ifndef BOARDALONE
 	sensors_start();
 
 	printf("Reading sensors\n");
@@ -252,6 +261,7 @@ void controller_run() {
 	}
 
 	sensors_stop();
+#endif //BOARDALONE
 
 	// Calibration
 
@@ -281,6 +291,12 @@ void controller_run() {
 	ctrl_state = CTRL_STOPPED;
 
 	reporting_start(100);
+
+#ifdef BOARDALONE
+	while (1) {
+		HAL_Delay(100);
+	}
+#endif //BOARDALONE
 	while (1) {
 //		reporting_start(100);
 		sensors_reset_volume();  	// Reset volume integrator
@@ -369,7 +385,9 @@ void controller_run() {
 		printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
 //*******************************************************************************************************//
 		// home will be set in EXTI interrupt handler. PWM will also be stopped.
+
 		while(!bavu_motor_is_home());
+
 		motor_stop(&bavu_motor);
 		//HAL_Delay(1000);
 		time = HAL_GetTick() - time;
@@ -569,8 +587,8 @@ void bavu_motor_home(uint16_t speed) {
 static uint8_t* SYNC="---START---\r\n";
 
 void reporting_start(uint32_t ms) {
-	HAL_UART_Transmit_IT(&huart4, SYNC, strlen((const char*)SYNC));
-
+	//HAL_UART_Transmit_IT(&huart4, SYNC, strlen((const char*)SYNC));
+	send_INIT("RIX-V2");
 	htim6.PeriodElapsedCallback=report_send;
 	htim6.Init.Period = ms*1000;
 	HAL_TIM_Base_Init(&htim6);
@@ -601,7 +619,8 @@ void report_send(TIM_HandleTypeDef* htim) {
 	data_buffer[11]= *ptr++;
 	data_buffer[12]= *ptr++;
 
-	HAL_UART_Transmit_IT(&huart4, data_buffer, 13);
+	//HAL_UART_Transmit_IT(&huart4, data_buffer, 13);
+	send_DATA(pressure, flow, volume, 0, 0);
 }
 
 void reporting_stop() {

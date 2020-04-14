@@ -49,7 +49,7 @@ bool send_ihm(const char* frame)
 {
     if (!frame || *frame=='\0') return 0;
     size_t len = strlen((char *) frame);
-    return HAL_UART_Transmit(&huart4, (unsigned char*)frame, len, 1000) == HAL_OK;
+    return HAL_UART_Transmit_IT(&huart4, (unsigned char*)frame, len) == HAL_OK;
 }
 
 int recv_ihm()

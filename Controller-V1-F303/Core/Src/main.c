@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include <ihm_hardware.h>
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -177,11 +176,10 @@ int main(void)
 //  printf("motor disabled\n");
 
 /*********** IHM INIT **************/
-init_ihm(0,0);
-
 /*************** IHM TEST **********************/
 
 /*
+    init_ihm(0,0);
     float pres = 0;
     float deb =0;
     float vol =0;
