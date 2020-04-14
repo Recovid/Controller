@@ -7,9 +7,11 @@ add_library(lowlevel STATIC
     stm32f3xx_it.c
 
     hardware_simulation.c
+    hardware_real.c
     hardware_serial.c
     simple_indicators.c
     flash.c
+    i2c.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
@@ -36,9 +38,10 @@ function(Setup_Programming_for)
             COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${exe}> ${HEX_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${exe}> ${BIN_FILE}
             COMMENT "Objcopy ${HEX_FILE}"
+			DEPENDS ${exe}
         )
 
-        add_custom_target("${exe}.binary" DEPENDS ${BIN_FILE})
+		add_custom_target("${exe}.binary" DEPENDS ${BIN_FILE})
 
         set(target_name "${exe}.flash")
         message("Created target ${target_name}")

@@ -41,6 +41,15 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
 
 set(REDEFINED_SYMBOLS
 	HAL_MspInit
+	HAL_I2C_MasterTxCpltCallback
+	HAL_I2C_ErrorCallback
+	HAL_I2C_MasterTxCpltCallback
+	HAL_I2C_MasterRxCpltCallback
+	DMA1_Channel1_IRQHandler
+	DMA1_Channel4_IRQHandler
+	DMA1_Channel5_IRQHandler
+	DMA1_Channel6_IRQHandler
+	DMA1_Channel7_IRQHandler
 	NMI_Handler
 	HardFault_Handler
 	MemManage_Handler

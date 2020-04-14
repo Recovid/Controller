@@ -12,6 +12,7 @@
 
 //Low-level include
 #include "lowlevel/include/lowlevel.h"
+#include "lowlevel/include/hardware_real.h"
 #ifndef WIN32
 //FreeRTOS Include
 #include <FreeRTOS.h>
@@ -44,6 +45,7 @@ int main(int argc, const char** argv)
     UNUSED(argc)
     UNUSED(argv)
 
+    init_hardware();
     init_ihm(IHM_MODE_SERIAL, 0, 0);
 #endif
 
