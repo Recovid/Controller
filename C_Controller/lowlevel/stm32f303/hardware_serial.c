@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "ifl_deque.h"
+#include "stm32f303xe.h"
 #include "stm32f3xx_ll_usart.h"
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_dma.h"
@@ -31,9 +32,53 @@
 #define DEFAULT_RX_LINE_TIMEOUT         (30)
 #define UART_RX_DMA_BUFFER_SIZE         (512)
 
-#define UART_COM_IHM                    (0)
+#define UART_COM_IHM                    	(0)
+#define UART_ID_MAX                     	(1)
 
-#define UART_ID_MAX                     (1)
+
+#define RASPI_CONNECTION
+
+#ifndef RASPI_CONNECTION
+
+#define UART_COM_IHM_INSTANCE                  USART2
+#define UART_COM_IHM_IRQ                       USART2_IRQn
+#define UART_COM_IHM_IRQHandler                USART2_IRQHandler
+#define UART_COM_IHM_CLK_ENABLE                __HAL_RCC_USART2_CLK_ENABLE
+
+#define UART_COM_IHM_DMA_ENABLE                __HAL_RCC_DMA1_CLK_ENABLE
+#define UART_COM_IHM_DMA_CHANNEL_TX            DMA1_Channel7
+#define UART_COM_IHM_DMA_CHANNEL_TX_IRQ        DMA1_Channel7_IRQn
+#define UART_COM_IHM_DMA_CHANNEL_TX_IRQHandler DMA1_Channel7_IRQHandler
+#define UART_COM_IHM_DMA_CHANNEL_RX            DMA1_Channel6
+#define UART_COM_IHM_DMA_CHANNEL_RX_IRQ        DMA1_Channel6_IRQn
+#define UART_COM_IHM_DMA_CHANNEL_RX_IRQHandler DMA1_Channel6_IRQHandler
+
+#define UART_COM_IHM_GPIO_BANK                 GPIOA
+#define UART_COM_IHM_ALTERNATE                 GPIO_AF7_USART2
+#define UART_COM_IHM_PIN                       GPIO_PIN_2|GPIO_PIN_3
+#define UART_COM_IHM_GPIO_CLK_ENABLE           __HAL_RCC_GPIOA_CLK_ENABLE
+
+
+#else
+
+#define UART_COM_IHM_INSTANCE                  UART4
+#define UART_COM_IHM_IRQ                       UART4_IRQn
+#define UART_COM_IHM_IRQHandler                UART4_IRQHandler
+#define UART_COM_IHM_CLK_ENABLE                __HAL_RCC_UART4_CLK_ENABLE
+
+#define UART_COM_IHM_DMA_ENABLE                __HAL_RCC_DMA2_CLK_ENABLE
+#define UART_COM_IHM_DMA_CHANNEL_TX            DMA2_Channel5
+#define UART_COM_IHM_DMA_CHANNEL_TX_IRQ        DMA2_Channel5_IRQn
+#define UART_COM_IHM_DMA_CHANNEL_TX_IRQHandler DMA2_Channel5_IRQHandler
+#define UART_COM_IHM_DMA_CHANNEL_RX            DMA2_Channel3
+#define UART_COM_IHM_DMA_CHANNEL_RX_IRQ        DMA2_Channel3_IRQn
+#define UART_COM_IHM_DMA_CHANNEL_RX_IRQHandler DMA2_Channel3_IRQHandler
+
+#define UART_COM_IHM_GPIO_BANK                 GPIOC
+#define UART_COM_IHM_ALTERNATE                 GPIO_AF5_UART4
+#define UART_COM_IHM_PIN                       GPIO_PIN_10|GPIO_PIN_11
+#define UART_COM_IHM_GPIO_CLK_ENABLE           __HAL_RCC_GPIOC_CLK_ENABLE
+#endif
 
 // --------------------------------------------------------------------------------------------------------------------
 // ----- local function macros
@@ -188,7 +233,7 @@ static ifl_hal_uart_result_t ifl_hal_uart_process_tx_data(uint8_t const id)
 /**
   * @brief This function handles Service UART global interrupt.
   */
-__attribute__((used))void USART2_IRQHandler(void)
+__attribute__((used))void UART_COM_IHM_IRQHandler(void)
 {
     if(LL_USART_IsActiveFlag_RTO(uart_object[UART_COM_IHM].husart.Instance))
     {
@@ -202,7 +247,7 @@ __attribute__((used))void USART2_IRQHandler(void)
 /**
   * @brief This function handles DMA stream for Service TX UART
   */
-__attribute__((used))void DMA1_Channel7_IRQHandler(void)
+__attribute__((used))void UART_COM_IHM_DMA_CHANNEL_TX_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&uart_object[UART_COM_IHM].hdma_usart_tx);
 }
@@ -210,7 +255,7 @@ __attribute__((used))void DMA1_Channel7_IRQHandler(void)
 /**
   * @brief This function handles DMA stream for Service RX UART
   */
-__attribute__((used))void DMA1_Channel6_IRQHandler(void)
+__attribute__((used))void UART_COM_IHM_DMA_CHANNEL_RX_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(&uart_object[UART_COM_IHM].hdma_usart_rx);
 }
@@ -318,22 +363,22 @@ int hardware_serial_init(const char * serial_port)
     IFL_DEQUE_INIT(&uart_object[UART_COM_IHM].uart_rx_buffer);
 
     // initialization of clocks
-    __HAL_RCC_USART2_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_DMA1_CLK_ENABLE();
+	UART_COM_IHM_CLK_ENABLE();
+	UART_COM_IHM_GPIO_CLK_ENABLE();
+    UART_COM_IHM_DMA_ENABLE();
 
     // initialization of TX pin
-    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pin = UART_COM_IHM_PIN;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    GPIO_InitStruct.Alternate = UART_COM_IHM_ALTERNATE;
+    HAL_GPIO_Init(UART_COM_IHM_GPIO_BANK, &GPIO_InitStruct);
 
-    uart_object[UART_COM_IHM].husart.Instance = USART2;
+    uart_object[UART_COM_IHM].husart.Instance = UART_COM_IHM_INSTANCE;
 
     // initialization of DMA for TX
-    uart_object[UART_COM_IHM].hdma_usart_tx.Instance = DMA1_Channel7;
+    uart_object[UART_COM_IHM].hdma_usart_tx.Instance = UART_COM_IHM_DMA_CHANNEL_TX;
     uart_object[UART_COM_IHM].hdma_usart_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
     uart_object[UART_COM_IHM].hdma_usart_tx.Init.PeriphInc = DMA_PINC_DISABLE;
     uart_object[UART_COM_IHM].hdma_usart_tx.Init.MemInc = DMA_MINC_ENABLE;
@@ -351,7 +396,7 @@ int hardware_serial_init(const char * serial_port)
     }
     __HAL_LINKDMA(&uart_object[UART_COM_IHM].husart, hdmatx, uart_object[UART_COM_IHM].hdma_usart_tx);
 
-    uart_object[UART_COM_IHM].hdma_usart_rx.Instance = DMA1_Channel6;
+    uart_object[UART_COM_IHM].hdma_usart_rx.Instance = UART_COM_IHM_DMA_CHANNEL_RX;
     uart_object[UART_COM_IHM].hdma_usart_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     uart_object[UART_COM_IHM].hdma_usart_rx.Init.PeriphInc = DMA_PINC_DISABLE;
     uart_object[UART_COM_IHM].hdma_usart_rx.Init.MemInc = DMA_MINC_ENABLE;
@@ -395,14 +440,15 @@ int hardware_serial_init(const char * serial_port)
         return IFL_HAL_UART_ERROR;
     }
 
-    HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0xf, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+    HAL_NVIC_SetPriority(UART_COM_IHM_DMA_CHANNEL_RX_IRQ, 0xf, 0);
+    HAL_NVIC_EnableIRQ(UART_COM_IHM_DMA_CHANNEL_RX_IRQ);
 
-    HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0xf, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+    HAL_NVIC_SetPriority(UART_COM_IHM_DMA_CHANNEL_TX_IRQ, 0xf, 0);
+    HAL_NVIC_EnableIRQ(UART_COM_IHM_DMA_CHANNEL_TX_IRQ);
 
-    HAL_NVIC_SetPriority(USART2_IRQn, 0xf, 0);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+    HAL_NVIC_SetPriority(UART_COM_IHM_IRQ, 0xf, 0);
+    HAL_NVIC_EnableIRQ(UART_COM_IHM_IRQ);
 
     return IFL_HAL_UART_SUCCESS;
 }
