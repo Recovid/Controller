@@ -32,7 +32,7 @@ void reporting_stop();
 
 
 // ------------------------------------------------------------
-// Motor
+// Bavu Motor
 // ------------------------------------------------------------
 
 #define USE_V2
@@ -45,17 +45,31 @@ void reporting_stop();
 #define STEP_PULSE			 	15
 #define HOME_SPEED				400				// HOMEE speed
 #define CALIBRATION_SPEED  (1./((STEPS_PER_REVOLUTION)*(200/360.0)))
-#endif
 
-#if defined(USE_V2)
+#define 	RELEASE	 		DIR_CCW
+#define 	COMPRESS	 	DIR_CW
+
+motor_handle_t bavu_motor = {
+		.tim 			= &htim17,
+		.channel	= TIM_CHANNEL_1,
+		.ena_port	= MOTOR_ENA_GPIO_Port,
+		.ena_pin 	= MOTOR_ENA_Pin,
+		.dir_port = MOTOR_DIR_GPIO_Port,
+		.dir_pin  = MOTOR_DIR_Pin
+};
+
+
+#elif defined(USE_V2)
+
 #define STEPS_PER_REVOLUTION 	(4000)   	// rev_steps*microsteps*reduction
 #define STEPS_PER_DEGREE		(STEPS_PER_REVOLUTION/360.)
 #define MAX_SPEED					120				// MAX speed = MIN step period
 #define EXHALE_SPEED			200				// RELEASE speed : release bag
 #define STEP_PULSE			 	3
 #define HOME_SPEED				400				// HOMEE speed
-#define CALIBRATION_SPEED  (1./((STEPS_PER_REVOLUTION)*(200/360.0)))
-#endif
+
+#define MAX_VOLUME_ANGLE	430
+#define CALIBRATION_SPEED  (1./((STEPS_PER_REVOLUTION)*(MAX_VOLUME_ANGLE/360.0)))
 
 
 #define 	RELEASE	 		DIR_CCW
@@ -66,10 +80,13 @@ motor_handle_t bavu_motor = {
 		.channel	= TIM_CHANNEL_1,
 		.ena_port	= MOTOR_ENA_GPIO_Port,
 		.ena_pin 	= MOTOR_ENA_Pin,
+		.ena_inverted = false,
 		.dir_port = MOTOR_DIR_GPIO_Port,
-		.dir_pin  = MOTOR_DIR_Pin
+		.dir_pin  = MOTOR_DIR_Pin,
+		.pulse_width_us= MOTOR_PULSE_WIDTH_US
 };
 
+#endif
 
 
 
@@ -81,15 +98,47 @@ static void bavu_motor_home(uint16_t step_time_us);
 static bool bavu_motor_is_home() { return _is_home; }
 
 
+
+// ------------------------------------------------------------
+// Pep Motor
+// ------------------------------------------------------------
+
+#define PEP_STEPS_PER_REVOLUTION 	(200)
+#define PEP_STEPS_PER_DEGREE			(STEPS_PER_REVOLUTION/360.)
+#define PEP_STEP_TIME_US					1000
+
+static motor_handle_t pep_motor = {
+		.tim 			= &htim3,
+		.channel	= TIM_CHANNEL_4,
+		.ena_port	= PEP_nENBL_GPIO_Port,
+		.ena_pin 	= PEP_nENBL_Pin,
+		.ena_inverted = false,
+		.dir_port = PEP_DIR_GPIO_Port,
+		.dir_pin  = PEP_DIR_Pin,
+		.pulse_width_us= 3//PEP_PULSE_WIDTH_US
+};
+
+#define PEP_INC	DIR_CW
+#define PEP_DEC	DIR_CCW
+
+// ------------------------------------------------------------
+// Pep Valve
+// ------------------------------------------------------------
+
+static void pep_valve_high();
+static void pep_valve_low();
+
+
+
 // ------------------------------------------------------------
 // Miscellaneous
 // ------------------------------------------------------------
 
 
 void wait_btn_clicked();
+#define INHALATION_FLOW_ARRAY_SIZE	400
 
-
-static float 							_inhalation_flow[400];		//  used as buffer for flow analysis and motor command computing
+static float 							_inhalation_flow[INHALATION_FLOW_ARRAY_SIZE];		//  used as buffer for flow analysis and motor command computing
 static volatile uint32_t 	_logging_index = 0;
 static volatile float 		_logging_time_step_sum = 0;
 
@@ -114,8 +163,8 @@ typedef enum {
 static controller_state_t 	ctrl_state;
 
 
-float Ti;				// inhaleTime
-float Va= 360; 	// Volume angle
+float 	Ti;		// inhaleTime
+float 	Va; 	// Volume angle
 
 
 int32_t calibration(float* A, float* B, uint8_t iterations);
@@ -136,13 +185,46 @@ void controller_run() {
 	init_time_us(&htim2);
 	start_time_us();
 
-  if(motor_init(&bavu_motor)) {
-  	printf("Failed to init motor");
+  if(!motor_init(&bavu_motor)) {
+  	printf("Failed to init bavu motor\n");
+  } else {
+  	printf("bavu motor initialized\n");
   }
+
+
+
+  // PEP Motor
+  // Set stepping: 16 microsteps
+  HAL_GPIO_WritePin(PEP_MODE0_GPIO_Port, PEP_MODE0_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(PEP_MODE0_GPIO_Port, PEP_MODE1_Pin, GPIO_PIN_SET);
+
+  // Set indexer mode
+  HAL_GPIO_WritePin(PEP_CONFIG_GPIO_Port, PEP_CONFIG_Pin, GPIO_PIN_SET);
+  // Activate
+  HAL_GPIO_WritePin(PEP_nSLEEP_GPIO_Port, PEP_nSLEEP_Pin, GPIO_PIN_SET);
+	HAL_Delay(10);
+
+
+  if(!motor_init(&pep_motor)) {
+  	printf("Failed to init pep motor\n");
+  } else {
+  	printf("pep motor initialized\n");
+  }
+
+
+  printf("Homing pep\n");
+
+	motor_enable(&pep_motor);
+  motor_run(&pep_motor, PEP_DEC, 100 );
+  while(HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin));
+
+  printf("Pep Homed\n");
+
+  motor_disable(&pep_motor);
+
 
 	printf("Scanning I2C bus\n");
 	sensors_scan(&hi2c1);
-
 
 	if(!sensors_init(&hi2c1)) {
 		printf("I2C Error!!!\n");
@@ -150,20 +232,31 @@ void controller_run() {
 	}
 
 
-	printf("Press button HOME.\n");
+	printf("Press button to HOME bavu.\n");
 	wait_btn_clicked();
+	motor_enable(&bavu_motor);
+	bavu_motor_home(HOME_SPEED);
+	printf("homed.\n");
+	motor_disable(&bavu_motor);
 
+
+
+//	motor_move(&bavu_motor, COMPRESS, 400, 4800);
 
 	sensors_start();
 
-//	printf("Reading sensors\n");
-//	while(true){
-//		HAL_Delay(250);
-//		printf("NPA : %lu / %d\n", sensors_get_last_presure_time_us(), (int16_t)(sensors_get_pressure()*100));
-//		printf("SDP : %lu / %d\n", sensors_get_last_flow_time_us(), (int16_t)(sensors_get_flow()*100));
-//	}
+	printf("Reading sensors\n");
+	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)==GPIO_PIN_SET){
+		HAL_Delay(250);
+		printf("NPA : %d    SDP: %d\n", (int16_t)(sensors_get_pressure()*100), (int16_t)(sensors_get_flow()*100));
+	}
+
+	sensors_stop();
 
 	// Calibration
+
+	Va= MAX_VOLUME_ANGLE;
+
 	calibration(&A_calibrated, &B_calibrated, 2);
 
 	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
@@ -296,6 +389,7 @@ void controller_run() {
 
 
 void flow_callback(float flow, uint32_t delta_t_us) {
+	if(_logging_index>=INHALATION_FLOW_ARRAY_SIZE) return;
 	_inhalation_flow[_logging_index] = flow/60.;  // in sls
 	_logging_time_step_sum += (float)delta_t_us/1000000;
 	++_logging_index;
@@ -453,6 +547,7 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
 
 
 void bavu_motor_home(uint16_t speed) {
+	printf("homing...\n");
 	if(HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin)==GPIO_PIN_RESET)	return;
 
 	// Move 10° inhalewise to make sure (almost) that we're on the right side of the switch !!
@@ -515,9 +610,8 @@ void reporting_stop() {
 
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if(GPIO_Pin==MOTOR_LIMIT_SW_B_Pin) {
-		_is_home=!HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
-
+	if(GPIO_Pin==MOTOR_LIMIT_SW_A_Pin || GPIO_Pin==MOTOR_LIMIT_SW_B_Pin) {
+		_is_home=HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin) || HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
 	}
 }
 

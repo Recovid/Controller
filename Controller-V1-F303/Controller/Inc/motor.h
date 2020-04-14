@@ -27,8 +27,11 @@ typedef struct {
 	uint32_t					 	channel;
 	GPIO_TypeDef* 			ena_port;
 	uint32_t 						ena_pin;
+	bool								ena_inverted;
 	GPIO_TypeDef* 			dir_port;
 	uint32_t 						dir_pin;
+	uint16_t						pulse_width_us;
+
 
 
 	volatile bool			_moving;

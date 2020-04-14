@@ -30,6 +30,8 @@ extern DMA_HandleTypeDef hdma_i2c1_tx;
 
 extern DMA_HandleTypeDef hdma_tim3_ch4_up;
 
+extern DMA_HandleTypeDef hdma_tim8_ch4_trig_com;
+
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
 
@@ -283,6 +285,35 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
   /* USER CODE END TIM8_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_TIM8_CLK_ENABLE();
+  
+    /* TIM8 DMA Init */
+    /* TIM8_CH4_TRIG_COM Init */
+    hdma_tim8_ch4_trig_com.Instance = DMA2_Channel2;
+    hdma_tim8_ch4_trig_com.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_tim8_ch4_trig_com.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_tim8_ch4_trig_com.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_tim8_ch4_trig_com.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_tim8_ch4_trig_com.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_tim8_ch4_trig_com.Init.Mode = DMA_NORMAL;
+    hdma_tim8_ch4_trig_com.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_tim8_ch4_trig_com) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* Several peripheral DMA handle pointers point to the same DMA handle.
+     Be aware that there is only one channel to perform all the requested DMAs. */
+    __HAL_LINKDMA(htim_base,hdma[TIM_DMA_ID_CC4],hdma_tim8_ch4_trig_com);
+    __HAL_LINKDMA(htim_base,hdma[TIM_DMA_ID_TRIGGER],hdma_tim8_ch4_trig_com);
+    __HAL_LINKDMA(htim_base,hdma[TIM_DMA_ID_COMMUTATION],hdma_tim8_ch4_trig_com);
+
+    /* TIM8 interrupt Init */
+    HAL_NVIC_SetPriority(TIM8_UP_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM8_UP_IRQn);
+    HAL_NVIC_SetPriority(TIM8_TRG_COM_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM8_TRG_COM_IRQn);
+    HAL_NVIC_SetPriority(TIM8_CC_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM8_CC_IRQn);
   /* USER CODE BEGIN TIM8_MspInit 1 */
 
   /* USER CODE END TIM8_MspInit 1 */
@@ -405,6 +436,16 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
   /* USER CODE END TIM8_MspDeInit 0 */
     /* Peripheral clock disable */
     __HAL_RCC_TIM8_CLK_DISABLE();
+
+    /* TIM8 DMA DeInit */
+    HAL_DMA_DeInit(htim_base->hdma[TIM_DMA_ID_CC4]);
+    HAL_DMA_DeInit(htim_base->hdma[TIM_DMA_ID_TRIGGER]);
+    HAL_DMA_DeInit(htim_base->hdma[TIM_DMA_ID_COMMUTATION]);
+
+    /* TIM8 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM8_UP_IRQn);
+    HAL_NVIC_DisableIRQ(TIM8_TRG_COM_IRQn);
+    HAL_NVIC_DisableIRQ(TIM8_CC_IRQn);
   /* USER CODE BEGIN TIM8_MspDeInit 1 */
 
   /* USER CODE END TIM8_MspDeInit 1 */

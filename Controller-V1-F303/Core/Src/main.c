@@ -24,8 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-//#include "controller.h"
-#include "motor.h"
+#include "controller.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +53,7 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim8;
 DMA_HandleTypeDef hdma_tim3_ch4_up;
+DMA_HandleTypeDef hdma_tim8_ch4_trig_com;
 
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
@@ -632,6 +632,7 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Channel3_IRQn interrupt configuration */
@@ -643,6 +644,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+  /* DMA2_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel2_IRQn);
 
 }
 
@@ -663,10 +667,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, PEP_VALVE_Pin|PEP_nRESET_Pin|MOTOR_DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, PEP_VALVE_Pin|PEP_nSLEEP_Pin|MOTOR_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, PEP_CONFIG_Pin|PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin 
+                          |PEP_MODE1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_PWM_GPIO_Port, MOTOR_PWM_Pin, GPIO_PIN_RESET);
@@ -680,8 +685,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PEP_VALVE_Pin PEP_nRESET_Pin MOTOR_DIR_Pin */
-  GPIO_InitStruct.Pin = PEP_VALVE_Pin|PEP_nRESET_Pin|MOTOR_DIR_Pin;
+  /*Configure GPIO pins : PEP_VALVE_Pin PEP_nSLEEP_Pin MOTOR_DIR_Pin */
+  GPIO_InitStruct.Pin = PEP_VALVE_Pin|PEP_nSLEEP_Pin|MOTOR_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -693,24 +698,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PEP_HOME_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PEP_nHOME_Pin */
-  GPIO_InitStruct.Pin = PEP_nHOME_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  /*Configure GPIO pins : PEP_CONFIG_Pin PEP_nENBL_Pin PEP_DIR_Pin PEP_MODE0_Pin 
+                           PEP_MODE1_Pin */
+  GPIO_InitStruct.Pin = PEP_CONFIG_Pin|PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin 
+                          |PEP_MODE1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(PEP_nHOME_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PEP_nFAULT_Pin */
   GPIO_InitStruct.Pin = PEP_nFAULT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PEP_nFAULT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PEP_nENBL_Pin PEP_DIR_Pin PEP_MODE0_Pin PEP_MODE1_Pin */
-  GPIO_InitStruct.Pin = PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin|PEP_MODE1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOTOR_PWM_Pin */
   GPIO_InitStruct.Pin = MOTOR_PWM_Pin;
@@ -733,9 +734,6 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(MOTOR_ENA_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 

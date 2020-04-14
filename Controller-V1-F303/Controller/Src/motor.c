@@ -14,15 +14,15 @@ static motor_handle_t* motors[NB_MOTORS] = { 0 };
 static motor_handle_t* get_motor_for_tim();
 
 
-static void step_callback(TIM_HandleTypeDef* 	tim);
-static void period_callback(TIM_HandleTypeDef* 	tim);
+void step_callback(TIM_HandleTypeDef* 	tim);
+void period_callback(TIM_HandleTypeDef* 	tim);
 
 
 bool motor_init(motor_handle_t* motor) {
 
 	int idx=0;
 	for(idx=0; idx<NB_MOTORS; ++idx) {
-		if(motors[idx]!=NULL) break;
+		if(motors[idx]==NULL) break;
 	}
 	if(idx==NB_MOTORS) return false;
 
@@ -30,13 +30,9 @@ bool motor_init(motor_handle_t* motor) {
 
 	motor->_moving= false;
 
-
-//  _tim->Instance->CCR1 = MOTOR_PULSE_WIDTH_US;
-
-
   TIM_OC_InitTypeDef sConfigOC = {0};
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = MOTOR_PULSE_WIDTH_US;
+  sConfigOC.Pulse = motor->pulse_width_us;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -53,11 +49,11 @@ bool motor_init(motor_handle_t* motor) {
 
 
 void motor_enable(motor_handle_t* motor) { 	// Enable motor
-	HAL_GPIO_WritePin(motor->ena_port, motor->ena_pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(motor->ena_port, motor->ena_pin, motor->ena_inverted?GPIO_PIN_RESET:GPIO_PIN_SET);
 }
 
 void motor_disable(motor_handle_t* motor) { 	// Disable motor
-	HAL_GPIO_WritePin(motor->ena_port, motor->ena_pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(motor->ena_port, motor->ena_pin, motor->ena_inverted?GPIO_PIN_SET:GPIO_PIN_RESET);
 }
 
 void motor_run(motor_handle_t* motor, motor_dir_t dir, uint16_t step_time_us) {
@@ -95,7 +91,7 @@ void motor_move_profile(motor_handle_t* motor, motor_dir_t dir, uint16_t* steps_
 	motor->_moving=true;
 	motor->tim->Init.Period = motor->_steps_profile[0];
   HAL_TIM_Base_Init(motor->tim);
-	HAL_TIM_DMABurst_MultiWriteStart(motor->tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)motor->_steps_profile[1], TIM_DMABURSTLENGTH_1TRANSFER, motor->_remaining_steps);
+	HAL_TIM_DMABurst_MultiWriteStart(motor->tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&motor->_steps_profile[1], TIM_DMABURSTLENGTH_1TRANSFER, motor->_remaining_steps);
 	HAL_TIM_PWM_Start(motor->tim, motor->channel);
 }
 
@@ -119,14 +115,14 @@ static motor_handle_t* get_motor_for_tim(TIM_HandleTypeDef* 	tim) {
 
 
 
-static void period_callback(TIM_HandleTypeDef* 	tim) {
+void period_callback(TIM_HandleTypeDef* 	tim) {
 	motor_handle_t* motor= get_motor_for_tim(tim);
 	if(motor==NULL) return;
 	motor->_moving=false;
 	HAL_TIM_Base_Stop_IT(motor->tim);
 }
 
-static void step_callback(TIM_HandleTypeDef* 	tim) {
+void step_callback(TIM_HandleTypeDef* 	tim) {
 	motor_handle_t* motor= get_motor_for_tim(tim);
 	if(motor==NULL) return;
 

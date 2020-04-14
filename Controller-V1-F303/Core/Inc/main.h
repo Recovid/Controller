@@ -77,11 +77,10 @@ void Error_Handler(void);
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_3
 #define DBG_RX_GPIO_Port GPIOA
-#define PEP_nRESET_Pin GPIO_PIN_5
-#define PEP_nRESET_GPIO_Port GPIOC
-#define PEP_nHOME_Pin GPIO_PIN_0
-#define PEP_nHOME_GPIO_Port GPIOB
-#define PEP_nHOME_EXTI_IRQn EXTI0_IRQn
+#define PEP_nSLEEP_Pin GPIO_PIN_5
+#define PEP_nSLEEP_GPIO_Port GPIOC
+#define PEP_CONFIG_Pin GPIO_PIN_0
+#define PEP_CONFIG_GPIO_Port GPIOB
 #define PEP_nFAULT_Pin GPIO_PIN_1
 #define PEP_nFAULT_GPIO_Port GPIOB
 #define PEP_nFAULT_EXTI_IRQn EXTI1_IRQn
