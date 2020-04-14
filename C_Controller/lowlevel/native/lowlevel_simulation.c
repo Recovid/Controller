@@ -188,7 +188,7 @@ bool motor_pep_move(float relative_move_cmH2O)
 
 
 static enum Valve { Inhale, Exhale } valve_state = Exhale;
-static long valve_exhale_ms = -1;
+static uint32_t valve_exhale_ms = 0;
 
 bool valve_exhale()
 {
@@ -217,36 +217,27 @@ float BAVU_V_mL()
 //! \remark a valve normally ensures that Q is always positive
 float BAVU_Q_Lpm()
 {
-    float piover2 = M_PI_2;
-    float ratio_motor = ((float)(motor_pos)/MOTOR_MAX);
-    float sinus = sinf(piover2 * ratio_motor);
-    const float Q_Lpm = sinus * BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
+    const float Q_Lpm = BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
     return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
 }
 
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
-static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
-static float nonzero_abs_Q_Lpm;
-
-static float last_Pdiff_change = 0.f;
-static uint32_t decrease_Pdiff_ms = 0; // to handle exponential decrease during exhalation independant from polling rate
+static float VTi_mL;
 
 float read_Pdiff_Lpm()
 {
     if (valve_state == Inhale) {
-        abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
-        if(abs_Q_Lpm != 0.) {
-            nonzero_abs_Q_Lpm = abs_Q_Lpm;
-        }
-        return abs_Q_Lpm;
+        return BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
     }
     else if (valve_state == Exhale) {
-
-        const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
-        nonzero_abs_Q_Lpm *= decrease;
-        return -nonzero_abs_Q_Lpm;
+#ifdef NTESTS
+        VTi_mL = get_setting_VT_mL(); // TODO save last get_sensed_Vol_mL()
+#endif
+        return valve_exhale_ms+LUNG_EXHALE_MS>get_time_ms() ?
+            -(60.f*VTi_mL/LUNG_EXHALE_MS)*(valve_exhale_ms+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
+            0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
     }
     else {
         return 0.;
@@ -296,11 +287,13 @@ int read_Battery_level()
 #ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
-bool PRINT(test_Pdiff_exhale_stable)
-    if (!TEST(valve_inhale())) return false; // HW failure
-    abs_Q_Lpm = 0;
+bool PRINT(test_Pdiff_inhale_stable)
     if (!TEST(valve_exhale())) return false; // HW failure
-    for (uint32_t t_ms=get_time_ms(); t_ms < 3000 ; t_ms=wait_ms(10)) {
+    wait_ms(LUNG_EXHALE_MS);
+    motor_stop();
+    if (!TEST(valve_inhale())) return false; // HW failure
+    for (int t=0; t<=3 ; t++) {
+        wait_ms(LUNG_EXHALE_MS/2);
         if (!(TEST_FLT_EQUALS(0.f, read_Pdiff_Lpm()))) {
             return false; // unexpected variation
         }
@@ -308,32 +301,23 @@ bool PRINT(test_Pdiff_exhale_stable)
     return true;
 }
 
-bool PRINT(test_Paw_exhale_stable)
-    if (!TEST(valve_inhale())) return false; // HW failure
-    abs_Q_Lpm = 0;
-    if (!TEST(valve_exhale())) return false; // HW failure
-    for (uint32_t t_ms=get_time_ms(); t_ms < 3000 ; t_ms=wait_ms(10)) {
-        if (!(TEST_FLT_EQUALS(0.f, read_Paw_cmH2O()))) {
-            return false; // unexpected variation
-        }
-    }
-    return true;
-}
-
-bool PRINT(test_Pdiff_exhale_decrease)
-    for (float start = -100.f; start <= 100.f ; start += 40.f) { // magnitude decrease is independant from start
-        for (uint32_t poll_ms=1; poll_ms < 20 ; poll_ms+=1) { // magnitude decrease is independant from polling rate
+bool PRINT(test_Pdiff_exhale_VTi)
+    for (float start = -600.f; start <= 0.f ; start += 100.f) { // decrease time is independant from VTi
+        for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // decrease is independant from polling rate
             if (!TEST(valve_inhale())) return false; // HW failure
-            nonzero_abs_Q_Lpm = abs_Q_Lpm = fabsf(start);
+            VTi_mL = fabsf(start);
             if (!TEST(valve_exhale())) return false; // HW failure
-
-            float last = read_Pdiff_Lpm();
-            if (!(TEST_RANGE(-fabsf(start), last, 1.f-fabsf(start)))) return false;
-
-            // TODO More meaningful test related to RCM-SW to be defined
-            wait_ms(1000);
-            last = read_Pdiff_Lpm();
-            if (!(TEST_FLT_EQUALS(0.f, last))) {
+            float VTe_mL = 0;
+            for (uint32_t t_ms=0; t_ms<1.1f*LUNG_EXHALE_MS; t_ms+=poll_ms) { // VTe takes less than 0.6s
+                const float VM0 = read_Pdiff_Lpm();
+                wait_ms(poll_ms);
+                const float VMt = read_Pdiff_Lpm();
+                const float VM = (VMt+VM0)/2.f;
+                VTe_mL += VM/60.f/*Lps*/ * poll_ms;
+            }
+            float last_VM = read_Pdiff_Lpm();
+            if (!(TEST_FLT_EQUALS(0.f, last_VM) &&
+                  TEST_FLT_EQUALS(0.f, VTi_mL+VTe_mL))) {
                 return false;
             }
         }
@@ -353,8 +337,8 @@ bool PRINT(test_Patmo_over_time)
 
 bool PRINT(TEST_LOWLEVEL_SIMULATION)
     return
-        test_Pdiff_exhale_stable() &&
-        test_Pdiff_exhale_decrease() &&
+        test_Pdiff_inhale_stable() &&
+        test_Pdiff_exhale_VTi() &&
         test_Patmo_over_time() &&
         true;
 }

@@ -9,6 +9,7 @@
 
 extern int LUNG_V_ML_MAX;
 extern int LUNG_COMPLIANCE; //!< dV_mL/dP_cmH2O \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
+extern int LUNG_EXHALE_MS;
 
 extern int BAVU_V_ML_MAX;
 extern int BAVU_Q_LPM_MAX;
