@@ -2,14 +2,14 @@
 
 #include "stm32f3xx_hal.h"
 
-#define LED_OnNucleo_Pin GPIO_PIN_3
-#define LED_OnNucleo_GPIO_Port GPIOB
+#define LED_OnNucleo_Pin GPIO_PIN_5
+#define LED_OnNucleo_GPIO_Port GPIOA
 
 
 bool init_indicators() {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
 
     // Configure On-board Nucleo Led
     HAL_GPIO_WritePin(LED_OnNucleo_GPIO_Port, LED_OnNucleo_Pin, GPIO_PIN_RESET);
