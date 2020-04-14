@@ -83,7 +83,9 @@ int main(int argc, const char** argv)
     failed += ! test_default_settings();
     failed += ! TEST_IHM();
     failed += ! TEST_SENSING();
+    #ifdef native
     failed += ! TEST_LOWLEVEL_SIMULATION();
+    #endif
     failed += ! TEST_ALARMS();
 
     if (failed)

@@ -107,8 +107,7 @@ bool send_INIT(const char* information);
 void send_and_recv();
 
 #ifndef NTESTS
-bool ihm_tests();
-bool test_ihm();
+bool TEST_IHM();
 #endif
 
 #endif // IHM_COMMUNICATION_H

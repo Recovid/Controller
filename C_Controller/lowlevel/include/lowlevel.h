@@ -89,3 +89,7 @@ float read_Patmo_mbar();
 //! \returns -1 if battery fails, 0 if battery is about to stop, 1 if battery is low, 2 is battery is high
 //! \warning specification still discussed
 int read_Battery_level();
+
+#ifndef NTEST
+bool TEST_LOWLEVEL_SIMULATION();
+#endif

@@ -5,4 +5,8 @@
 
 bool update_alarms();
 
+#ifndef NTEST
+bool TEST_ALARMS();
+#endif
+
 #endif // ALARMS_H
