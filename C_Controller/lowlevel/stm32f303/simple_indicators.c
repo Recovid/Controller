@@ -27,19 +27,19 @@ bool light_nucleo(OnOff val) {
 }
 
 bool light_yellow(OnOff val) {
-    // TODO:
+    assert(false); // TODO:
     // HAL_GPIO_WritePin(LED_OnNucleo_GPIO_Port, LED_OnNucleo_Pin, val == On ? GPIO_PIN_SET : GPIO_PIN_RESET);
     return true;
 }
 
 bool light_red(OnOff val) {
-    // TODO:
+    assert(false); // TODO:
     // HAL_GPIO_WritePin(LED_OnNucleo_GPIO_Port, LED_OnNucleo_Pin, val == On ? GPIO_PIN_SET : GPIO_PIN_RESET);
     return true;
 }
 
 bool buzzer(OnOff val) {
-    // TODO:
+    assert(false); // TODO:
     // HAL_GPIO_WritePin(LED_OnNucleo_GPIO_Port, LED_OnNucleo_Pin, val == On ? GPIO_PIN_SET : GPIO_PIN_RESET);
     return true;
 }

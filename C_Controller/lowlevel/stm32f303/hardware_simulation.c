@@ -13,7 +13,7 @@
 
 bool soft_reset()
 {
-    return true;
+    assert(false); // TODO:
 }
 
 void SystemClock_Config(void)
@@ -70,7 +70,7 @@ PUTCHAR_PROTOTYPE
     /* Place your implementation of fputc here */
     /* e.g. write a character to the USART2 and Loop until the end of transmission */
 
-    // TODO Implement UART1 for printf LOG
+    assert(false); // TODO: Implement UART1 for printf LOG
 
     return ch;
 }
@@ -268,5 +268,6 @@ float read_Patmo_mbar()
 
 int read_Battery_level()
 {
+    assert(false); // TODO:
     return 2; // TODO simulate lower battery levels
 }
