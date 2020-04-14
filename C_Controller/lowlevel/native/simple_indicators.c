@@ -20,7 +20,7 @@ bool blink() {
 }
 #endif
 
-void init_indicators() { }
+bool init_indicators() { return true; /* nothing to do */ }
 
 
 void printf_led(char const* name, OnOff val) {

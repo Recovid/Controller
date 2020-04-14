@@ -30,6 +30,7 @@ endif()
 set(LOWLEVEL_SOURCES
     lowlevel_simulation.c
     simple_indicators.c
+    flash.c
 )
 
 if(NOT CMAKE_HOST_WIN32)

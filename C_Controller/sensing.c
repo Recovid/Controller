@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lowlevel/include/lowlevel.h"
 #include "ihm_communication.h"
+
+#include "lowlevel/include/lowlevel.h"
 
 // DATA
 

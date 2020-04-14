@@ -148,8 +148,10 @@ static int motor_pos = 0;
 static int motor_dir = 0;
 static long motor_release_ms = -1;
 
-bool motor_press()
+bool motor_press(float VM_Lpm)
 {
+    UNUSED(VM_Lpm)
+
     motor_release_ms = -1;
     motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
     motor_pos = MIN(MOTOR_MAX, motor_pos+motor_dir); // TODO simulate lost steps in range
@@ -166,8 +168,10 @@ bool motor_stop()
     return true; // TODO simulate driver failure
 }
 
-bool motor_release()
+bool motor_release(uint32_t before_t_ms)
 {
+    UNUSED(before_t_ms)
+
     motor_release_ms = get_time_ms();
     motor_dir = -1;
     motor_pos = MAX(0, motor_pos+motor_dir); // TODO simulate lost steps in range
@@ -177,7 +181,7 @@ bool motor_release()
     return true; // TODO simulate driver failure
 }
 
-bool motor_pep_move(int steps)
+bool motor_pep_move(float relative_move_cmH2O)
 {
     return false; // TODO
 }
@@ -320,11 +324,11 @@ bool PRINT(test_Pdiff_exhale_decrease)
     for (float start = -100.f; start <= 100.f ; start += 40.f) { // magnitude decrease is independant from start
         for (uint32_t poll_ms=1; poll_ms < 20 ; poll_ms+=1) { // magnitude decrease is independant from polling rate
             if (!TEST(valve_inhale())) return false; // HW failure
-            nonzero_abs_Q_Lpm = abs_Q_Lpm = -fabsf(start);
+            nonzero_abs_Q_Lpm = abs_Q_Lpm = fabsf(start);
             if (!TEST(valve_exhale())) return false; // HW failure
 
             float last = read_Pdiff_Lpm();
-            if (!(TEST_FLT_EQUALS(-fabsf(start), last))) return false;
+            if (!(TEST_RANGE(-fabsf(start), last, 1.f-fabsf(start)))) return false;
 
             // TODO More meaningful test related to RCM-SW to be defined
             wait_ms(1000);

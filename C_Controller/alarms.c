@@ -1,5 +1,7 @@
 #include "alarms.h"
-#include "ihm_communication.h"
+
+#include "sensing.h" //  to use sensed values that depend on controller state
+#include "ihm_communication.h" // to send alarms
 
 // Pmax Alarm
 int pressureMax_startIdx = 0;

@@ -1,5 +1,3 @@
-#include <math.h>
-
 #include "controller.h"
 
 #include <stdlib.h>
@@ -17,7 +15,6 @@
 char init_str[INIT_STR_SIZE+1] = ""; // leaving space for off by 1 errors in code
 
 const char *get_init_str() { return init_str; }
-
 
 // RESP
 
@@ -98,13 +95,15 @@ int self_tests()
     check(&test_bits, 3, valve_exhale());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     for (int i=0; i<MOTOR_MAX*1.1; i++) {
-        check(&test_bits, 4, motor_release()); wait_ms(1);
+        check(&test_bits, 4, motor_release(get_time_ms()+900));
+        wait_ms(1000);
     }
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     for (int i=0; i<MOTOR_MAX*0.1; i++) {
-        check(&test_bits, 4, motor_press()); wait_ms(1); // start pos
+        check(&test_bits, 4, motor_press(get_setting_Vmax_Lpm()));
+        wait_ms(50); // start pos
     }
     printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 4, motor_stop());
@@ -124,13 +123,14 @@ int self_tests()
     return test_bits;
 }
 
+RespirationState state = Exhalation; // to make sure we start cycle at PEP
 
+RespirationState current_respiration_state() { return  state; }
 
-enum State { Insufflation, Plateau, Exhalation, ExhalationEnd } state = Insufflation;
 long respi_start_ms = -1;
 long state_start_ms = -1;
 
-void enter_state(enum State new)
+void enter_state(RespirationState new)
 {
     state = new;
     state_start_ms = get_time_ms();
@@ -141,7 +141,6 @@ void enter_state(enum State new)
 
 void cycle_respiration()
 {
-
     if (respi_start_ms==-1) enter_state(Insufflation);
 
     if (Insufflation == state) {
@@ -154,7 +153,7 @@ void cycle_respiration()
             Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Plateau);
         }
-        motor_press();
+        motor_press(get_setting_Vmax_Lpm());
     }
     else if (Plateau == state) {
         valve_inhale();
@@ -164,7 +163,7 @@ void cycle_respiration()
             || (state_start_ms + MAX(get_setting_Tplat_ms(),Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
             enter_state(Exhalation);
         }
-        motor_release();
+        motor_release(respi_start_ms+get_setting_T_ms());
     }
     else if (Exhalation == state) {
         valve_exhale();
@@ -181,6 +180,6 @@ void cycle_respiration()
             send_RESP(EoI_ratio, FR_pm, VTe_mL, VM_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
-        motor_release();
+        motor_release(respi_start_ms+get_setting_T_ms());
     }
 }

@@ -271,14 +271,14 @@ bool send_INIT(const char* information)
         && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
-bool process(char const** ppf, const char* field, int size, uint16_t* value, uint16_t(*checked)(uint16_t))
+bool process(char const** ppf, int index, const char* field, int size, uint16_t* value, uint16_t(*checked)(uint16_t))
 {
     if (strncmp(*ppf, field, strlen(field))!=0) return false;
 
     *ppf += strlen(field);
     uint16_t desired = atoi(*ppf);
     *value = checked ? (*checked)(desired) : desired;
-    return send_SET(field, size, *value);
+    return send_SET(field, size, *value) && save_value_async(index, *value);
 }
 
 #define PINS "PINS "
@@ -336,32 +336,32 @@ void send_and_recv()
         }
         else if ((pl = payload(frame, SET_))) {
             bool process_result =
-                process(&pl, VT___, VT____FMT, &setting_VT_mL         , checked_VT_mL        ) ||
-                process(&pl, FR___, FR____FMT, &setting_FR_pm         , checked_FR_pm        ) ||
-                process(&pl, VMAX_, VMAX__FMT, &setting_Vmax_Lpm      , checked_Vmax_Lpm     ) ||
-                process(&pl, EoI__, EoI___FMT, &setting_EoI_ratio_x10 , checked_EoI_ratio_x10) ||
-                process(&pl, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
-                process(&pl, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
-                process(&pl, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
-                process(&pl, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
-                process(&pl, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
-                process(&pl, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
-                process(&pl, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
+                process(&pl,  0, VT___, VT____FMT, &setting_VT_mL         , checked_VT_mL        ) ||
+                process(&pl,  1, FR___, FR____FMT, &setting_FR_pm         , checked_FR_pm        ) ||
+                process(&pl,  2, VMAX_, VMAX__FMT, &setting_Vmax_Lpm      , checked_Vmax_Lpm     ) ||
+                process(&pl,  3, EoI__, EoI___FMT, &setting_EoI_ratio_x10 , checked_EoI_ratio_x10) ||
+                process(&pl,  4, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
+                process(&pl, -1, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
+                process(&pl,  5, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
+                process(&pl,  6, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
+                process(&pl,  7, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
+                process(&pl,  8, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
+                process(&pl,  9, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
             UNUSED(process_result)
         }
         else if ((pl = payload(frame, PINS))) {
             uint16_t pause_ms = 0;
-            process(&pl, "", P_FMT, &pause_ms, NULL);
+            process(&pl, -1, "", P_FMT, &pause_ms, NULL);
             command_Tpins_ms = get_time_ms()+pause_ms;
         }
         else if ((pl = payload(frame, PEXP))) {
             uint16_t pause_ms = 0;
-            process(&pl, "", P_FMT, &pause_ms, NULL);
+            process(&pl, -1, "", P_FMT, &pause_ms, NULL);
             command_Tpexp_ms = get_time_ms()+pause_ms;
         }
         else if ((pl = payload(frame, PBIP))) {
             uint16_t pause_ms = 0;
-            process(&pl, "", P_FMT, &pause_ms, NULL);
+            process(&pl, -1, "", P_FMT, &pause_ms, NULL);
             command_Tpbip_ms = get_time_ms()+pause_ms;
         }
         else if ((pl = payload(frame, SRST))) {

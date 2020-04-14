@@ -1,23 +1,22 @@
 #include "platform.h"
 
+
+#include <stdio.h>
+#include <string.h>
+
+//High-level include
+#include "sensing.h"
+#include "alarms.h"
+#include "controller.h"
+#include "ihm_communication.h"
+
+//Low-level include
+#include "lowlevel/include/lowlevel.h"
 #ifndef WIN32
 //FreeRTOS Include
 #include <FreeRTOS.h>
 #include <task.h>
 #include <queue.h>
-#endif
-
-//STD include
-#include <stdio.h>
-#include <string.h>
-
-//Recovid include
-#include "sensing.h"
-#include "alarms.h"
-#include "controller.h"
-#include "ihm_communication.h"
-#include "lowlevel/include/lowlevel.h"
-#ifndef WIN32
 #include "tasks_recovid.h"
 #include "TaskSensing.h"
 #endif

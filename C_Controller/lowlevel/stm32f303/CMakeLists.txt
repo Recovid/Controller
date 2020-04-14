@@ -9,6 +9,7 @@ add_library(lowlevel STATIC
     hardware_simulation.c
     hardware_serial.c
     simple_indicators.c
+    flash.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
