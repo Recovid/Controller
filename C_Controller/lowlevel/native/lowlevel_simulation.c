@@ -144,40 +144,83 @@ int recv_ihm()
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
-static int motor_pos = 0;
-static int motor_dir = 0;
-static long motor_release_ms = -1;
+static uint16_t motor_pos = 0;
+static float    motor_speed_stepspms = 0.f;
+static uint32_t motor_move_from_t_ms = 0;
+
+uint16_t motor_position(float Vol_mL)
+{
+    return ((uint16_t)((float)MOTOR_MAX) * (Vol_mL / BAVU_V_ML_MAX)); // TODO use a home + sin motor_position()
+}
+
+float motor_volume_mL(float pos) // motor_Q_needs more precision than integer steps
+{
+    return BAVU_V_ML_MAX * (pos / ((float)MOTOR_MAX)); // TODO use inverse of motor_position()
+}
+
+float motor_speed_stepspms_at(uint16_t position, float VM_Lpm)
+{
+    UNUSED(position) // TODO use motor_position()
+    // TODO simulate VM_Lpm limiting ?
+    return ((float)MOTOR_MAX/*steps*/) / (BAVU_V_ML_MAX / (VM_Lpm/60.f/*mLpms*/));
+}
+
+float motor_Q_Lpm()
+{
+    float V0 = motor_volume_mL(motor_pos);
+    float Vt = 0.f;
+    if (motor_speed_stepspms > .0f) {
+        if (((uint16_t)motor_speed_stepspms) < (MOTOR_MAX-motor_pos)) {
+            Vt = motor_volume_mL(((float)motor_pos) + motor_speed_stepspms);
+        }
+        else {
+            Vt = motor_volume_mL(MOTOR_MAX); // max pos
+        }
+    }
+    else {
+        if ((0+motor_pos) > ((uint16_t)motor_speed_stepspms)) {
+            Vt = motor_volume_mL(((float)motor_pos) - motor_speed_stepspms);
+        }
+        else {
+            Vt = motor_volume_mL(0); // min pos
+        }
+    }
+    return ((Vt-V0/*ml*/)/*/ms*/)*60.f/*mL/ms*/;
+}
+
+void motor_move()
+{
+    if (motor_move_from_t_ms) {
+        motor_pos = MAX(0, MIN(MOTOR_MAX,
+            motor_pos+(motor_speed_stepspms*(get_time_ms()-motor_move_from_t_ms)))); // TODO simulate lost steps in range
+        //if (motor_pos/0xF) {
+        //    DEBUG_PRINTF("motor %X\n", motor_pos);
+        //}
+    }
+}
 
 bool motor_press(float VM_Lpm)
 {
-    UNUSED(VM_Lpm)
-
-    motor_release_ms = -1;
-    motor_dir = 1; // TODO simulate Vmax_Lpm limiting by determining the approriate speed/steps
-    motor_pos = MIN(MOTOR_MAX, motor_pos+motor_dir); // TODO simulate lost steps in range
-    //if (motor_pos/0xF) {
-    //    DEBUG_PRINTF("motor %X\n", motor_pos);
-    //}
+    motor_move();
+    motor_move_from_t_ms = get_time_ms();
+    motor_speed_stepspms = motor_speed_stepspms_at(motor_pos, VM_Lpm);
     return true; // TODO simulate driver failure
 }
 
 bool motor_stop()
 {
-    motor_release_ms = -1;
-    motor_dir = 0;
+    motor_move();
+    motor_move_from_t_ms = 0;
+    motor_speed_stepspms = 0.f;
     return true; // TODO simulate driver failure
 }
 
 bool motor_release(uint32_t before_t_ms)
 {
     UNUSED(before_t_ms)
-
-    motor_release_ms = get_time_ms();
-    motor_dir = -1;
-    motor_pos = MAX(0, motor_pos+motor_dir); // TODO simulate lost steps in range
-    //if (motor_pos/0xF) {
-    //    DEBUG_PRINTF("motor %X\n", motor_pos);
-    //}
+    motor_move();
+    motor_move_from_t_ms = get_time_ms();
+    motor_speed_stepspms = -((float)motor_pos) / before_t_ms; // TODO simulate moving away from home part of motor_position(Vol_mL)
     return true; // TODO simulate driver failure
 }
 
@@ -217,8 +260,8 @@ float BAVU_V_mL()
 //! \remark a valve normally ensures that Q is always positive
 float BAVU_Q_Lpm()
 {
-    const float Q_Lpm = BAVU_Q_LPM_MAX; // TODO simulate BAVU perforation
-    return Q_Lpm * (motor_dir > 0 ? 1. : BAVU_VALVE_RATIO);
+    const float Q_Lpm = MIN(BAVU_Q_LPM_MAX, motor_Q_Lpm()); // TODO simulate BAVU perforation
+    return Q_Lpm * (motor_speed_stepspms > 0.f ? 1. : BAVU_VALVE_RATIO);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -253,14 +296,14 @@ float read_Paw_cmH2O()
 {
     const float PEP_cmH2O = get_sensed_PEP_cmH2O();
     if (valve_state == Inhale) {
-        if (motor_dir > 0) {
+        if (motor_speed_stepspms > 0.f) {
             // Pressure augments as volume decreases according to PV=k ('loi des gaz parfait')
             // Pi=P0*V0/Vi
             Paw_cmH2O = PEP_cmH2O + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
         }
         else {
             // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
-            const float decrease = .6; // expf(- abs(get_time_ms()-motor_release_ms)/10.); // <1% after 50ms
+            const float decrease = .6;
             const float Pplat_cmH2O = PEP_cmH2O + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
             Paw_cmH2O = Pplat_cmH2O + (Paw_cmH2O-Pplat_cmH2O) * decrease;
         }
@@ -287,11 +330,44 @@ int read_Battery_level()
 #ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
-bool PRINT(test_Pdiff_inhale_stable)
+bool lung_at_rest()
+{
     if (!TEST(valve_exhale())) return false; // HW failure
-    wait_ms(LUNG_EXHALE_MS);
-    motor_stop();
-    if (!TEST(valve_inhale())) return false; // HW failure
+    wait_ms(LUNG_EXHALE_MS_MAX);
+    return true;
+}
+
+bool motor_at_home()
+{
+    if (!TEST(motor_release(100))) return false; // HW failure
+    wait_ms(100);
+    if (!TEST(motor_stop())) return false; // HW failure
+    return true;
+}
+
+bool PRINT(test_Pdiff_inhale_press)
+    for (float start = 100.f; start >= 0.f ; start -= 20.f) { // all range of insufflation flow
+        for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // insufflation flow is independant from polling rate
+            assert(lung_at_rest());
+            assert(valve_inhale());
+            assert(motor_at_home());
+            for (uint32_t t_ms=0; t_ms<=100; t_ms+=poll_ms) {
+                if (!(motor_press(start))) return false; // HW failure
+                wait_ms(poll_ms);
+                const float VMt = read_Pdiff_Lpm();
+                if (!(TEST_FLT_EQUALS(start, VMt))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool PRINT(test_Pdiff_inhale_stop)
+    assert(lung_at_rest());
+    if (!TEST(motor_stop())) return false; // HW failure
+    assert(valve_inhale());
     for (int t=0; t<=3 ; t++) {
         wait_ms(LUNG_EXHALE_MS/2);
         if (!(TEST_FLT_EQUALS(0.f, read_Pdiff_Lpm()))) {
@@ -304,11 +380,11 @@ bool PRINT(test_Pdiff_inhale_stable)
 bool PRINT(test_Pdiff_exhale_VTi)
     for (float start = -600.f; start <= 0.f ; start += 100.f) { // decrease time is independant from VTi
         for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // decrease is independant from polling rate
-            if (!TEST(valve_inhale())) return false; // HW failure
+            assert(valve_inhale());
             VTi_mL = fabsf(start);
             if (!TEST(valve_exhale())) return false; // HW failure
             float VTe_mL = 0;
-            for (uint32_t t_ms=0; t_ms<1.1f*LUNG_EXHALE_MS; t_ms+=poll_ms) { // VTe takes less than 0.6s
+            for (uint32_t t_ms=0; t_ms<LUNG_EXHALE_MS_MAX; t_ms+=poll_ms) { // VTe takes less than 0.6s
                 const float VM0 = read_Pdiff_Lpm();
                 wait_ms(poll_ms);
                 const float VMt = read_Pdiff_Lpm();
@@ -337,7 +413,8 @@ bool PRINT(test_Patmo_over_time)
 
 bool PRINT(TEST_LOWLEVEL_SIMULATION)
     return
-        test_Pdiff_inhale_stable() &&
+        test_Pdiff_inhale_press() &&
+        test_Pdiff_inhale_stop() &&
         test_Pdiff_exhale_VTi() &&
         test_Patmo_over_time() &&
         true;

@@ -47,7 +47,7 @@
 #define CHECK_RANGE(_min,_evaluated,_max) ((!!(((_min)<=(_evaluated)) && (_evaluated)<=(_max))) || \
   (DEBUG_PRINTF("Expected [" #_min ".." #_max "] " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))
 
-#define CHECK_FLT_EQUALS(_expected,_evaluated) TEST_RANGE((_expected)-.06f,(_evaluated),(_expected)+.06f)
+#define CHECK_FLT_EQUALS(_expected,_evaluated) CHECK_RANGE((_expected)-.06f,(_evaluated),(_expected)+.06f)
 
 #define CHECK_EQUALS(_expected,_evaluated) ((!!((_expected)==(_evaluated))) || \
   (DEBUG_PRINTF("Expected:" #_expected " " #_evaluated ":%.1f at:" __FILE__ "(%d)",(double)(_evaluated),__LINE__),false))

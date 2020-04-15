@@ -7,17 +7,17 @@
 //! Environment simulation
 //! \remark only for test purposes
 
-extern int LUNG_V_ML_MAX;
-extern int LUNG_COMPLIANCE; //!< dV_mL/dP_cmH2O \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
-extern int LUNG_EXHALE_MS;
+extern float    LUNG_V_ML_MAX;
+extern float    LUNG_COMPLIANCE; //!< dV_mL/dP_cmH2O \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
+extern uint32_t LUNG_EXHALE_MS;
+extern uint32_t LUNG_EXHALE_MS_MAX; //!< time after which 99% of air exceeding lung's volume at rest should be exhaled
 
-extern int BAVU_V_ML_MAX;
-extern int BAVU_Q_LPM_MAX;
-// To simulate BAVU 'anti-retour' valve perforation
-extern int BAVU_VALVE_RATIO;
+extern float    BAVU_V_ML_MAX;
+extern float    BAVU_Q_LPM_MAX;
+extern float    BAVU_VALVE_RATIO; //!< To simulate BAVU 'anti-retour' valve perforation
 
-extern int EXHAL_VALVE_RATIO;
+extern float    EXHAL_VALVE_RATIO;
 
-extern int PATMO_VARIATION_MBAR; // TODO Estimate required range to maintain precise measures and reliable alarms
+extern float    PATMO_VARIATION_MBAR; // TODO Estimate required range to maintain precise measures and reliable alarms
 
 #endif // CONFIGURATION_H
