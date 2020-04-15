@@ -37,8 +37,8 @@ static volatile float _current_volume;
 
 static volatile sensors_state_t _state;
 
-static volatile uint32_t _hyperfrish_sdp_time;
-static volatile uint32_t _hyperfrish_npa_time;
+static volatile uint16_t _hyperfrish_sdp_time;
+static volatile uint16_t _hyperfrish_npa_time;
 
 static void (*_flow_callback)(float flow, uint32_t delta_t_us);
 
@@ -206,7 +206,7 @@ void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			_hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
 			hyperfrish_sdp = get_time_us();
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-			_current_flow = ((float)dp_raw)/105.0;
+			_current_flow = -((float)dp_raw)/105.0;
 			_current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
 
 			if(_flow_callback != NULL) {
