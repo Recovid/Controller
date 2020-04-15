@@ -364,7 +364,7 @@ int hardware_serial_init(const char * serial_port)
 
     // initialization of clocks
 	UART_COM_IHM_CLK_ENABLE();
-	UART_COM_IHM_GPIO_CLK_ENABLE();
+//	UART_COM_IHM_GPIO_CLK_ENABLE();
     UART_COM_IHM_DMA_ENABLE();
 
     // initialization of TX pin

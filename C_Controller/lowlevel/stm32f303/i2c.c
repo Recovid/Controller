@@ -267,7 +267,7 @@ static HAL_StatusTypeDef MX_I2C1_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(SENSOR_SCL_GPIO_Port, &GPIO_InitStruct);
 
 
 

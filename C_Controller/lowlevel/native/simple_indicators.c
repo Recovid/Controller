@@ -42,7 +42,21 @@ bool light_red(OnOff new) {
     return true;
 }
 
-bool buzzer(OnOff new) {
-    printf_led("buzzer", new);
+bool buzzer_low(OnOff new) {
+    printf_led("buzzer low", new);
+    return true;
+}
+bool buzzer_medium(OnOff new) {
+    printf_led("buzzer medium", new);
+    return true;
+}
+
+bool buzzer_high(OnOff new) {
+    printf_led("buzzer high", new);
+    return true;
+}
+
+bool buzzer_front(OnOff new) {
+    printf_led("buzzer front", new);
     return true;
 }

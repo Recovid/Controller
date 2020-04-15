@@ -155,13 +155,17 @@ bool init_indicators();
 bool is_light_yellow_ok();
 bool is_light_red_ok();
 bool is_light_green_ok();
-bool is_buzzer_ok();
+bool is_buzzer_medium(OnOff);
+bool is_buzzer_high(OnOff);
+bool is_buzzer_low(OnOff);
 
 bool light_nucleo(OnOff); //!< on nucleo led
 bool light_yellow(OnOff); //!< 4m visible leds
 bool light_red   (OnOff); //!< 4m visible leds
 bool light_green (OnOff); //!< 4m visible leds
-bool buzzer      (OnOff); //!< onboard
+bool buzzer_medium(OnOff);
+bool buzzer_high(OnOff);
+bool buzzer_low(OnOff);
 
 #ifndef NTESTS
 bool TEST_LOWLEVEL_SIMULATION();
