@@ -57,6 +57,7 @@ DMA_HandleTypeDef hdma_tim3_ch4_up;
 
 UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_uart4_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -130,48 +131,6 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
-
-
-//  motor_config_t config = {
-//  		.tim 			= &htim17,
-//  		.channel	= TIM_CHANNEL_1,
-//  		.ena_port	= MOTOR_ENA_GPIO_Port,
-//  		.ena_pin 	= MOTOR_ENA_Pin,
-//  		.dir_port = MOTOR_DIR_GPIO_Port,
-//  		.dir_pin  = MOTOR_DIR_Pin
-//  };
-//
-//
-//  printf("motor initialized\n");
-//
-//  motor_init(&config);
-//
-//  printf("Press button to enable\n");
-//	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)==GPIO_PIN_SET);
-//	HAL_Delay(50);
-//	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)!=GPIO_PIN_RESET);
-//	HAL_Delay(50);
-//
-//
-//  motor_enable();
-//  printf("motor enabled\n");
-//
-//
-//  printf("Press button to compress\n");
-//	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)==GPIO_PIN_SET);
-//	HAL_Delay(50);
-//	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)!=GPIO_PIN_RESET);
-//	HAL_Delay(50);
-//
-//  motor_move(DIR_CW, 500, 500);
-//  printf("motor compressing\n");
-//
-//  HAL_Delay(5000);
-//
-//  motor_disable();
-//  printf("motor disabled\n");
-
-
 
 
   controller_run();
@@ -558,6 +517,7 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
@@ -575,6 +535,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+  /* DMA2_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
 
 }
 

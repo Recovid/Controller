@@ -8,6 +8,7 @@
 
 #include <math.h>
 
+#include "ihm_communication.h"
 
 
 extern UART_HandleTypeDef huart4;		// IHM
@@ -248,6 +249,31 @@ void controller_run() {
 //
 //
 //
+
+
+	printf("Press btn to start\n");
+	wait_btn_clicked();
+
+	A_calibrated= 1;
+	B_calibrated= 0.4;
+
+	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
+	Ti = 0.;
+	for(long t=0; t<steps; ++t) {
+		float d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
+		Ti += d;
+		printf("d=%ld\n", (uint32_t)(d));
+		bavu_motor_speed_table[t]= (uint32_t)d;
+	}
+	printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
+
+	motor_move_profile(&bavu_motor, COMPRESS, bavu_motor_speed_table, steps);
+
+
+	while(true);
+
+
+
 	printf("Scanning I2C bus\n");
 	sensors_scan(&hi2c1);
 
@@ -265,18 +291,6 @@ void controller_run() {
 
 
 
-////	reporting_start(200);
-//
-//	while(true);
-//
-//	printf("Reading sensors\n");
-//	while(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)==GPIO_PIN_SET){
-//		HAL_Delay(250);
-//		printf("NPA : %d    SDP: %d\n", (int16_t)(sensors_get_pressure()*100), (int16_t)(sensors_get_flow()*100));
-//	}
-//
-//	sensors_stop();
-
 	// Calibration
 
 	Va= MAX_VOLUME_ANGLE;
@@ -286,12 +300,12 @@ void controller_run() {
 //	A_calibrated= 1;
 //	B_calibrated= 0.4;
 
-	uint32_t Te= 1142; //millisecond
+	uint32_t Te= 2000; //millisecond
 
-	steps = 2855; //(uint32_t)(STEPS_PER_DEGREE * Va);
+	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
 	Ti = 0.;
 	for(long t=0; t<steps; ++t) {
-		float d = 200; //compte_motor_step_time(t, 1., CALIBRATION_SPEED);
+		float d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
 		Ti += d;
 		//printf("d=%ld\n", (uint32_t)(d));
 		bavu_motor_speed_table[t]= (uint32_t)d;
@@ -308,7 +322,6 @@ void controller_run() {
 	ctrl_state = CTRL_STOPPED;
 
 	while (1) {
-//		reporting_start(100);
 		sensors_reset_volume();  	// Reset volume integrator
 		ctrl_state= CTRL_INHALE;
 		printf("INHALE\n");
@@ -644,7 +657,8 @@ void report_send(TIM_HandleTypeDef* htim) {
 	data_buffer[11]= *ptr++;
 	data_buffer[12]= *ptr++;
 
-	HAL_UART_Transmit_IT(&huart4, data_buffer, 13);
+	//send_DATA(pressure, flow, volume, 0, 0);
+	HAL_UART_Transmit_DMA(&huart4, data_buffer, sizeof(data_buffer));
 }
 
 void reporting_stop() {
