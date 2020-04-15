@@ -86,27 +86,27 @@ int self_tests()
     // TODO test 'Arret imminent' ?
 
     printf("Buzzer low\n");
-    check(&test_bits, 1, buzzer_low      (On )); wait_ms(100);
+    check(&test_bits, 1, buzzer_low      (On )); wait_ms(1000);
     check(&test_bits, 1, buzzer_low      (Off)); // start pos
 
     printf("Buzzer medium\n");
-    check(&test_bits, 1, buzzer_medium      (On )); wait_ms(100);
+    check(&test_bits, 1, buzzer_medium      (On )); wait_ms(1000);
     check(&test_bits, 1, buzzer_medium      (Off)); // start pos
 
     printf("Buzzer high\n");
-    check(&test_bits, 1, buzzer_high      (On )); wait_ms(100);
+    check(&test_bits, 1, buzzer_high      (On )); wait_ms(1000);
     check(&test_bits, 1, buzzer_high      (Off)); // start pos
 
     printf("Red light\n");
-    check(&test_bits, 2, light_red   (On )); wait_ms(100);
+    check(&test_bits, 2, light_red   (On )); wait_ms(1000);
     check(&test_bits, 2, light_red   (Off)); // start pos
 
     printf("Yellow light\n");
-    check(&test_bits,  9, light_yellow(On )); wait_ms(100);
+    check(&test_bits,  9, light_yellow(On )); wait_ms(1000);
     check(&test_bits, 10, light_yellow(Off)); // start pos
 
     printf("Green light\n");
-    check(&test_bits,  9, light_green(On )); wait_ms(100);
+    check(&test_bits,  9, light_green(On )); wait_ms(1000);
     check(&test_bits, 10, light_green(Off)); // start pos
 
     check(&test_bits, 3, valve_exhale());
