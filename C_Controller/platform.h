@@ -66,4 +66,6 @@
 #define TEST(_predicate) ((!!(_predicate)) || \
   (STDERR_PRINTF("Failed:" #_predicate " at:" __FILE__ "(%d)",__LINE__),false))
 
+#define TEST_ASSUME(_predicate) if (!TEST(_predicate)) return false
+
 #endif // PLATFORM_H

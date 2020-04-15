@@ -25,6 +25,11 @@
 
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
+bool PRINT(test_assume_failure_not_detected)
+    TEST_ASSUME(false);
+    return true;
+}
+
 bool PRINT(test_failure_not_detected)
     return (!(
         !TEST_RANGE(0      , -1   , INT_MAX) &&
@@ -79,6 +84,7 @@ int main(int argc, const char** argv)
 {
     STDERR_PRINT("Start unit tests");
     int failed = 0;
+    failed += ! !test_assume_failure_not_detected();
     failed += ! !test_failure_not_detected();
     failed += ! test_default_settings();
     failed += ! TEST_IHM();

@@ -224,11 +224,14 @@ bool motor_release(uint32_t before_t_ms)
     return true; // TODO simulate driver failure
 }
 
+// ------------------------------------------------------------------------------------------------
+
 bool motor_pep_move(float relative_move_cmH2O)
 {
     return false; // TODO
 }
 
+// ------------------------------------------------------------------------------------------------
 
 static enum Valve { Inhale, Exhale } valve_state = Exhale;
 static uint32_t valve_exhale_ms = 0;
@@ -249,11 +252,12 @@ bool valve_inhale()
     return true;
 }
 
+// ------------------------------------------------------------------------------------------------
+
 //! Usable BAVU volume based on motor position
-//! \remark BAVU deformation/elasticity is simulated with a cos to easily derive Q
 float BAVU_V_mL()
 {
-    return cosf(M_PI_2*(((float)motor_pos) /MOTOR_MAX)) * BAVU_V_ML_MAX; // TODO simulate BAVU perforation
+    return BAVU_V_ML_MAX * motor_pos / MOTOR_MAX; // TODO simulate BAVU perforation
 }
 
 //! Usable BAVU flow based on motor position and direction
@@ -261,7 +265,7 @@ float BAVU_V_mL()
 float BAVU_Q_Lpm()
 {
     const float Q_Lpm = MIN(BAVU_Q_LPM_MAX, motor_Q_Lpm()); // TODO simulate BAVU perforation
-    return Q_Lpm * (motor_speed_stepspms > 0.f ? 1. : BAVU_VALVE_RATIO);
+    return Q_Lpm * (motor_speed_stepspms > 0.f ? 1. : BAVU_VALVE_RATIO); // TODO simulate BAVU valve leak
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -287,6 +291,7 @@ float read_Pdiff_Lpm()
     }
 }
 
+// ------------------------------------------------------------------------------------------------
 
 static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
 static float last_Paw_change = 0.f;
@@ -294,32 +299,22 @@ static uint32_t decrease_Paw_ms = 0;
 
 float read_Paw_cmH2O()
 {
-    const float PEP_cmH2O = get_sensed_PEP_cmH2O();
-    if (valve_state == Inhale) {
-        if (motor_speed_stepspms > 0.f) {
-            // Pressure augments as volume decreases according to PV=k ('loi des gaz parfait')
-            // Pi=P0*V0/Vi
-            Paw_cmH2O = PEP_cmH2O + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
-        }
-        else {
-            // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
-            const float decrease = .6;
-            const float Pplat_cmH2O = PEP_cmH2O + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
-            Paw_cmH2O = Pplat_cmH2O + (Paw_cmH2O-Pplat_cmH2O) * decrease;
-        }
-    }
-    else if (valve_state == Exhale) {
-        const float decrease = .9; // abs(get_time_ms()-valve_exhale_ms)/100.; // <1% after 500ms
-        Paw_cmH2O = PEP_cmH2O + (Paw_cmH2O-PEP_cmH2O) * decrease;
-    }
+    const float Paw_cmH2O =
+        get_sensed_PEP_cmH2O()
+        + (valve_state==Exhale ? 0.f : (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE)
+        + fabsf(read_Pdiff_Lpm()) * AIRWAYS_RESISTANCE;
     assert(Paw_cmH2O >= 0);
     return Paw_cmH2O;
 }
+
+// ------------------------------------------------------------------------------------------------
 
 float read_Patmo_mbar()
 {
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }
+
+// ------------------------------------------------------------------------------------------------
 
 int read_Battery_level()
 {
@@ -332,68 +327,82 @@ int read_Battery_level()
 
 bool lung_at_rest()
 {
-    if (!TEST(valve_exhale())) return false; // HW failure
+    TEST_ASSUME(valve_exhale());
     wait_ms(LUNG_EXHALE_MS_MAX);
     return true;
 }
-
 bool motor_at_home()
 {
-    if (!TEST(motor_release(100))) return false; // HW failure
+    TEST_ASSUME(motor_release(100));
     wait_ms(100);
-    if (!TEST(motor_stop())) return false; // HW failure
+    TEST_ASSUME(motor_stop());
     return true;
 }
 
-bool PRINT(test_Pdiff_inhale_press)
-    for (float start = 100.f; start >= 0.f ; start -= 20.f) { // all range of insufflation flow
+bool PRINT(test_insufflate)
+    for (float start = 120.f; start >= 0.f ; start -= 20.f) { // all range of insufflation flow
         for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // insufflation flow is independant from polling rate
-            assert(lung_at_rest());
-            assert(valve_inhale());
-            assert(motor_at_home());
+            TEST_ASSUME(lung_at_rest ());
+            TEST_ASSUME(valve_inhale ());
+            TEST_ASSUME(motor_at_home());
             for (uint32_t t_ms=0; t_ms<=100; t_ms+=poll_ms) {
-                if (!(motor_press(start))) return false; // HW failure
+                TEST_ASSUME(motor_press(start));
                 wait_ms(poll_ms);
                 const float VMt = read_Pdiff_Lpm();
-                if (!(TEST_FLT_EQUALS(start, VMt))) {
-                    return false;
-                }
+                const float Paw = read_Paw_cmH2O();
+                const float PEP = get_sensed_PEP_cmH2O();
+                const float VTi = (BAVU_V_ML_MAX-BAVU_V_mL());
+                if (!(TEST_FLT_EQUALS(start, VMt))) return false; // unexpected VM
+                if (!(TEST_RANGE(PEP+VTi/LUNG_COMPLIANCE_MAX, Paw,
+                                 PEP+VTi/LUNG_COMPLIANCE    + fabsf(VMt)*AIRWAYS_RESISTANCE_MAX))) return false; // unexpected Paw
             }
         }
     }
     return true;
 }
 
-bool PRINT(test_Pdiff_inhale_stop)
-    assert(lung_at_rest());
-    if (!TEST(motor_stop())) return false; // HW failure
-    assert(valve_inhale());
-    for (int t=0; t<=3 ; t++) {
-        wait_ms(LUNG_EXHALE_MS/2);
-        if (!(TEST_FLT_EQUALS(0.f, read_Pdiff_Lpm()))) {
-            return false; // unexpected variation
+bool PRINT(test_plateau)
+    for (uint32_t start = 0; start <= LUNG_EXHALE_MS*2 ; start += 500) { // plateau is independant from motor_stop/release
+        TEST_ASSUME(lung_at_rest());
+        TEST_ASSUME(start ? motor_release(start) : motor_stop());
+        TEST_ASSUME(valve_inhale());
+        for (int t=0; t<=3 ; t++) {
+            wait_ms(LUNG_EXHALE_MS/2);
+            const float VMt = read_Pdiff_Lpm();
+            const float Paw = read_Paw_cmH2O();
+            const float PEP = get_sensed_PEP_cmH2O();
+            const float VTi = (BAVU_V_ML_MAX-BAVU_V_mL());
+            if (!(TEST_FLT_EQUALS(0.f, VMt))) return false; // unexpected flow
+            if (!(TEST_RANGE(PEP+VTi/LUNG_COMPLIANCE_MAX, Paw,
+                             PEP+VTi/LUNG_COMPLIANCE    + fabsf(VMt)*AIRWAYS_RESISTANCE_MAX))) return false; // unexpected Paw
         }
     }
     return true;
 }
 
-bool PRINT(test_Pdiff_exhale_VTi)
+bool PRINT(test_exhale)
     for (float start = -600.f; start <= 0.f ; start += 100.f) { // decrease time is independant from VTi
         for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // decrease is independant from polling rate
-            assert(valve_inhale());
+            TEST_ASSUME(valve_inhale());
             VTi_mL = fabsf(start);
-            if (!TEST(valve_exhale())) return false; // HW failure
+            TEST_ASSUME(valve_exhale());
             float VTe_mL = 0;
             for (uint32_t t_ms=0; t_ms<LUNG_EXHALE_MS_MAX; t_ms+=poll_ms) { // VTe takes less than 0.6s
                 const float VM0 = read_Pdiff_Lpm();
                 wait_ms(poll_ms);
                 const float VMt = read_Pdiff_Lpm();
+                const float Paw = read_Paw_cmH2O();
+                const float PEP = get_sensed_PEP_cmH2O();
+                if (!(TEST_RANGE(PEP, Paw,
+                                 PEP+ fabsf(VMt)*AIRWAYS_RESISTANCE_MAX))) {
+                    return false; // unexpected Paw
+                }
                 const float VM = (VMt+VM0)/2.f;
                 VTe_mL += VM/60.f/*Lps*/ * poll_ms;
             }
             float last_VM = read_Pdiff_Lpm();
             if (!(TEST_FLT_EQUALS(0.f, last_VM) &&
-                  TEST_FLT_EQUALS(0.f, VTi_mL+VTe_mL))) {
+                  TEST_FLT_EQUALS(-VTi_mL, VTe_mL))) {
                 return false;
             }
         }
@@ -413,12 +422,11 @@ bool PRINT(test_Patmo_over_time)
 
 bool PRINT(TEST_LOWLEVEL_SIMULATION)
     return
-        test_Pdiff_inhale_press() &&
-        test_Pdiff_inhale_stop() &&
-        test_Pdiff_exhale_VTi() &&
+        test_insufflate() &&
+        test_plateau() &&
+        test_exhale() &&
         test_Patmo_over_time() &&
         true;
 }
 
 #endif
-
