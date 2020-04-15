@@ -1,6 +1,5 @@
 #include "platform.h"
 
-
 #include <stdio.h>
 #include <string.h>
 
@@ -72,7 +71,7 @@ int main(int argc, const char** argv)
     vTaskStartScheduler();
 #else
     // Deterministic simulation for test purposes
-    for (long t_ms=0; true; t_ms+=wait_ms(1)) { // 1kHz
+    for (uint32_t t_ms=0; true; t_ms=wait_ms(1)) { // 1kHz
         sense_and_compute();
         cycle_respiration();
         if (t_ms % 25) { // 40Hz

@@ -10,6 +10,8 @@
 typedef enum { IHM_MODE_FILE = 0, IHM_MODE_SERIAL, IHM_MODE_MAX, } ihm_mode_t;
 
 uint32_t get_time_ms();
+
+//! \returns get_time_ms()
 uint32_t wait_ms(uint32_t t_ms);
 
 //! Triggers a soft reset that will restart the Controller in a fresh state with the same memorised settings

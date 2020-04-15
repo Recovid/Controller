@@ -92,6 +92,7 @@ int main(int argc, const char** argv)
     #ifdef native
     failed += ! TEST_LOWLEVEL_SIMULATION();
     #endif
+    failed += ! TEST_CONTROLLER();
     failed += ! TEST_ALARMS();
 
     if (failed)
