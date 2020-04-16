@@ -191,11 +191,19 @@ float motor_Q_Lpm()
 void motor_move()
 {
     if (motor_move_from_t_ms) {
+        uint16_t last_motor_pos = motor_pos;
         motor_pos = MAX(0, MIN(MOTOR_MAX,
             motor_pos+(motor_speed_stepspms*(get_time_ms()-motor_move_from_t_ms)))); // TODO simulate lost steps in range
-        //if (motor_pos/0xF) {
-        //    DEBUG_PRINTF("motor %X\n", motor_pos);
-        //}
+
+        if (motor_pos!=last_motor_pos) {
+            switch (motor_pos) {
+            case 0*MOTOR_MAX/4: DEBUG_PRINT("  M: |"    ); break;
+            case 1*MOTOR_MAX/4: DEBUG_PRINT("  M: |-"   ); break;
+            case 2*MOTOR_MAX/4: DEBUG_PRINT("  M: |-:"  ); break;
+            case 3*MOTOR_MAX/4: DEBUG_PRINT("  M: |-:-" ); break;
+            case 4*MOTOR_MAX/4: DEBUG_PRINT("  M: |-:-|"); break;
+            }
+        }
     }
 }
 
@@ -220,7 +228,7 @@ bool motor_release(uint32_t before_t_ms)
     UNUSED(before_t_ms)
     motor_move();
     motor_move_from_t_ms = get_time_ms();
-    motor_speed_stepspms = -((float)motor_pos) / before_t_ms; // TODO simulate moving away from home part of motor_position(Vol_mL)
+    motor_speed_stepspms = -MAX(20, ((float)motor_pos) / before_t_ms-motor_move_from_t_ms); // TODO simulate moving away from home part of motor_position(Vol_mL)
     return true; // TODO simulate driver failure
 }
 
@@ -333,7 +341,7 @@ bool lung_at_rest()
 }
 bool motor_at_home()
 {
-    TEST_ASSUME(motor_release(100));
+    TEST_ASSUME(motor_release(get_time_ms()+250));
     wait_ms(100);
     TEST_ASSUME(motor_stop());
     return true;
@@ -364,7 +372,7 @@ bool PRINT(test_insufflate)
 bool PRINT(test_plateau)
     for (uint32_t start = 0; start <= LUNG_EXHALE_MS*2 ; start += 500) { // plateau is independant from motor_stop/release
         TEST_ASSUME(lung_at_rest());
-        TEST_ASSUME(start ? motor_release(start) : motor_stop());
+        TEST_ASSUME(start ? motor_release(get_time_ms()+start) : motor_stop());
         TEST_ASSUME(valve_inhale());
         for (int t=0; t<=3 ; t++) {
             wait_ms(LUNG_EXHALE_MS/2);

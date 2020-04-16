@@ -18,6 +18,7 @@ extern uint32_t LUNG_EXHALE_MS_MAX    ; //!< time after which 99% of air exceedi
 extern float    AIRWAYS_RESISTANCE    ; //!< cmH2O/Lpm \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
 extern float    AIRWAYS_RESISTANCE_MAX; //!< cmH2O/Lpm \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
 
+extern uint32_t BAVU_REST_MS          ;
 extern float    BAVU_V_ML_MAX         ;
 extern float    BAVU_Q_LPM_MAX        ; //!< due to BAVU perforation ?!
 extern float    BAVU_VALVE_RATIO      ; //!< To simulate BAVU 'anti-retour' valve perforation

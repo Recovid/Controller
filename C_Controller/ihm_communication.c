@@ -175,14 +175,14 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     {
         return false;
     }
-    replace_int_with_padding(frame, EoI_ratio * 10, 2, 10);
-    replace_int_with_padding(frame, FR_pm, 2, 10);
-    replace_int_with_padding(frame, VTe_mL, 3, 10);
-    replace_int_with_padding(frame, Pcrete_cmH2O, 2, 10);
+    replace_int_with_padding(frame, EoI_ratio*10    , 2, 10);
+    replace_int_with_padding(frame, FR_pm           , 2, 10);
+    replace_int_with_padding(frame, VTe_mL          , 3, 10);
+    replace_int_with_padding(frame, Pcrete_cmH2O    , 2, 10);
     *strchr(frame, '.') = sign(VM_Lpm);
-    replace_int_with_padding(frame, VM_Lpm, 2, 10);
-    replace_int_with_padding(frame, Pplat_cmH2O, 2, 10);
-    replace_int_with_padding(frame, PEP_cmH2O, 2, 10);
+    replace_int_with_padding(frame, VM_Lpm          , 2, 10);
+    replace_int_with_padding(frame, Pplat_cmH2O     , 2, 10);
+    replace_int_with_padding(frame, PEP_cmH2O       , 2, 10);
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
     return send(frame);
