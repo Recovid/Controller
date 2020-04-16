@@ -144,17 +144,18 @@ void enter_state(RespirationState new)
 #ifndef NDEBUG
     const char* current = NULL;
     switch (state) {
-    case Unknown        : current = "Unknown"        ; break;
     case Insufflation   : current = "Insufflation"   ; break;
     case Plateau        : current = "Plateau"        ; break;
     case Exhalation     : current = "Exhalation"     ; break;
     case ExhalationPause: current = "ExhalationPause"; break;
+    default             : current = "<unknown>"      ; break;
     }
     switch (new) {
     case Insufflation   : DEBUG_PRINTF(" %s -> Insufflation"   , current); break;
     case Plateau        : DEBUG_PRINTF(" %s -> Plateau"        , current); break;
     case Exhalation     : DEBUG_PRINTF(" %s -> Exhalation"     , current); break;
     case ExhalationPause: DEBUG_PRINTF(" %s -> ExhalationPause", current); break;
+    default             : DEBUG_PRINTF(" %s -> <unknown>"      , current); break;
     }
 #endif
     state = new;
@@ -181,9 +182,11 @@ void cycle_respiration()
     const float    Pmax  = get_setting_Pmax_cmH2O();
     const uint32_t Tplat = get_setting_Tplat_ms  ();
 //#endif
-    if (Unknown == state) { enter_state(Insufflation); }
-
-    if (Insufflation == state) {
+    if (Unknown == state) {
+        send_INIT(get_init_str());
+        enter_state(Insufflation);
+    }
+    else if (Insufflation == state) {
         valve_inhale();
         if (Pmax <= get_sensed_P_cmH2O()) {
             enter_state(Exhalation);
