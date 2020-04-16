@@ -2,6 +2,7 @@
 #define IHM_COMMUNICATION_H
 
 #include "platform.h"
+#include "struct_recovid.h"
 
 // ------------------------------------------------------------------------------------------------
 //! Public read-only access to settings coming from UI
@@ -100,6 +101,8 @@ bool send_DATA_X(float P, float VolM, float Vol, float Pplat, float PEP);
 bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP);
 
 bool send_INIT(const char* information);
+
+bool send_ALRM(enum alarm_type type);
 
 //! Send queued messages to IHM, then receive messages from IHM and process them including:
 //! - update controller settings and acknowledge modified value

@@ -4,14 +4,15 @@
 #include "platform.h"
 
 enum alarm_type {
-    NO_ALARM,
-    PMAX_ALARM, // Paw > max(Pmax, PEPs+10)
-    PMIN_ALARM, // Paw < max(Pmin, PEPs+2)
-    FR_ALARM, // Freq non correct ???
-    VOL_ALARM, //Volume non correct ????
-    HIGH_PEP_ALARM, // PEP < PEPs + 2
-    LOW_PEP_ALARM, // PEP > PEPs - 2
-    VTE_MIN_ALARM // VTe > VTeMini
+    NO_ALARM = 0,
+    PMAX_ALARM = 1 << 0, // Paw > max(Pmax, PEPs+10)
+    PMIN_ALARM = 1 << 1, // Paw < max(Pmin, PEPs+2)
+    VT_MIN_ALARM = 1 << 2, // VTe > VTeMini
+    FR_ALARM = 1 << 3, // Freq non correct ??? -> No longer used
+    VM_MIN_ALARM = 1 << 4, // VMe <= VMin
+    PEP_MAX_ALARM = 1 << 5, // PEP > PEPs - 2
+    PEP_MIN_ALARM = 1 << 6, // PEP < PEPs + 2
+    LOW_BATTERY_ALARM = 1 << 7
 };
 
 struct alarm {
