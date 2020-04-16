@@ -9,6 +9,7 @@
 #include "configuration.h"
 #include "lowlevel/include/lowlevel.h"
 #include "ihm_communication.h"
+#include "stm32f3xx_hal_rcc_ex.h"
 // ------------------------------------------------------------------------------------------------
 
 bool soft_reset()
@@ -48,9 +49,10 @@ void SystemClock_Config(void)
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
     {
     }
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2;
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
     PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
     PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+    PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
     }
@@ -102,10 +104,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOutputFile)
 {
     (void) ihm_mode; (void) pathInputFile; (void) pathOutputFile;
-    HAL_Init();
-
-    SystemClock_Config();
-
     return hardware_serial_init(NULL);
 }
 
@@ -210,53 +208,9 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
-float read_Pdiff_Lpm()
-{
-    static float abs_Q_Lpm = 10; // to handle exponential decrease during exhalation
-    static float nonzero_abs_Q_Lpm; // to handle exponential decrease during exhalation
 
-    if (valve_state == Inhale) {
-        abs_Q_Lpm = BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
-        if(abs_Q_Lpm != 0.) {
-            nonzero_abs_Q_Lpm = abs_Q_Lpm;
-        }
-        return abs_Q_Lpm;
-    }
-    else if (valve_state == Exhale) {
 
-        const float decrease = .99; // expf(- abs(get_time_ms()-valve_exhale_ms)/100.); // <1% after 500ms @ 20 FPS
-        nonzero_abs_Q_Lpm *= decrease;
-        return -nonzero_abs_Q_Lpm;
-    }
-    else {
-        return 0.;
-    }
-}
 
-float read_Paw_cmH2O()
-{
-    static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
-    // const float PEP_cmH2O = get_setting_PEP_cmH2O();
-
-    if (valve_state == Inhale) {
-        if (motor_dir > 0) {
-            // Pressure augments as volume decreases according to PV=k ('loi des gaz parfait')
-            // Pi=P0*V0/Vi
-            Paw_cmH2O = get_setting_PEP_cmH2O() + (4 * (BAVU_V_ML_MAX + LUNG_V_ML_MAX)/(BAVU_V_mL() + LUNG_V_ML_MAX));
-        }
-        else {
-            // Pressure exp. decreases due to lung compliance (volume augmentation) which depends on patient (and condition)
-            const float decrease = .6; // expf(- abs(get_time_ms()-motor_release_ms)/10.); // <1% after 50ms
-            const float Pplat_cmH2O = get_setting_PEP_cmH2O() + (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE;
-            Paw_cmH2O = Pplat_cmH2O + (Paw_cmH2O-Pplat_cmH2O) * decrease;
-        }
-    }
-    else if (valve_state == Exhale) {
-        const float decrease = .9; // abs(get_time_ms()-valve_exhale_ms)/100.; // <1% after 500ms
-        Paw_cmH2O = get_setting_PEP_cmH2O() + (Paw_cmH2O-get_setting_PEP_cmH2O()) * decrease;
-    }
-    return Paw_cmH2O;
-}
 
 float read_Patmo_mbar()
 {
