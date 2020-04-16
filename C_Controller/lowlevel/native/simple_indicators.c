@@ -32,6 +32,11 @@ bool light_nucleo(OnOff new) {
     return true;
 }
 
+bool light_green(OnOff new) {
+    printf_led("green", new);
+    return true;
+}
+
 bool light_yellow(OnOff new) {
     printf_led("yellow", new);
     return true;
