@@ -54,6 +54,7 @@ void sense_and_compute(RespirationState state)
         sent_DATA_ms = get_time_ms();
     }
 
+    last_state    = state;
     last_sense_ms = get_time_ms();
 }
 

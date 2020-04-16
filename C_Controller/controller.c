@@ -137,7 +137,7 @@ int self_tests()
     return test_bits;
 }
 
-RespirationState state = Insufflation;
+RespirationState state = Unknown;
 
 RespirationState current_respiration_state() { return state; }
 
@@ -180,6 +180,8 @@ void cycle_respiration()
     const float    Pmax  = get_setting_Pmax_cmH2O();
     const uint32_t Tplat = get_setting_Tplat_ms  ();
 //#endif
+    if (Unknown == state) { enter_state(Insufflation); }
+
     if (Insufflation == state) {
         valve_inhale();
         if (Pmax <= get_sensed_P_cmH2O()) {
