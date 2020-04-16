@@ -84,10 +84,10 @@ int main(int argc, const char** argv)
 {
     STDERR_PRINT("Start unit tests");
     int failed = 0;
+    failed += ! TEST_IHM(); //!< \warning fails at clock_ms > 0
     failed += ! !test_assume_failure_not_detected();
     failed += ! !test_failure_not_detected();
     failed += ! test_default_settings();
-    failed += ! TEST_IHM();
     failed += ! TEST_SENSING();
     #ifdef native
     failed += ! TEST_LOWLEVEL_SIMULATION();

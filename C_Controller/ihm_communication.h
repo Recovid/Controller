@@ -95,7 +95,8 @@ bool     is_soft_reset_asked ();
 // ------------------------------------------------------------------------------------------------
 //! Public interface to send event/data to the IHM and process read messages
 
-bool send_DATA(float P, float VolM, float Vol, float Pplat, float PEP);
+bool send_DATA(float P, float VolM, float Vol);
+bool send_DATA_X(float P, float VolM, float Vol, float Pplat, float PEP);
 bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP);
 
 bool send_INIT(const char* information);
