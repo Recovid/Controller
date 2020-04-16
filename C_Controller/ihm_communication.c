@@ -271,6 +271,28 @@ bool send_INIT(const char* information)
         && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
+#define ALRM "ALRM "
+
+bool send_ALRM(enum alarm_type type)
+{
+    char frame[MAX_FRAME+1] = "";
+    char* curr = frame;
+    strncpy(curr, ALRM, sizeof(ALRM) - 1);
+    curr += sizeof(ALRM) - 1;
+    *curr++ = '.';
+    *curr++ = '.';
+    strncpy(curr, CS8, sizeof(CS8) - 1);
+    curr += sizeof(CS8) - 1;
+    strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE) - 1);
+    curr += sizeof(CS8_VALUE) - 1;
+    *curr = '\0';
+
+    replace_int_with_padding(frame, (int)type, 2, 10);
+    replace_int_with_padding(frame, checksum8(frame), 2, 16);
+
+    return send(frame);
+}
+
 bool process(char const** ppf, int index, const char* field, int size, uint16_t* value, uint16_t(*checked)(uint16_t))
 {
     if (strncmp(*ppf, field, strlen(field))!=0) return false;
