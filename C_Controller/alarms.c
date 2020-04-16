@@ -301,7 +301,7 @@ static bool PRINT(test_alarm_vm_min_off_disc)
 
 static bool PRINT(test_alarm_pep_max_on)
     PEP_startIdx = 0;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     update_alarms();
@@ -310,7 +310,7 @@ static bool PRINT(test_alarm_pep_max_on)
 
 static bool PRINT(test_alarm_pep_max_on_mod)
     PEP_startIdx = 4;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     update_alarms();
@@ -319,7 +319,7 @@ static bool PRINT(test_alarm_pep_max_on_mod)
 
 static bool PRINT(test_alarm_pep_max_off_disc)
     PEP_startIdx = 0;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
@@ -329,7 +329,7 @@ static bool PRINT(test_alarm_pep_max_off_disc)
 
 static bool PRINT(test_alarm_pep_min_on)
     PEP_startIdx = 0;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     update_alarms();
@@ -338,7 +338,7 @@ static bool PRINT(test_alarm_pep_min_on)
 
 static bool PRINT(test_alarm_pep_min_on_mod)
     PEP_startIdx = 4;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     update_alarms();
@@ -347,7 +347,7 @@ static bool PRINT(test_alarm_pep_min_on_mod)
 
 static bool PRINT(test_alarm_pep_min_off_disc)
     PEP_startIdx = 0;
-    for (int i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < (int)(sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0])); ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
