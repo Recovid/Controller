@@ -221,7 +221,7 @@ void cycle_respiration()
             VTe_mL    = get_sensed_VTe_mL();
             // TODO ...
 
-            send_RESP(EoI_ratio, FR_pm, VTe_mL, VM_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
+            send_RESP(EoI_ratio, FR_pm, -VTe_mL, VM_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
         motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
