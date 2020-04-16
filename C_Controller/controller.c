@@ -229,7 +229,7 @@ bool PRINT(test_nominal_cycle)
 //    for (Pmax = 65; Pmax >= 50; Pmax -=  5) {
 //    for (Tplat=100; Tplat<=300; Tplat+=100) {
     for (uint32_t t_ms=0; t_ms<10*get_setting_T_ms(); t_ms=wait_ms(1)) { // 1kHz
-        sense_and_compute();
+        sense_and_compute(current_respiration_state());
         cycle_respiration();
         uint32_t t = t_ms % get_setting_T_ms();
         if (t<get_setting_Tinsu_ms()

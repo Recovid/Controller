@@ -18,6 +18,6 @@ void TaskSensing(void* task_param)  // This is a task.
   while (true) // A Task shall never return or exit.
   {
     sleepPeriodic(task);
-    sense_and_compute();
+    sense_and_compute(current_respiration_state());
   }
 }
