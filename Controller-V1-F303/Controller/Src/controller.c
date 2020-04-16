@@ -17,7 +17,7 @@ extern TIM_HandleTypeDef htim2;			// MOTOR_STEP
 extern TIM_HandleTypeDef htim3;			// PEP_STEP
 extern TIM_HandleTypeDef htim4;			// us timer
 
-extern TIM_HandleTypeDef htim17;			// Sensor_reporting
+extern TIM_HandleTypeDef htim15;			// Sensor_reporting
 
 
 
@@ -65,7 +65,7 @@ motor_handle_t bavu_motor = {
 #define STEPS_PER_REVOLUTION 	(4000)   	// rev_steps*microsteps*reduction
 #define STEPS_PER_DEGREE		(STEPS_PER_REVOLUTION/360.)
 #define MAX_SPEED					120				// MAX speed = MIN step period
-#define EXHALE_SPEED			150				// RELEASE speed : release bag
+#define EXHALE_SPEED			200				// RELEASE speed : release bag
 #define STEP_PULSE			 	3
 #define HOME_SPEED				400				// HOMEE speed
 
@@ -198,7 +198,13 @@ void controller_run() {
 
 	printf("Press button to HOME bavu.\n");
 	wait_btn_clicked();
+
+	// Compress 20° first.
 	motor_enable(&bavu_motor);
+	motor_move(&bavu_motor, COMPRESS, 200, (uint16_t) (STEPS_PER_REVOLUTION)*(20/360.0));
+
+	HAL_Delay(200);
+
 	bavu_motor_home(HOME_SPEED);
 	printf("homed.\n");
 
@@ -251,32 +257,28 @@ void controller_run() {
 //
 
 
-	printf("Press btn to start\n");
-	wait_btn_clicked();
-
-	A_calibrated= 1;
-	B_calibrated= 0.4;
-
-	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
-	Ti = 0.;
-	for(long t=0; t<steps; ++t) {
-		float d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
-		Ti += d;
-		printf("d=%ld\n", (uint32_t)(d));
-		bavu_motor_speed_table[t]= (uint32_t)d;
-	}
-	printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
-
-	motor_move_profile(&bavu_motor, COMPRESS, bavu_motor_speed_table, steps);
-
-
-	while(true);
-
+//	printf("Press btn to start\n");
+//	wait_btn_clicked();
+//
+//	Va = 430;
+//
+//	A_calibrated= 1;
+//	B_calibrated= 0.4;
+//
+//	steps = (uint32_t)(STEPS_PER_DEGREE * Va);
+//	Ti = 0.;
+//	for(long t=0; t<steps; ++t) {
+//		float d = compte_motor_step_time(t, 1., CALIBRATION_SPEED);
+//		Ti += d;
+//		bavu_motor_speed_table[t]= (uint32_t)d;
+//	}
+//	printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
+//
+//	motor_move_profile(&bavu_motor, COMPRESS, bavu_motor_speed_table, steps);
 
 
 	printf("Scanning I2C bus\n");
 	sensors_scan(&hi2c1);
-
 
 	if(!sensors_init(&hi2c1)) {
 		printf("I2C Error!!!\n");
@@ -286,19 +288,17 @@ void controller_run() {
 	sensors_start();
 	printf("Sensors started\n");
 
-	reporting_start(200);
+	reporting_start(100);
 	printf("Reporting started\n");
-
-
 
 	// Calibration
 
-	Va= MAX_VOLUME_ANGLE;
+	Va= 280; //MAX_VOLUME_ANGLE;
 
-	calibration(&A_calibrated, &B_calibrated, 2);
+//	calibration(&A_calibrated, &B_calibrated, 2);
 
-//	A_calibrated= 1;
-//	B_calibrated= 0.4;
+	A_calibrated= 3.577;
+	B_calibrated= -0.455;
 
 	uint32_t Te= 2000; //millisecond
 
@@ -398,13 +398,13 @@ void controller_run() {
 		printf("B = %ld\n", (int32_t)(1000*B_calibrated));
 
 		// Recompute motor steps
-//		Ti = 0.;
-//		for(long t=0; t<steps; ++t) {
-//			float d = compte_motor_step_time(t, flow_setpoint_slm/60., CALIBRATION_SPEED);
-//			Ti+=d;
-//			//printf("d=%ld\n", (uint32_t)(d));
-//			bavu_motor_speed_table[t]= (uint32_t)d;
-//		}
+		Ti = 0.;
+		for(long t=0; t<steps; ++t) {
+			float d = compte_motor_step_time(t, flow_setpoint_slm/60., CALIBRATION_SPEED);
+			Ti+=d;
+			//printf("d=%ld\n", (uint32_t)(d));
+			bavu_motor_speed_table[t]= (uint32_t)d;
+		}
 		printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
 //*******************************************************************************************************//
 		// home will be set in EXTI interrupt handler. PWM will also be stopped.
@@ -418,7 +418,7 @@ void controller_run() {
 		}
 
 		printf("Cycle is_done*********************\n");
-		printf("Press button to make a new one.\n");
+//		printf("Press button to make a new one.\n");
 //		reporting_stop();
 //		wait_btn_clicked();
 	}
@@ -594,12 +594,11 @@ void bavu_motor_home(uint16_t speed) {
 	printf("homing...\n");
 	if(bavu_is_home_A() && bavu_is_home_B()) return;
 
-	// Move 10° inhalewise to make sure (almost) that we're on the right side of the switch !!
-	uint16_t nb_steps= (uint16_t) (STEPS_PER_REVOLUTION)*(20/360.0);
-	motor_move(&bavu_motor, COMPRESS, HOME_SPEED, nb_steps);
-	while(motor_is_moving(&bavu_motor));
-
-	HAL_Delay(200);
+//	// Move 10° inhalewise to make sure (almost) that we're on the right side of the switch !!
+//	uint16_t nb_steps= (uint16_t) (STEPS_PER_REVOLUTION)*(20/360.0);
+//	motor_move(&bavu_motor, COMPRESS, HOME_SPEED, nb_steps);
+//	while(motor_is_moving(&bavu_motor));
+//	HAL_Delay(200);
 
 	// Move exhalewise until the switch triggers
   _is_home = false;
@@ -620,11 +619,11 @@ void reporting_start(uint32_t ms) {
 	_report_period=ms;
 	_report_counter=ms;
 
-	htim17.PeriodElapsedCallback=report_send;
-	htim17.Init.Period = 1000;
-	htim17.PeriodElapsedCallback = report_send;
-	HAL_TIM_Base_Init(&htim17);
-	HAL_TIM_Base_Start_IT(&htim17);
+	htim15.PeriodElapsedCallback=report_send;
+	htim15.Init.Period = 1000;
+	htim15.PeriodElapsedCallback = report_send;
+	HAL_TIM_Base_Init(&htim15);
+	HAL_TIM_Base_Start_IT(&htim15);
 }
 
 static uint8_t data_buffer[13] = { '>', 0,0,0,0,0,0,0,0,0,0,0,0 };
@@ -662,7 +661,7 @@ void report_send(TIM_HandleTypeDef* htim) {
 }
 
 void reporting_stop() {
-	HAL_TIM_Base_Stop(&htim17);
+	HAL_TIM_Base_Stop(&htim15);
 }
 
 

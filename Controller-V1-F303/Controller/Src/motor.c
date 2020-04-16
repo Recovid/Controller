@@ -75,6 +75,8 @@ void motor_move(motor_handle_t* motor, motor_dir_t dir, uint16_t step_time_us, i
 	HAL_TIM_PWM_Start_IT(motor->tim, motor->channel);
 }
 
+uint32_t _dma_time;
+
 void motor_move_profile(motor_handle_t* motor, motor_dir_t dir, uint16_t* steps_profile_us, int32_t nb_steps) {
 	if(nb_steps==0) {
 		motor->_moving=false;
@@ -90,9 +92,10 @@ void motor_move_profile(motor_handle_t* motor, motor_dir_t dir, uint16_t* steps_
 	motor->_remaining_steps			= nb_steps-1;
 	motor->_moving=true;
 	motor->tim->Init.Period = motor->_steps_profile[0];
+	_dma_time= HAL_GetTick();
   HAL_TIM_Base_Init(motor->tim);
-	HAL_TIM_DMABurst_MultiWriteStart(motor->tim, TIM_DMABASE_ARR, TIM_DMA_CC1,	(uint32_t*)&motor->_steps_profile[1], TIM_DMABURSTLENGTH_1TRANSFER, motor->_remaining_steps);
-	HAL_TIM_PWM_Start_IT(motor->tim, motor->channel);
+	HAL_TIM_PWM_Start(motor->tim, motor->channel);
+	HAL_TIM_DMABurst_MultiWriteStart(motor->tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)steps_profile_us, TIM_DMABURSTLENGTH_1TRANSFER, motor->_remaining_steps);
 }
 
 
@@ -114,11 +117,11 @@ static motor_handle_t* get_motor_for_tim(TIM_HandleTypeDef* 	tim) {
 }
 
 
-
 void period_callback(TIM_HandleTypeDef* 	tim) {
 	motor_handle_t* motor= get_motor_for_tim(tim);
 	if(motor==NULL) return;
 	motor->_moving=false;
+	HAL_TIM_PWM_Stop(motor->tim, motor->channel);
 }
 
 void step_callback(TIM_HandleTypeDef* 	tim) {
@@ -127,12 +130,9 @@ void step_callback(TIM_HandleTypeDef* 	tim) {
 
 	if(motor->_remaining_steps>0) {
 		if(motor->_remaining_steps==1) {
-			motor->_moving=false;
 			HAL_TIM_PWM_Stop_IT(motor->tim, motor->channel);
+			motor->_moving=false;
 		} else {
-
-			printf("%u\n", (uint16_t)(motor->tim->Init.Period));
-
 			--motor->_remaining_steps;
 		}
 	}
