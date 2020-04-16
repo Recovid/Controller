@@ -288,7 +288,7 @@ float read_Pdiff_Lpm()
     }
     else if (valve_state == Exhale) {
 #ifdef NTESTS
-        VTi_mL = get_setting_VT_mL(); // TODO save last get_sensed_Vol_mL()
+        VTi_mL = get_setting_VT_mL(); // TODO save last get_sensed_VTi_mL()
 #endif
         return valve_exhale_ms+LUNG_EXHALE_MS>get_time_ms() ?
             -(60.f*VTi_mL/LUNG_EXHALE_MS)*(valve_exhale_ms+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :

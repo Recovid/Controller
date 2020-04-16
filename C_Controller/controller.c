@@ -147,10 +147,14 @@ long state_start_ms = 0;
 void enter_state(RespirationState new)
 {
     switch (new) {
-    case Insufflation   : DEBUG_PRINT(" -> Insufflation"   ); break;
-    case Plateau        : DEBUG_PRINT(" -> Plateau"        ); break;
-    case Exhalation     : DEBUG_PRINT(" -> Exhalation"     ); break;
-    case ExhalationPause: DEBUG_PRINT(" -> ExhalationPause"); break;
+    case Insufflation   :
+        DEBUG_PRINT(" -> Insufflation"   ); break;
+    case Plateau        :
+        DEBUG_PRINT(" -> Plateau"        ); break;
+    case Exhalation     :
+        DEBUG_PRINT(" -> Exhalation"     ); break;
+    case ExhalationPause:
+        DEBUG_PRINT(" -> ExhalationPause"); break;
     }
     state = new;
     state_start_ms = get_time_ms();
@@ -182,7 +186,7 @@ void cycle_respiration()
             Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Exhalation);
         }
-        if (VT <= get_sensed_Vol_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
+        if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
             Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Plateau);
         }
@@ -205,8 +209,8 @@ void cycle_respiration()
             uint32_t t_ms = get_time_ms();
 
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
-            FR_pm = 1./(((float)(t_ms-respi_start_ms))/1000/60);
-            VTe_mL = get_sensed_Vol_mL();
+            FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
+            VTe_mL    = get_sensed_VTe_mL();
             // TODO ...
 
             send_RESP(EoI_ratio, FR_pm, VTe_mL, VM_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
