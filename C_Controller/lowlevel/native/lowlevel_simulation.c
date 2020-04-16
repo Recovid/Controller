@@ -279,19 +279,24 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
-static float VTi_mL;
+static float saved_VTi_mL;
 
 float read_Pdiff_Lpm()
 {
     if (valve_state == Inhale) {
+//#ifdef NTESTS
+        saved_VTi_mL = 0;
+//#endif
         return BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
     }
     else if (valve_state == Exhale) {
-#ifdef NTESTS
-        VTi_mL = get_setting_VT_mL(); // TODO save last get_sensed_VTi_mL()
-#endif
+//#ifdef NTESTS
+        if (!saved_VTi_mL) {
+            saved_VTi_mL = get_sensed_VTi_mL();
+        }
+//#endif
         return valve_exhale_ms+LUNG_EXHALE_MS>get_time_ms() ?
-            -(60.f*VTi_mL/LUNG_EXHALE_MS)*(valve_exhale_ms+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
+            -(60.f*saved_VTi_mL/LUNG_EXHALE_MS)*(valve_exhale_ms+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
             0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
     }
     else {
@@ -392,7 +397,7 @@ bool PRINT(test_exhale)
     for (float start = -600.f; start <= 0.f ; start += 100.f) { // decrease time is independant from VTi
         for (uint32_t poll_ms=100; poll_ms >= 1 ; poll_ms/=10) { // decrease is independant from polling rate
             TEST_ASSUME(valve_inhale());
-            VTi_mL = fabsf(start);
+            saved_VTi_mL = fabsf(start);
             TEST_ASSUME(valve_exhale());
             float VTe_mL = 0;
             for (uint32_t t_ms=0; t_ms<LUNG_EXHALE_MS_MAX; t_ms+=poll_ms) { // VTe takes less than 0.6s
@@ -410,7 +415,7 @@ bool PRINT(test_exhale)
             }
             float last_VM = read_Pdiff_Lpm();
             if (!(TEST_FLT_EQUALS(0.f, last_VM) &&
-                  TEST_FLT_EQUALS(-VTi_mL, VTe_mL))) {
+                  TEST_FLT_EQUALS(-saved_VTi_mL, VTe_mL))) {
                 return false;
             }
         }

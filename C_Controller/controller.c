@@ -146,16 +146,22 @@ long state_start_ms = 0;
 
 void enter_state(RespirationState new)
 {
-    switch (new) {
-    case Insufflation   :
-        DEBUG_PRINT(" -> Insufflation"   ); break;
-    case Plateau        :
-        DEBUG_PRINT(" -> Plateau"        ); break;
-    case Exhalation     :
-        DEBUG_PRINT(" -> Exhalation"     ); break;
-    case ExhalationPause:
-        DEBUG_PRINT(" -> ExhalationPause"); break;
+#ifndef NDEBUG
+    const char* current = NULL;
+    switch (state) {
+    case Unknown        : current = "Unknown"        ; break;
+    case Insufflation   : current = "Insufflation"   ; break;
+    case Plateau        : current = "Plateau"        ; break;
+    case Exhalation     : current = "Exhalation"     ; break;
+    case ExhalationPause: current = "ExhalationPause"; break;
     }
+    switch (new) {
+    case Insufflation   : DEBUG_PRINTF(" %s -> Insufflation"   , current); break;
+    case Plateau        : DEBUG_PRINTF(" %s -> Plateau"        , current); break;
+    case Exhalation     : DEBUG_PRINTF(" %s -> Exhalation"     , current); break;
+    case ExhalationPause: DEBUG_PRINTF(" %s -> ExhalationPause", current); break;
+    }
+#endif
     state = new;
     state_start_ms = get_time_ms();
     if (state == Insufflation) {
