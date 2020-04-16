@@ -1,5 +1,9 @@
+#include "stm32f3xx.h"
+
 #include "i2c.h"
 #include "simple_indicators.h"
+
+void SystemClock_Config(void);
 
 int init_hardware()
 {

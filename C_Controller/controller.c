@@ -155,6 +155,7 @@ void enter_state(RespirationState new)
     case Plateau        : DEBUG_PRINTF(" %s -> Plateau"        , current); break;
     case Exhalation     : DEBUG_PRINTF(" %s -> Exhalation"     , current); break;
     case ExhalationPause: DEBUG_PRINTF(" %s -> ExhalationPause", current); break;
+    case Unknown: break;
     }
 #endif
     state = new;
@@ -163,6 +164,7 @@ void enter_state(RespirationState new)
         respi_start_ms = get_time_ms();
     }
 }
+
 
 // TODO
 //#ifndef NTESTS

@@ -8,8 +8,9 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define UNUSED(_expression) (void)_expression;
-
+#ifndef UNUSED
+# define UNUSED(_expression) (void)_expression;
+#endif
 #define STRINGIZE1(s) #s
 #define STRINGIZE(s) STRINGIZE1(s)
 
