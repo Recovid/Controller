@@ -1,4 +1,4 @@
-add_library(hal OBJECT
+add_library(hal STATIC
     stm32f3xx_nucleo.c
     syscalls.c
     sysmem.c

@@ -24,6 +24,11 @@ long wait_ms(long t_ms)
 {
   if(xTaskGetCurrentTaskHandle() != NULL)
     vTaskDelay(t_ms/portTICK_PERIOD_MS);
+#ifdef stm32f303
+  else {
+	HAL_Delay(t_ms*2/5);
+  }
+#endif
   return get_time_ms();
 }
 
