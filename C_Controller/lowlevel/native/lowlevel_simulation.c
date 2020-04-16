@@ -313,7 +313,7 @@ static uint32_t decrease_Paw_ms = 0;
 float read_Paw_cmH2O()
 {
     const float Paw_cmH2O =
-        get_sensed_PEP_cmH2O()
+        get_setting_PEP_cmH2O() // TODO loop back with get_sensed_PEP_cmH2O()
         + (valve_state==Exhale ? 0.f : (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE)
         + fabsf(read_Pdiff_Lpm()) * AIRWAYS_RESISTANCE;
     assert(Paw_cmH2O >= 0);

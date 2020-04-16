@@ -21,11 +21,6 @@ const char *get_init_str() { return init_str; }
 
 float EoI_ratio    = 0.f;
 float FR_pm        = 0.f;
-float VTe_mL       = 0.f;
-float VM_Lpm       = 0.f;
-float Pcrete_cmH2O = 0.f;
-float Pplat_cmH2O  = 0.f;
-float PEP_cmH2O    = 0.f;
 
 uint32_t Tpins_ms = 0;
 uint32_t Tpexp_ms = 0;
@@ -191,37 +186,31 @@ void cycle_respiration()
     if (Insufflation == state) {
         valve_inhale();
         if (Pmax <= get_sensed_P_cmH2O()) {
-            Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Exhalation);
         }
         if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
-            Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Plateau);
         }
         motor_press(VM);
     }
     else if (Plateau == state) {
         valve_inhale();
-        Pplat_cmH2O = get_sensed_P_cmH2O(); // TODO average
         if (Pmax <= get_sensed_P_cmH2O()
             || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
-            Pcrete_cmH2O = get_sensed_P_cmH2O();
             enter_state(Exhalation);
         }
         motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
     }
     else if (Exhalation == state) {
         valve_exhale();
-        PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average
         if ((respi_start_ms + MAX(T,Tpexp_ms)) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
             uint32_t t_ms = get_time_ms();
 
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
-            VTe_mL    = get_sensed_VTe_mL();
             // TODO ...
 
-            send_RESP(EoI_ratio, FR_pm, -VTe_mL, VM_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
+            send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
             enter_state(Insufflation);
         }
         motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around

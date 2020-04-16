@@ -166,12 +166,12 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     char frame[sizeof(respFrame)];
     strcpy(frame, respFrame);
 
-    if (!( CHECK_RANGE(   0, EoI_ratio  ,  100)
-        && CHECK_RANGE(   0, FR_pm      ,  100)
-        && CHECK_RANGE(   0, VTe_mL     , 1000)
-        && CHECK_RANGE(-100, VM_Lpm     ,  100)
-        && CHECK_RANGE(   0, Pplat_cmH2O,  100)
-        && CHECK_RANGE(   0, PEP_cmH2O  ,  100)))
+    if (!( CHECK_RANGE(   0, EoI_ratio*10,  100)
+        && CHECK_RANGE(   0, FR_pm       ,  100)
+        && CHECK_RANGE(   0, VTe_mL      , 1000)
+        && CHECK_RANGE(-100, VM_Lpm      ,  100)
+        && CHECK_RANGE(   0, Pplat_cmH2O ,  100)
+        && CHECK_RANGE(   0, PEP_cmH2O   ,  100)))
     {
         return false;
     }
