@@ -157,6 +157,19 @@ bool update_alarms()
     return true;
 }
 
+void trigger_alarms()
+{
+    uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
+
+    // min/max alarms
+    for (int i = 1; i <= 6; i++) {
+        if (newAlarms & (1 << i)) {
+            // TODO: trigger alarm (buzzer/led) acc. to priority
+            send_ALRM(1 << i);
+        }
+    }
+}
+
 // ================================================================================================
 #ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");

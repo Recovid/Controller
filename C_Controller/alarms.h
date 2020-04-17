@@ -5,6 +5,9 @@
 
 bool update_alarms();
 
+//! Trigger and send newly activated alarms
+void trigger_alarms();
+
 #ifndef NTESTS
 bool TEST_ALARMS();
 #endif

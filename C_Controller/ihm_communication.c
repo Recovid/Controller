@@ -321,6 +321,7 @@ bool send_ALRM(enum alarm_type type)
     curr += sizeof(CS8_VALUE) - 1;
     *curr = '\0';
 
+    // TODO: alarm type encoding
     replace_int_with_padding(frame, (int)type, 2, 10);
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
