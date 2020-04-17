@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\jeremy.quintin\Controller\C_Controller\lowlevel\native\lowlevel_simulation.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\jeremy.quintin\Controller\C_Controller\lowlevel\native\simple_indicators.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\jeremy.quintin\Controller\C_Controller\lowlevel\native\flash.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\jeremy.quintin\Controller\C_Controller\lowlevel\native\i2c.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\jeremy.quintin\Controller\C_Controller\lowlevel\native\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{20E7E5A6-2110-37A5-8B8C-04F9813D4185}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
