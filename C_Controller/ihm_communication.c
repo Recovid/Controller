@@ -356,7 +356,7 @@ void send_and_recv()
 {
     static bool initSent = true; // even if not received
 
-    // TODO Asynchronous send
+    // TODO Asynchronous send ??
 
     char frame[MAX_FRAME+1] = "";
     while (true) {
