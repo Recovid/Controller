@@ -85,8 +85,8 @@ if(NOT CMAKE_HOST_WIN32)
         tasks_recovid.c
         TaskMessageManagement.c
         TaskRespirationCycle.c
-        // Sensing is performed by interrupts once init_sensors is called
-        // Alarms are monitored and triggered in TaskRespirationCycle
+        # Sensing is performed by interrupts once init_sensors is called
+        # Alarms are monitored and triggered in TaskRespirationCycle
     )
 endif()
 
