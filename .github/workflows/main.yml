@@ -10,26 +10,29 @@ on:
 
 jobs:
   build_native:
+    env: 
+      target: native
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Check native build
+    - name: Check ${{env.target}} build
       run: |
         git submodule update --init
         cd C_Controller
-        target=native
         mkdir -p _build_${target}
         cd _build_${target}
         cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
         make -j$(nproc)
 
   build_stm32f303:
+    env:
+      target: stm32f303
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: fiam/arm-none-eabi-gcc@v1
       with:
-        release: '9-2019-q4' # The arm-none-eabi-gcc release to use.
+        release: '9-2019-q4'
 
     - name: Check stm32 build
       run: |
@@ -41,14 +44,8 @@ jobs:
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
         make -j$(nproc)
 
-    - name: Upload stm32 binary
-      uses: actions/upload-artifact@v1
+    - name: Upload stm32 binaries
+      uses: actions/upload-artifact@v2-preview
       with:
-        name: stm32 binary
-        path: C_Controller/_build_stm32f303/C_Controller.stm32f303.elf
-
-    - name: Upload stm32 test binary
-      uses: actions/upload-artifact@v1
-      with:
-        name: stm32 test binary
-        path: C_Controller/_build_stm32f303/test_C_Controller.stm32f303.elf
+        name: Stm32 binaries
+        path: C_Controller/_build_${{env.target}}/*.elf
