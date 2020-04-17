@@ -13,45 +13,51 @@ int32_t activeAlarmsOld = 0;
  * pushing new values to the "front" (i.e. startIdx).
  * For instance, the following shows how push a value in VTe_ml_q:
  * ```
- * VTe_startIdx = (VTe_startIdx - 1 + 3) % 3;
+ * VTe_startIdx = (VTe_startIdx - 1 + VTE_Q_LEN) % VTE_Q_LEN;
  * VTe_ml_q[VTe_startIdx] = new_value;
  * ```
  */
 
 // Pmax Alarm
+#define PMAX_Q_LEN 2
 int pressureMax_startIdx = 0;
-float pressureMax_cmH2O_q[2] = {0};
+float pressureMax_cmH2O_q[PMAX_Q_LEN] = {0};
 
 // Pmin Alarm
+#define PCRETE_Q_LEN 8
 int Pcrete_startIdx = 0;
-float Pcrete_cmH2O_q[8] = {0};
-int Pcrete_time_ms_q[8] = {0};
+float Pcrete_cmH2O_q[PCRETE_Q_LEN] = {0};
+int Pcrete_time_ms_q[PCRETE_Q_LEN] = {0};
 
 // VTmin Alarm
+#define VTE_Q_LEN 3
 int VTe_startIdx = 0;
 float VTe_ml_q[3] = {0};
 
 // FRmin Alarm
+#define FR_Q_LEN 3
 //int FR_startIdx = 0;
-//float FR_pm_q[3] = {0};
+//float FR_pm_q[FR_Q_LEN] = {0};
 
 // VMmin Alarm
+#define VM_Q_LEN 3
 int VM_startIdx = 0;
-float VM_Lm_q[3] = {0};
+float VM_Lm_q[VM_Q_LEN] = {0};
 
 // PEPmax / PEPmin Alarm
+#define PEP_Q_LEN 8
 int PEP_startIdx = 0;
-float PEP_cmH2O_q[8] = {0};
+float PEP_cmH2O_q[PEP_Q_LEN] = {0};
 
 bool update_alarms()
 {
-    int Pmax_cycles = 2;
+    int Pmax_cycles = PMAX_Q_LEN;
     int Pmin_startFailing_ms = -1;
-    int VTmin_cycles = 3;
-    int FRmin_cycles = 3;
-    int VMmin_cycles = 3;
-    int PEPmax_cycles = 8;
-    int PEPmin_cycles = 8;
+    int VTmin_cycles = VTE_Q_LEN;
+    int FRmin_cycles = FR_Q_LEN;
+    int VMmin_cycles = VM_Q_LEN;
+    int PEPmax_cycles = PEP_Q_LEN;
+    int PEPmin_cycles = PEP_Q_LEN;
 
     // save and reset all alarms
     activeAlarmsOld = activeAlarms;
@@ -61,7 +67,7 @@ bool update_alarms()
     {
         if (Pmax_cycles != 0)
         {
-            if (pressureMax_cmH2O_q[(pressureMax_startIdx + cycle) % 2] >= MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10))
+            if (pressureMax_cmH2O_q[(pressureMax_startIdx + cycle) % PMAX_Q_LEN] >= MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10))
             {
                 --Pmax_cycles;
                 if (Pmax_cycles == 0) {
@@ -74,7 +80,7 @@ bool update_alarms()
         }
         if (Pmin_startFailing_ms != -2)
         {
-            int Pcrete_idx = (Pcrete_startIdx + cycle) % 8;
+            int Pcrete_idx = (Pcrete_startIdx + cycle) % PCRETE_Q_LEN;
             if (Pcrete_cmH2O_q[Pcrete_idx] <= MAX(get_setting_Pmin_cmH2O(), get_setting_PEP_cmH2O() + 2))
             {
                 if (Pmin_startFailing_ms == -1)
@@ -89,7 +95,7 @@ bool update_alarms()
         }
         if (VTmin_cycles != 0)
         {
-            if (VTe_ml_q[(VTe_startIdx + cycle) % 3] <= get_setting_VTmin_mL())
+            if (VTe_ml_q[(VTe_startIdx + cycle) % VTE_Q_LEN] <= get_setting_VTmin_mL())
             {
                 --VTmin_cycles;
                 if (VTmin_cycles == 0) {
@@ -103,7 +109,7 @@ bool update_alarms()
         /*
         if (FRmin_cycles != 0)
         {
-            if (FR_pm_q[FR_startIdx % 3] < get_setting_FRmin_pm())
+            if (FR_pm_q[FR_startIdx % FR_Q_LEN] < get_setting_FRmin_pm())
             {
                 --FRmin_cycles;
                 if (FRmin_cycles == 0) {
@@ -116,7 +122,7 @@ bool update_alarms()
         */
         if (VMmin_cycles != 0)
         {
-            if (VM_Lm_q[(VM_startIdx + cycle) % 3] <= get_setting_VMmin_Lm())
+            if (VM_Lm_q[(VM_startIdx + cycle) % VM_Q_LEN] <= get_setting_VMmin_Lm())
             {
                 --VMmin_cycles;
                 if (VMmin_cycles == 0) {
@@ -129,7 +135,7 @@ bool update_alarms()
         }
         if (PEPmax_cycles != 0)
         {
-            if (PEP_cmH2O_q[(PEP_startIdx + cycle) % 8] >= get_setting_PEP_cmH2O() + 2)
+            if (PEP_cmH2O_q[(PEP_startIdx + cycle) % PEP_Q_LEN] >= get_setting_PEP_cmH2O() + 2)
             {
                 --PEPmax_cycles;
                 if (PEPmax_cycles == 0) {
@@ -142,7 +148,7 @@ bool update_alarms()
         }
         if (PEPmin_cycles != 0)
         {
-            if (PEP_cmH2O_q[(PEP_startIdx + cycle) % 8] <= get_setting_PEP_cmH2O() - 2)
+            if (PEP_cmH2O_q[(PEP_startIdx + cycle) % PEP_Q_LEN] <= get_setting_PEP_cmH2O() - 2)
             {
                 --PEPmin_cycles;
                 if (PEPmin_cycles == 0) {
@@ -314,7 +320,7 @@ static bool PRINT(test_alarm_vm_min_off_disc)
 
 static bool PRINT(test_alarm_pep_max_on)
     PEP_startIdx = 0;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     update_alarms();
@@ -323,7 +329,7 @@ static bool PRINT(test_alarm_pep_max_on)
 
 static bool PRINT(test_alarm_pep_max_on_mod)
     PEP_startIdx = 4;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     update_alarms();
@@ -332,7 +338,7 @@ static bool PRINT(test_alarm_pep_max_on_mod)
 
 static bool PRINT(test_alarm_pep_max_off_disc)
     PEP_startIdx = 0;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
@@ -342,7 +348,7 @@ static bool PRINT(test_alarm_pep_max_off_disc)
 
 static bool PRINT(test_alarm_pep_min_on)
     PEP_startIdx = 0;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     update_alarms();
@@ -351,7 +357,7 @@ static bool PRINT(test_alarm_pep_min_on)
 
 static bool PRINT(test_alarm_pep_min_on_mod)
     PEP_startIdx = 4;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     update_alarms();
@@ -360,7 +366,7 @@ static bool PRINT(test_alarm_pep_min_on_mod)
 
 static bool PRINT(test_alarm_pep_min_off_disc)
     PEP_startIdx = 0;
-    for (size_t i = 0; i < sizeof(PEP_cmH2O_q) / sizeof(PEP_cmH2O_q[0]); ++i) {
+    for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
