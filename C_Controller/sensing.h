@@ -18,6 +18,8 @@ float get_sensed_PEP_cmH2O   ();
 
 float get_sensed_VMe_Lpm     ();
 
+float get_last_sensed_ms();
+
 void sense_and_compute(RespirationState state);
 
 #ifndef NTESTS

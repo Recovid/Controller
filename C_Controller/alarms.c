@@ -49,6 +49,25 @@ float VM_Lm_q[VM_Q_LEN] = {0};
 int PEP_startIdx = 0;
 float PEP_cmH2O_q[PEP_Q_LEN] = {0};
 
+void save_sensed_values()
+{
+    pressureMax_startIdx = (pressureMax_startIdx - 1 + PMAX_Q_LEN) % PMAX_Q_LEN;
+    pressureMax_cmH2O_q[pressureMax_startIdx] = get_sensed_P_cmH2O();
+
+    Pcrete_startIdx = (Pcrete_startIdx - 1 + PCRETE_Q_LEN) % PCRETE_Q_LEN;
+    Pcrete_cmH2O_q[Pcrete_startIdx] = get_sensed_Pcrete_cmH2O();
+    Pcrete_time_ms_q[Pcrete_startIdx] = get_last_sensed_ms();
+
+    VTe_startIdx = (VTe_startIdx - 1 + VTE_Q_LEN) % VTE_Q_LEN;
+    VTe_ml_q[VTe_startIdx] = get_sensed_VTe_mL();
+
+    VM_startIdx = (VM_startIdx - 1 + VM_Q_LEN) % VM_Q_LEN;
+    VM_Lm_q[VM_startIdx] = get_sensed_VolM_Lpm();
+
+    PEP_startIdx = (PEP_startIdx - 1 + PEP_Q_LEN) % PEP_Q_LEN;
+    PEP_cmH2O_q[PEP_startIdx] = get_sensed_PEP_cmH2O();
+}
+
 bool update_alarms()
 {
     int Pmax_cycles = PMAX_Q_LEN;

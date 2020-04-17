@@ -21,6 +21,8 @@ static float PEP_cmH2O    = 0.f;
 
 static float VMe_Lpm      = 0.f;
 
+static unsigned long last_sense_ms = 0;
+
 float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
 float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
 float get_sensed_VolM_Lpm    () { return         VolM_Lpm ; }
@@ -32,10 +34,11 @@ float get_sensed_PEP_cmH2O   () { return PEP_cmH2O   ; }
 
 float get_sensed_VMe_Lpm     () { return 0; } // TODO
 
+float get_last_sensed_ms() { return last_sense_ms; }
+
 void sense_and_compute(RespirationState state)
 {
     static unsigned long last_state = Insufflation;
-    static unsigned long last_sense_ms = 0;
     static unsigned long sent_DATA_ms = 0;
 
     // TODO float Patmo_mbar = read_Patmo_mbar();

@@ -3,6 +3,9 @@
 
 #include "platform.h"
 
+//! Save latest values into bounded queues for alarm detection
+void save_sensed_values();
+
 bool update_alarms();
 
 //! Trigger and send newly activated alarms
