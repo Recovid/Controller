@@ -26,6 +26,7 @@ jobs:
     
     - name: Check native build
       run: |
+        cd C_Controller
         target=native
         mkdir -p _build_${target}
         cd _build_${target}
@@ -34,6 +35,7 @@ jobs:
 
     - name: Check stm32 build
       run: |
+        cd C_Controller
         target=stm32f303
         mkdir -p _build_${target}
         cd _build_${target}
