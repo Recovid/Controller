@@ -38,5 +38,5 @@ jobs:
         target=stm32f303
         mkdir -p _build_${target}
         cd _build_${target}
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
         make -j$(nproc)
