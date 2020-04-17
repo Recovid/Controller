@@ -20,28 +20,28 @@ int32_t activeAlarmsOld = 0;
 
 // Pmax Alarm
 int pressureMax_startIdx = 0;
-float pressureMax_cmH2O_q[2] = {0, 0};
+float pressureMax_cmH2O_q[2] = {0};
 
 // Pmin Alarm
 int Pcrete_startIdx = 0;
-float Pcrete_cmH2O_q[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-int Pcrete_time_ms_q[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+float Pcrete_cmH2O_q[8] = {0};
+int Pcrete_time_ms_q[8] = {0};
 
 // VTmin Alarm
 int VTe_startIdx = 0;
-float VTe_ml_q[3] = {0, 0, 0};
+float VTe_ml_q[3] = {0};
 
 // FRmin Alarm
 //int FR_startIdx = 0;
-//float FR_pm_q[3] = {0, 0, 0};
+//float FR_pm_q[3] = {0};
 
 // VMmin Alarm
 int VM_startIdx = 0;
-float VM_Lm_q[3] = {0, 0, 0};
+float VM_Lm_q[3] = {0};
 
 // PEPmax / PEPmin Alarm
 int PEP_startIdx = 0;
-float PEP_cmH2O_q[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+float PEP_cmH2O_q[8] = {0};
 
 bool update_alarms()
 {
