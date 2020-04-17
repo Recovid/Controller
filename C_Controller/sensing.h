@@ -18,6 +18,8 @@ float get_sensed_PEP_cmH2O   ();
 
 float get_sensed_VMe_Lpm     ();
 
+float get_last_sensed_ms();
+
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others
 void sense_and_compute(RespirationState state);
 
