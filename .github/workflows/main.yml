@@ -40,3 +40,15 @@ jobs:
         cd _build_${target}
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
         make -j$(nproc)
+
+    - name: Upload stm32 binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: stm32 binary
+        path: C_Controller/_build_stm32f303/C_Controller.stm32f303.elf
+
+    - name: Upload stm32 test binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: stm32 test binary
+        path: C_Controller/_build_stm32f303/test_C_Controller.stm32f303.elf
