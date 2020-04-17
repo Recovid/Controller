@@ -22,7 +22,7 @@ jobs:
     - uses: fiam/arm-none-eabi-gcc@v1
     
     - name: Check native build
-    - run: |
+      run: |
         target=native
         mkdir -p _build_${target}
         cd _build_${target}
@@ -30,7 +30,7 @@ jobs:
         make -j$(nproc)
 
     - name: Check stm32 build
-    - run: |
+      run: |
         target=stm32f303
         mkdir -p _build_${target}
         cd _build_${target}
