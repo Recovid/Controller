@@ -184,15 +184,10 @@ bool update_alarms()
 
 void trigger_alarms()
 {
-    uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
+    // uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
 
-    // min/max alarms
-    for (int i = 1; i <= 6; i++) {
-        if (newAlarms & (1 << i)) {
-            // TODO: trigger alarm (buzzer/led) acc. to priority
-            send_ALRM(1 << i);
-        }
-    }
+    printf("active %x\n", activeAlarms);
+    send_ALRM(activeAlarms);
 }
 
 // ================================================================================================

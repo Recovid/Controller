@@ -305,24 +305,52 @@ bool send_INIT(const char* information)
         && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
-#define ALRM "ALRM "
+#define ALRM "ALRM"
 
-bool send_ALRM(enum alarm_type type)
+static const char* ALARM_CODES[] = {
+    "PMAX",
+    "PMIN",
+    "VT_MIN",
+    "FR",
+    "VM_MIN",
+    "PEP_MAX",
+    "PEP_MIN",
+    "BATT_A",
+    "BATT_B",
+    "BATT_C",
+    "BATT_D",
+    "FAILSAFE",
+    "CPU_LOST",
+    "P_KO",
+    "IO_MUTE"
+};
+
+bool send_ALRM(uint32_t alarms)
 {
     char frame[MAX_FRAME+1] = "";
     char* curr = frame;
     strncpy(curr, ALRM, sizeof(ALRM) - 1);
     curr += sizeof(ALRM) - 1;
-    *curr++ = '.';
-    *curr++ = '.';
+
+    for (int i = 0; i < ALARM_COUNT; ++i) {
+        if (alarms & (1 << i)) {
+            int n = strlen(ALARM_CODES[i]);
+            if (curr + n + 1 > frame + MAX_FRAME - sizeof(CS8) - 1 - sizeof(CS8_VALUE) - 1) {
+                // frame is full, skip remaining alarms
+                break;
+            }
+            *curr++ = ' ';
+            strncpy(curr, ALARM_CODES[i], n);
+            curr += n;
+        }
+    }
+
     strncpy(curr, CS8, sizeof(CS8) - 1);
     curr += sizeof(CS8) - 1;
     strncpy(curr, CS8_VALUE, sizeof(CS8_VALUE) - 1);
     curr += sizeof(CS8_VALUE) - 1;
     *curr = '\0';
 
-    // TODO: alarm type encoding
-    replace_int_with_padding(frame, (int)type, 2, 10);
     replace_int_with_padding(frame, checksum8(frame), 2, 16);
 
     return send(frame);

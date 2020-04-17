@@ -102,7 +102,7 @@ bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Ppla
 
 bool send_INIT(const char* information);
 
-bool send_ALRM(enum alarm_type type);
+bool send_ALRM(uint32_t alarms);
 
 //! Send queued messages to IHM, then receive messages from IHM and process them including:
 //! - update controller settings and acknowledge modified value
