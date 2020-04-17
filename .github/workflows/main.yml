@@ -10,7 +10,7 @@ on:
 
 jobs:
   build_native:
-    env: 
+    env:
       target: native
     runs-on: ubuntu-latest
     steps:
@@ -47,5 +47,5 @@ jobs:
     - name: Upload stm32 binaries
       uses: actions/upload-artifact@v2-preview
       with:
-        name: Stm32 binaries
+        name: Stm32_binaries
         path: C_Controller/_build_${{env.target}}/*.elf
