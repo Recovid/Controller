@@ -72,6 +72,7 @@ void Error_Handler(void);
 #define PEP_VALVE_GPIO_Port GPIOC
 #define TAMPON_FULL_Pin GPIO_PIN_2
 #define TAMPON_FULL_GPIO_Port GPIOC
+#define TAMPON_FULL_EXTI_IRQn EXTI2_TSC_IRQn
 #define PEP_HOME_Pin GPIO_PIN_3
 #define PEP_HOME_GPIO_Port GPIOC
 #define PEP_HOME_EXTI_IRQn EXTI3_IRQn
@@ -89,6 +90,7 @@ void Error_Handler(void);
 #define BUZZER_HIGH_GPIO_Port GPIOA
 #define FS_Enabled_Pin GPIO_PIN_4
 #define FS_Enabled_GPIO_Port GPIOC
+#define FS_Enabled_EXTI_IRQn EXTI4_IRQn
 #define PEP_nSLEEP_Pin GPIO_PIN_5
 #define PEP_nSLEEP_GPIO_Port GPIOC
 #define PEP_CONFIG_Pin GPIO_PIN_0
@@ -145,12 +147,12 @@ void Error_Handler(void);
 #define MOTOR_ENA_GPIO_Port GPIOD
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
-#define TAMPON_RUNNING_Pin GPIO_PIN_4
-#define TAMPON_RUNNING_GPIO_Port GPIOB
 #define TAMPON_FAIL_Pin GPIO_PIN_5
 #define TAMPON_FAIL_GPIO_Port GPIOB
+#define TAMPON_FAIL_EXTI_IRQn EXTI9_5_IRQn
 #define BATT_FAULT_Pin GPIO_PIN_7
 #define BATT_FAULT_GPIO_Port GPIOB
+#define BATT_FAULT_EXTI_IRQn EXTI9_5_IRQn
 #define SENSOR_SCL_Pin GPIO_PIN_8
 #define SENSOR_SCL_GPIO_Port GPIOB
 #define SENSOR_SDA_Pin GPIO_PIN_9
