@@ -178,7 +178,7 @@ Amphenol:
 1psi gage : [NPA-700B-001G](https://fr.farnell.com/amphenol-advanced-sensors/npa-700b-001g/capteur-pression-numerique-1psi/dp/2845671)
 
 ### Patmo, Tatmo sensor
-All are I2C/SPI
+All are I2C/SPI 
 [MM5611](https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=MS5611-01BA03&DocType=Data+Sheet&DocLang=English)
 
 Bosh [bmp280](https://www.bosch-sensortec.com/media/boschsensortec/downloads/documents/product_related_documents/product_flyers/bst-bmp280-fl000.pdf)
