@@ -4,10 +4,32 @@
 
 #include "sensing.h" //  to use sensed values that depend on controller state
 #include "ihm_communication.h" // to send alarms
+#include "lowlevel/include/lowlevel.h"
 
 //! Bit flags for currently active alarms
 int32_t activeAlarms = 0;
 int32_t activeAlarmsOld = 0;
+
+static uint32_t activationTime_ms = 0;
+
+//! Alarms levels
+static const uint8_t ALARM_LEVELS[] = {
+    3, // PMAX
+    3, // PMIN
+    2, // VT_MIN
+    0, // FR
+    2, // VM_MIN
+    3, // PEP_MAX
+    2, // PEP_MIN
+    1, // BATT_A
+    3, // BATT_B
+    2, // BATT_C
+    2, // BATT_D
+    3, // FAILSAFE
+    3, // CPU_LOST
+    3, // P_KO
+    1, // IO_MUTE
+};
 
 /* NB: the bounded queues belows implemented as circular buffers are filled by
  * pushing new values to the "front" (i.e. startIdx).
@@ -183,10 +205,92 @@ static bool monitor_sensed_values()
     return true;
 }
 
+void monitor_battery()
+{
+    if (is_DC_on()) {
+        return;
+    }
+
+    if (is_Battery_charged()) {
+        activeAlarms |= ALARM_BATT_A;
+        return;
+    }
+
+    // battery is not charged (<85%)
+    // TODO: alarm type (B/C/D) depends on the elpased time on battery
+    activeAlarms |= ALARM_BATT_B;
+}
+
+void blink_LEDs(int level)
+{
+    static const uint32_t CYCLE_DUR_MS = 10000;
+
+    static bool redOn = false;
+    static bool yellowOn = false;
+
+    if (level <= 1) {
+        if (redOn) {
+            light_red(Off);
+            redOn = false;
+        }
+        if (yellowOn) {
+            light_yellow(Off);
+            yellowOn = false;
+        }
+        return;
+    }
+
+    uint32_t cycleTime_ms = (get_time_ms() - activationTime_ms) % CYCLE_DUR_MS;
+
+    if (cycleTime_ms >= CYCLE_DUR_MS / 2) {
+        // only blink in the first half of a cycle
+        return;
+    }
+
+    float blinkFreq_hz = (level == 3 ? 2.f : 0.5f);
+    uint32_t blinkDur_ms = (uint32_t)(1000.f / blinkFreq_hz) / 2;
+    bool onNew = (cycleTime_ms / blinkDur_ms) % 2 == 0;
+    bool redOnNew = false;
+    bool yellowOnNew = false;
+
+    if (level == 3) {
+        redOnNew = onNew;
+    } else {
+        yellowOnNew = onNew;
+    }
+
+    if (redOnNew != redOn) {
+        light_red(redOnNew ? On : Off);
+    }
+    if (yellowOnNew != yellowOn) {
+        light_yellow(yellowOnNew ? On : Off);
+    }
+
+    redOn = redOnNew;
+    yellowOn = yellowOnNew;
+}
+
 //! Trigger and send active alarms
 void trigger_alarms()
 {
     // uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
+
+    // compute the maximum active level
+    uint8_t levelMax = 0;
+    uint8_t levelMaxOld = 0;
+    for (int i = 0; i < ALARM_COUNT; ++i) {
+        if (activeAlarms & (1 << i))
+            levelMax = MAX(levelMax, ALARM_LEVELS[i]);
+        if (activeAlarmsOld & (1 << i))
+            levelMaxOld = MAX(levelMaxOld, ALARM_LEVELS[i]);
+    }
+
+    // reset the activation time whenever we activate a higher level alarm
+    if (levelMax > levelMaxOld) {
+        activationTime_ms = get_time_ms();
+    }
+
+    blink_LEDs(levelMax);
 
     send_ALRM(activeAlarms);
 }
@@ -195,6 +299,7 @@ bool update_alarms()
 {
     save_sensed_values();
     monitor_sensed_values();
+    monitor_battery();
     trigger_alarms();
     return true;
 }
