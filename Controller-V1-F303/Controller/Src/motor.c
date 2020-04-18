@@ -14,8 +14,8 @@ static motor_handle_t* motors[NB_MOTORS] = { 0 };
 static motor_handle_t* get_motor_for_tim();
 
 
-void step_callback(TIM_HandleTypeDef* 	tim);
-void period_callback(TIM_HandleTypeDef* 	tim);
+static void step_callback(TIM_HandleTypeDef* 	tim);
+static void period_callback(TIM_HandleTypeDef* 	tim);
 
 
 bool motor_init(motor_handle_t* motor) {
@@ -117,14 +117,14 @@ static motor_handle_t* get_motor_for_tim(TIM_HandleTypeDef* 	tim) {
 }
 
 
-void period_callback(TIM_HandleTypeDef* 	tim) {
+static void period_callback(TIM_HandleTypeDef* 	tim) {
 	motor_handle_t* motor= get_motor_for_tim(tim);
 	if(motor==NULL) return;
 	motor->_moving=false;
 	HAL_TIM_PWM_Stop(motor->tim, motor->channel);
 }
 
-void step_callback(TIM_HandleTypeDef* 	tim) {
+static void step_callback(TIM_HandleTypeDef* 	tim) {
 	motor_handle_t* motor= get_motor_for_tim(tim);
 	if(motor==NULL) return;
 

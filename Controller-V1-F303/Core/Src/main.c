@@ -50,6 +50,7 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim15;
 DMA_HandleTypeDef hdma_tim2_up;
 DMA_HandleTypeDef hdma_tim3_ch4_up;
@@ -76,6 +77,7 @@ static void MX_TIM4_Init(void);
 static void MX_UART4_Init(void);
 static void MX_TIM15_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 
@@ -129,6 +131,7 @@ int main(void)
   MX_UART4_Init();
   MX_TIM15_Init();
   MX_TIM2_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -407,6 +410,44 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 72-1;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 1000;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
   * @brief TIM15 Initialization Function
   * @param None
   * @retval None
@@ -534,7 +575,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 5);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
@@ -568,29 +609,39 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, PEP_VALVE_Pin|PEP_nSLEEP_Pin|MOTOR_DIR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, PEP_VALVE_Pin|PEP_nSLEEP_Pin|MAT_LED_GREEN_Pin|MAT_LED_ORANGE_Pin 
+                          |MAT_LED_RED_Pin|MOTOR_DIR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PEP_CONFIG_Pin|PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin 
-                          |PEP_MODE1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, BUZZER_LOW_Pin|NUCLEO_LED_Pin|BUZZER_MEDIUM_Pin|BUZZER_HIGH_Pin 
+                          |MOTOR_PWM_Pin|FAN_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MOTOR_PWM_GPIO_Port, MOTOR_PWM_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, PEP_CONFIG_Pin|Enable_P5V_Rpi_Pin|PEP_nENBL_Pin|PEP_DIR_Pin 
+                          |PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
+  /*Configure GPIO pin : NUCLEO_BTN_Pin */
+  GPIO_InitStruct.Pin = NUCLEO_BTN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(NUCLEO_BTN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PEP_VALVE_Pin PEP_nSLEEP_Pin MOTOR_DIR_Pin */
-  GPIO_InitStruct.Pin = PEP_VALVE_Pin|PEP_nSLEEP_Pin|MOTOR_DIR_Pin;
+  /*Configure GPIO pins : PEP_VALVE_Pin PEP_nSLEEP_Pin MAT_LED_GREEN_Pin MAT_LED_ORANGE_Pin 
+                           MAT_LED_RED_Pin MOTOR_DIR_Pin */
+  GPIO_InitStruct.Pin = PEP_VALVE_Pin|PEP_nSLEEP_Pin|MAT_LED_GREEN_Pin|MAT_LED_ORANGE_Pin 
+                          |MAT_LED_RED_Pin|MOTOR_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TAMPON_FULL_Pin FS_Enabled_Pin */
+  GPIO_InitStruct.Pin = TAMPON_FULL_Pin|FS_Enabled_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PEP_HOME_Pin */
@@ -599,10 +650,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PEP_HOME_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PEP_CONFIG_Pin PEP_nENBL_Pin PEP_DIR_Pin PEP_MODE0_Pin 
-                           PEP_MODE1_Pin */
-  GPIO_InitStruct.Pin = PEP_CONFIG_Pin|PEP_nENBL_Pin|PEP_DIR_Pin|PEP_MODE0_Pin 
-                          |PEP_MODE1_Pin;
+  /*Configure GPIO pins : BUZZER_LOW_Pin NUCLEO_LED_Pin BUZZER_MEDIUM_Pin BUZZER_HIGH_Pin 
+                           MOTOR_PWM_Pin FAN_ENABLE_Pin */
+  GPIO_InitStruct.Pin = BUZZER_LOW_Pin|NUCLEO_LED_Pin|BUZZER_MEDIUM_Pin|BUZZER_HIGH_Pin 
+                          |MOTOR_PWM_Pin|FAN_ENABLE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PEP_CONFIG_Pin Enable_P5V_Rpi_Pin PEP_nENBL_Pin PEP_DIR_Pin 
+                           PEP_MODE0_Pin PEP_MODE1_Pin */
+  GPIO_InitStruct.Pin = PEP_CONFIG_Pin|Enable_P5V_Rpi_Pin|PEP_nENBL_Pin|PEP_DIR_Pin 
+                          |PEP_MODE0_Pin|PEP_MODE1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -614,12 +674,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PEP_nFAULT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MOTOR_PWM_Pin */
-  GPIO_InitStruct.Pin = MOTOR_PWM_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pins : MOTOR_INDEXPULSE_Pin TAMPON_RUNNING_Pin TAMPON_FAIL_Pin BATT_FAULT_Pin */
+  GPIO_InitStruct.Pin = MOTOR_INDEXPULSE_Pin|TAMPON_RUNNING_Pin|TAMPON_FAIL_Pin|BATT_FAULT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MOTOR_PWM_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MOTOR_ACTIVE_Pin MOTOR_LIMIT_SW_A_Pin MOTOR_LIMIT_SW_B_Pin */
   GPIO_InitStruct.Pin = MOTOR_ACTIVE_Pin|MOTOR_LIMIT_SW_A_Pin|MOTOR_LIMIT_SW_B_Pin;
