@@ -188,7 +188,6 @@ void trigger_alarms()
 {
     // uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
 
-    printf("active %x\n", activeAlarms);
     send_ALRM(activeAlarms);
 }
 
