@@ -362,15 +362,15 @@ void controller_run() {
 	printf("Testing buzzer\n");
 
 
-	printf("Testing Alarm LOW. 		Press button to skip\n");
+	printf("Testing Alarm LOW.    2 beeps every 30 seconds.\n----- Press button to skip\n");
 	buzzer_set_level(BUZZER_LOW);
 	wait_btn_clicked();
 
-	printf("Testing Alarm MEDIUM. Press button to skip\n");
+	printf("Testing Alarm MEDIUM. 3 beeps every 7.5 seconds\n----- Press button to skip\n");
 	buzzer_set_level(BUZZER_MEDIUM);
 	wait_btn_clicked();
 
-	printf("Testing Alarm HIGH. 	Press button to skip\n");
+	printf("Testing Alarm HIGH.  10 beeps every 2.5 seconds\n----- Press button to skip\n");
 	buzzer_set_level(BUZZER_HIGH);
 	wait_btn_clicked();
 
