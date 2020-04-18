@@ -107,11 +107,12 @@ static HAL_StatusTypeDef npa700_receive_measure_it()
 	return ret;
 }
 
-void sensors_start() {
+bool sensors_start() {
     // Start sensor state machine.
     // This state machine is managed in the I2C interupt routine.
     _sensor_state= REQ_SDP_MEASUREMENT;
     sdp6_request_measure_it();
+	return true;
 }
 
 void sensors_stop() {

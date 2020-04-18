@@ -15,5 +15,4 @@ void TaskMessageManagement(void* task_param)  // This is a task.
     sleepPeriodic(task);
     send_and_recv();
   }
-
 }

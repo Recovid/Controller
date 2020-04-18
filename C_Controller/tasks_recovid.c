@@ -53,8 +53,6 @@ int initTask(struct periodic_task* task)
 
 
 struct periodic_task task_array[] = {
-  { TaskAlarm,                   500,  "Urgent Alarm",        0, 0, 0},
-  { TaskSensing,                   1,  "Sensing",             0, 0, 0},
   { TaskMessageManagement,         1,  "Message Management",  0, 0, 0},
   { TaskRespirationCycle,          1,  "Respiration Cycle",   0, 0, 0},
 };

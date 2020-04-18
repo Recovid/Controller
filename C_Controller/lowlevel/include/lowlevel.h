@@ -116,6 +116,7 @@ bool valve_inhale();
 bool init_Pdiff();
 bool init_Paw();
 bool init_Patmo();
+bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok();
