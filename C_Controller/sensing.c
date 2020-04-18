@@ -139,9 +139,21 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
 float compute_motor_step_time(long step_number, float desired_flow_sls, double calibration_speed, float A_calibrated, float B_calibrated)
 {
     float res = (A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
-    res = res / desired_flow_sls;
-    if (res * 1000000 < 110) { return 110; } // FIXME Move magic number to configuration.h
-    else {return res * 1000000.;}
+    res /= desired_flow_sls;
+    return MAX(res * 1000000.f, 110.f); // FIXME Move magic number to configuration.h
+}
+
+uint32_t compute_motor_steps(uint32_t* motor_speed_table, long steps, float setpoint_flow_slm, float CALIBRATION_SPEED, float A_calibrated, float B_calibrated)
+{
+    uint32_t Tinsu_us = 0.;
+    for(long t=0; t<steps; ++t) {
+        float d = compute_motor_step_time(t, setpoint_flow_slm/60., CALIBRATION_SPEED, A_calibrated, B_calibrated);
+        Tinsu_us += d;
+        DEBUG_PRINTF("d=%d", (uint32_t)(d));
+        motor_speed_table[t]= (uint32_t)d;
+    }
+    DEBUG_PRINTF("Tinsu predicted = %d ms\n", (uint32_t)(Tinsu_us/1000));
+    return (uint32_t)(Tinsu_us/1000);
 }
 
 // ------------------------------------------------------------------------------------------------
