@@ -5,7 +5,13 @@ cmake_minimum_required(VERSION 3.7)
 
 set(Lowlevel_dir ${CMAKE_SOURCE_DIR}/lowlevel)
 
-if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
+if( (CMAKE_HOST_WIN32) AND  ( (NOT TARGET) OR ("${TARGET}" STREQUAL "native") ) )
+	set(native_win32 TRUE)
+else()
+	set(native_win32 FALSE)
+endif()
+
+if(native_win32 OR NOT TARGET)
     set(TARGET native)
 elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
@@ -42,7 +48,7 @@ add_compile_options(
     -Wno-unused-variable
 )
 
-if(CMAKE_HOST_WIN32) # !POSIX for high-level deterministic tests only
+if(native_win32)
     add_compile_options(-Wpedantic)
 endif()
 
@@ -60,7 +66,7 @@ endif()
 ###############################################################################
 # Top-level Targets
 
-if(CMAKE_HOST_WIN32)
+if(native_win32) # !POSIX for high-level deterministic tests only
     set(EXE_EXT .exe)
 elseif(NOT ${TARGET} STREQUAL "native")
     set(EXE_EXT .${TARGET}.elf)
@@ -80,7 +86,7 @@ set(SHARED_SOURCES
 
 
 # low-level
-if(NOT CMAKE_HOST_WIN32)
+if(NOT native_win32) # !POSIX for high-level deterministic tests only
     set(SHARED_SOURCES ${SHARED_SOURCES}
         tasks_recovid.c
         TaskMessageManagement.c

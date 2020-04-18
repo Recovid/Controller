@@ -63,13 +63,13 @@ bool is_motor_ok();
 
 //! Press the BAVU to insufflate air to the patient according to VM_Lpm
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_press(float VM_Lpm);
+bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_release(uint32_t before_t_ms);
+bool motor_release();
 
 //! \remark Only used in self-tests
 bool motor_stop();

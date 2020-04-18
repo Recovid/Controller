@@ -6,12 +6,19 @@ add_library(lowlevel STATIC
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
 
-    hardware_simulation.c
-    hardware_real.c
+    recovid_revB.c
     hardware_serial.c
-    simple_indicators.c
+    ihm.c
+    motor.c
+    sensors.c
+    buzzer.c
+    lights.c
+    pep_valve.c
     flash.c
-    i2c.c
+#    hardware_simulation.c
+#    simple_indicators.c
+#    i2c.c
+#    motor.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
