@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "configuration.h"
 #include "controller.h" // TODO isolate current_respiration_state()
 #include "ihm_communication.h"
 
@@ -21,16 +22,11 @@ static float PEP_cmH2O    = 0.f;
 
 static float VMe_Lpm      = 0.f;
 
-static unsigned long last_sense_ms = 0;
+static uint32_t last_sense_ms = 0;
 
-#define VOLUME_ANGLE_DEG        200
-#define STEPS_PER_REVOLUTION 	(VOLUME_ANGLE_DEG*8*4) // *microsteps*reduction // TODO adapt to v2
-#define STEPS_PER_DEG		    (STEPS_PER_REVOLUTION/360)
-#define CALIBRATION_SPEED (1.f/((STEPS_PER_REVOLUTION)*(200/360.f)))
-
-#define STEPS_MAX STEPS_PER_DEG*VOLUME_ANGLE_DEG
-
-static uint16_t motor_step_times_us[STEPS_MAX];
+static float A_calibrated = CALIB_A;
+static float B_calibrated = CALIB_B;
+static uint16_t motor_step_times_us[MOTOR_STEPS_MAX];
 
 float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
 float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
@@ -112,8 +108,6 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
 //! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
 void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, float samples_time_step_sum, float desired_flow_sls)
 {
-    const float P_plateau_slope = 0.1;
-    const float P_plateau_mean = 0.2;
     const float timeStep = samples_time_step_sum / samples_index;
     uint32_t low;
     uint32_t high;
@@ -122,7 +116,7 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
     } else {
         DEBUG_PRINTF("plateau NOT found, considering from sample %u to %u", low, high);
     }
-    float plateau_slope = linear_fit(samples+low, high-low-1, timeStep, &plateau_slope);
+    float plateau_slope = linear_fit(samples+low, high-low-1, timeStep, &plateau_slope); // TODO Check
     float plateau_mean  = 0;
     for(uint32_t i=low ; i<high ; i++) {
         plateau_mean += samples[i];
@@ -133,30 +127,30 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
 
     const float error_mean = plateau_mean - desired_flow_sls;
 
-    *A += plateau_slope * P_plateau_slope;
-    *B += error_mean    * P_plateau_mean ;
+    *A += plateau_slope * P_PLATEAU_SLOPE;
+    *B += error_mean    * P_PLATEAU_MEAN ;
     DEBUG_PRINTF("A = %d", (int32_t)(1000*(*A)));
     DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
 }
 
 //! \returns step time in µs
-//! \param calibration_speed is motor step time in seconds
 //! \param desired_flow is in sL/s (sic)
 //! \param A_calibrated is the proportional term computed from the slope
 //! \param B_calibrated is the constant termb
-float compute_motor_step_time_us(uint16_t step_index, float desired_flow_sls, double calibration_speed, float A_calibrated, float B_calibrated)
+float compute_motor_step_time_us(uint16_t step_index, float desired_flow_sls, float A_calibrated, float B_calibrated)
 {
-    float res = (A_calibrated*calibration_speed*calibration_speed*step_index) + B_calibrated * calibration_speed;
+    float res = step_index * A_calibrated*CALIB_STEP_TIME_S*CALIB_MAGIC_RATIO + B_calibrated;
+    res *= CALIB_STEP_TIME_S;
     res /= desired_flow_sls;
-    return MAX(res * 1000000.f, 110.f); // FIXME Move magic number to configuration.h
+    return MAX(res * 1000000.f, MOTOR_STEP_TIME_US_MIN);
 }
 
 //! Compute step_times_len x motor step_times (in µs) for desired_flow_sls
-uint32_t compute_motor_step_times_us(uint32_t* step_times, uint16_t step_times_len, float desired_flow_sls, float calibration_speed, float A_calibrated, float B_calibrated)
+uint32_t compute_motor_step_times_us(uint32_t* step_times, uint16_t step_times_len, float desired_flow_sls, float A_calibrated, float B_calibrated)
 {
     float Tinsu_us = 0.f;
     for(uint16_t i=0 ; i<step_times_len ; ++i) {
-        const float d = compute_motor_step_time_us(i, desired_flow_sls, calibration_speed, A_calibrated, B_calibrated);
+        const float d = compute_motor_step_time_us(i, desired_flow_sls, A_calibrated, B_calibrated);
         Tinsu_us += d;
         step_times[i] = (uint32_t)d;
         DEBUG_PRINTF("d=%d", step_times[i]);

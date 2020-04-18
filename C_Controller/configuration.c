@@ -5,8 +5,6 @@
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
 
-float    LUNG_V_ML_MAX          = 3000.;
-
 float    LUNG_COMPLIANCE        =  500./25.0; //!< = 20 typical from healthy patient
 float    LUNG_COMPLIANCE_MAX    =  500./12.5; //!< = 40 typical from "SRAS" patient
 

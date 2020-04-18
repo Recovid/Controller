@@ -3,11 +3,22 @@
 
 #include "platform.h"
 
+//! motor map size
+#define MOTOR_STEPS_MAX 4700
+
+const float P_PLATEAU_SLOPE = 0.1f; // V1 was 0.05
+const float P_PLATEAU_MEAN  = 0.2f; // V1 was 0.1
+
+const float MOTOR_STEP_TIME_US_MIN = 110.f;
+
+const float CALIB_STEP_TIME_S = 1.f/*s*/ / MOTOR_STEPS_MAX; // V1 was 1/(MOTOR_STEPS_MAX*200/360) ?!
+const float CALIB_MAGIC_RATIO = 1.f; // V1 was 0.8
+const float CALIB_A = 1.275f;
+const float CALIB_B = 0.046f;
+
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
 //! \remark only for test purposes
-
-extern float    LUNG_V_ML_MAX         ;
 
 extern float    LUNG_COMPLIANCE       ; //!< dV_mL/dP_cmH2O \see https://outcomerea.fr/docs/day2019/Forel_Mechanical_power.pdf
 extern float    LUNG_COMPLIANCE_MAX   ;
