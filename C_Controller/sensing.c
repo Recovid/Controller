@@ -130,29 +130,29 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
     DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
 }
 
-//! Compute the motor step time in us
+//! \returns step time in µs
 //! \param calibration_speed is motor step time in seconds
 //! \param desired_flow is in sL/s (sic)
 //! \param A_calibrated is the proportional term computed from the slope
 //! \param B_calibrated is the constant termb
-//! \returns step time in us
-float compute_motor_step_time(long step_number, float desired_flow_sls, double calibration_speed, float A_calibrated, float B_calibrated)
+float compute_motor_step_time_us(uint16_t step_index, float desired_flow_sls, double calibration_speed, float A_calibrated, float B_calibrated)
 {
-    float res = (A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
+    float res = (A_calibrated*calibration_speed*calibration_speed*step_index) + B_calibrated * calibration_speed;
     res /= desired_flow_sls;
     return MAX(res * 1000000.f, 110.f); // FIXME Move magic number to configuration.h
 }
 
-uint32_t compute_motor_steps(uint32_t* motor_speed_table, long steps, float setpoint_flow_slm, float CALIBRATION_SPEED, float A_calibrated, float B_calibrated)
+//! Compute step_times_len x motor step_times (in µs) for desired_flow_sls
+uint32_t compute_motor_step_times_us(uint32_t* step_times, uint16_t step_times_len, float desired_flow_sls, float calibration_speed, float A_calibrated, float B_calibrated)
 {
-    uint32_t Tinsu_us = 0.;
-    for(long t=0; t<steps; ++t) {
-        float d = compute_motor_step_time(t, setpoint_flow_slm/60., CALIBRATION_SPEED, A_calibrated, B_calibrated);
+    float Tinsu_us = 0.f;
+    for(uint16_t i=0 ; i<step_times_len ; ++i) {
+        const float d = compute_motor_step_time_us(i, desired_flow_sls, calibration_speed, A_calibrated, B_calibrated);
         Tinsu_us += d;
-        DEBUG_PRINTF("d=%d", (uint32_t)(d));
-        motor_speed_table[t]= (uint32_t)d;
+        step_times[i] = (uint32_t)d;
+        DEBUG_PRINTF("d=%d", step_times[i]);
     }
-    DEBUG_PRINTF("Tinsu predicted = %d ms\n", (uint32_t)(Tinsu_us/1000));
+    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
     return (uint32_t)(Tinsu_us/1000);
 }
 
