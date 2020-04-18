@@ -38,46 +38,48 @@ float get_last_sensed_ms() { return last_sense_ms; }
 
 // ------------------------------------------------------------------------------------------------
 
-//! Compute slope of samples fetched with specified time_step
+//! Compute slope of samples fetched with specified time_step_sec
+//! \param slope (out)
 //! \returns R if fit is ok else -1
-float linear_fit(float* samples, size_t samples_len, float time_step_sec, float* slope)
+float linear_fit(float* samples, uint16_t samples_len, float time_step_sec, float* slope)
 {
-    float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
-    for(int i=0 ; i<samples_len ; i++) {
-        sumx  = sumx + (float)i * time_step_sec;
-        sumx2 = sumx2 + (float)i*time_step_sec*(float)i*time_step_sec;
-        sumy  = sumy + *(samples+i);
+    float sumx=0, sumy=0, sumxy=0, sumx2=0, sumy2=0;
+    for(uint16_t i=0 ; i<samples_len ; i++) {
+        sumx  = sumx  + (float)i * time_step_sec;
+        sumx2 = sumx2 + (float)i * time_step_sec * (float)i * time_step_sec;
+        sumy  = sumy  + (*(samples+i));
         sumy2 = sumy2 + (*(samples+i)) * (*(samples+i));
         sumxy = sumxy + (float)i*(time_step_sec)* (*(samples+i));
     }
     const float denom = (samples_len * sumx2 - (sumx * sumx));
-    if(denom == 0.) {
+    if (denom == 0.) {
         DEBUG_PRINT("Calibration of A is not possible");
-        return 1;
+        return -1.f;
     }
     // compute slope a
     *slope = (samples_len * sumxy  -  sumx * sumy) / denom;
     DEBUG_PRINTF("%d     ", (int32_t)(1000*((samples_len * sumxy  -  sumx * sumy) / denom)));
 
     // compute correlation coefficient
-    return (sumxy - sumx * sumy / samples_len) / sqrtf((sumx2 - (sumx*sumx)/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
+    return (sumxy - sumx*sumy/samples_len) / sqrtf((sumx2 - sumx*sumx/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
 }
 
 //! Find the plateau of the curve by slicing it in N windows (windows_number = 10 usually).
 //! The curve is describe by samples of size samples_len
-//! This function return the first and last indexes(low_bound and high_bound respectively)
+//! \param low_bound (out) first index
+//! \param high_bound (out) last index
 //! of the samples corresponding to the plateau
 //! \remark The high_bound is ALWAYS the last sample index
-//!		If no low_bound is found, low_bound = middle sample index
+//!		    If no low_bound is found, low_bound = middle sample index
 int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound)
 {
-    if (windows_number < 2 || windows_number > 30) { return -1; }
+    if (windows_number < 2 || 30 < windows_number) { return -1; }
 
     float slopes[30];
     *high_bound = samples_len-1;
     // Compute slope for time windows to detect when signal start increasing/decreasing
     for(int window=0; window<windows_number; window++) {
-        float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
+        const float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
         DEBUG_PRINTF("%d    ", (int32_t)(*(slopes+window) * 1000));
     }
     for(int window=1 ; window<windows_number ; window++) {
@@ -99,45 +101,45 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
 //!
 //! \warning not the same as "calibration(float* A, float* B, uint8_t iterations)" !
 //! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
-void compute_pid(float* A, float* B, uint32_t log_index, float log_time_step_sum, float flow_setpoint_slm, float* inhalation_flow)
+void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, float samples_time_step_sum, float desired_flow_sls)
 {
     const float P_plateau_slope = 0.1;
     const float P_plateau_mean = 0.2;
-    const float timeStep = log_time_step_sum/ log_index;
+    const float timeStep = samples_time_step_sum / samples_index;
     uint32_t low;
     uint32_t high;
-    if (get_plateau(inhalation_flow, log_index, timeStep, 10, &low, &high) == 0) {
+    if (get_plateau(samples, samples_index, timeStep, 10, &low, &high) == 0) {
         DEBUG_PRINTF("plateau found from sample %u to %u", low, high);
     } else {
         DEBUG_PRINTF("plateau NOT found, considering from sample %u to %u", low, high);
     }
-    float plateau_slope = linear_fit(inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
-    float plateau_mean = 0;
+    float plateau_slope = linear_fit(samples+low, high-low-1, timeStep, &plateau_slope);
+    float plateau_mean  = 0;
     for(uint32_t i=low ; i<high ; i++) {
-        plateau_mean += inhalation_flow[i];
+        plateau_mean += samples[i];
     }
     plateau_mean = plateau_mean/(high-low);
     DEBUG_PRINTF("plateau slope : %d",(int32_t)(1000*plateau_slope));
     DEBUG_PRINTF("plateau mean  : %d",(int32_t)(1000*plateau_mean ));
 
-    const float error_mean = plateau_mean - (flow_setpoint_slm/60.);
+    const float error_mean = plateau_mean - desired_flow_sls;
 
     *A += plateau_slope * P_plateau_slope;
-    *B += error_mean * P_plateau_mean;
+    *B += error_mean    * P_plateau_mean ;
     DEBUG_PRINTF("A = %d", (int32_t)(1000*(*A)));
     DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
 }
 
 //! Compute the motor step time in us
-//! Inputs : calibration_speed is motor step time in seconds
-//! 			desired_flow is in sL/s
-//!          A_calibrated is the proportional term computed from the slope (previously a somewhat global var, now an input)
-//!          B_calibrated is the constant term (previously a somewhat global var, now an input)
+//! \param calibration_speed is motor step time in seconds
+//! \param desired_flow is in sL/s (sic)
+//! \param A_calibrated is the proportional term computed from the slope
+//! \param B_calibrated is the constant termb
 //! \returns step time in us
-float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed, float A_calibrated,float B_calibrated)
+float compute_motor_step_time(long step_number, float desired_flow_sls, double calibration_speed, float A_calibrated, float B_calibrated)
 {
     float res = (A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
-    res = res / desired_flow;
+    res = res / desired_flow_sls;
     if (res * 1000000 < 110) { return 110; } // FIXME Move magic number to configuration.h
     else {return res * 1000000.;}
 }
