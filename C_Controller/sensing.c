@@ -23,6 +23,15 @@ static float VMe_Lpm      = 0.f;
 
 static unsigned long last_sense_ms = 0;
 
+#define VOLUME_ANGLE_DEG        200
+#define STEPS_PER_REVOLUTION 	(VOLUME_ANGLE_DEG*8*4) // *microsteps*reduction // TODO adapt to v2
+#define STEPS_PER_DEG		    (STEPS_PER_REVOLUTION/360)
+#define CALIBRATION_SPEED (1.f/((STEPS_PER_REVOLUTION)*(200/360.f)))
+
+#define STEPS_MAX STEPS_PER_DEG*VOLUME_ANGLE_DEG
+
+static uint16_t motor_step_times_us[STEPS_MAX];
+
 float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
 float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
 float get_sensed_VolM_Lpm    () { return         VolM_Lpm ; }
@@ -78,9 +87,9 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
     float slopes[30];
     *high_bound = samples_len-1;
     // Compute slope for time windows to detect when signal start increasing/decreasing
-    for(int window=0; window<windows_number; window++) {
+    for(uint8_t window=0; window<windows_number; window++) {
         const float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
-        DEBUG_PRINTF("%d    ", (int32_t)(*(slopes+window) * 1000));
+        DEBUG_PRINTF("%d    ", (int32_t)(slopes[window] * 1000));
     }
     for(int window=1 ; window<windows_number ; window++) {
         float delta_slope = slopes[window-1] - slopes[window];
