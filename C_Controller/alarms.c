@@ -49,7 +49,8 @@ float VM_Lm_q[VM_Q_LEN] = {0};
 int PEP_startIdx = 0;
 float PEP_cmH2O_q[PEP_Q_LEN] = {0};
 
-void save_sensed_values()
+//! Save latest values into bounded queues for alarm detection
+static void save_sensed_values()
 {
     pressureMax_startIdx = (pressureMax_startIdx - 1 + PMAX_Q_LEN) % PMAX_Q_LEN;
     pressureMax_cmH2O_q[pressureMax_startIdx] = get_sensed_P_cmH2O();
@@ -68,7 +69,7 @@ void save_sensed_values()
     PEP_cmH2O_q[PEP_startIdx] = get_sensed_PEP_cmH2O();
 }
 
-bool update_alarms()
+static bool monitor_sensed_values()
 {
     int Pmax_cycles = PMAX_Q_LEN;
     int Pmin_startFailing_ms = -1;
@@ -182,12 +183,21 @@ bool update_alarms()
     return true;
 }
 
+//! Trigger and send active alarms
 void trigger_alarms()
 {
     // uint32_t newAlarms = (activeAlarms ^ activeAlarmsOld) & activeAlarms;
 
     printf("active %x\n", activeAlarms);
     send_ALRM(activeAlarms);
+}
+
+bool update_alarms()
+{
+    save_sensed_values();
+    monitor_sensed_values();
+    trigger_alarms();
+    return true;
 }
 
 // ================================================================================================
@@ -198,7 +208,7 @@ static bool PRINT(test_alarm_pmax_on0)
     pressureMax_startIdx = 1;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) + 1;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMAX);
 }
 
@@ -206,7 +216,7 @@ static bool PRINT(test_alarm_pmax_off0)
     pressureMax_startIdx = 0;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) - 1;
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMAX));
 }
 
@@ -214,7 +224,7 @@ static bool PRINT(test_alarm_pmax_off1)
     pressureMax_startIdx = 0;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) - 1;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMAX));
 }
 
@@ -229,7 +239,7 @@ static bool PRINT(test_alarm_pmin_on)
     Pcrete_time_ms_q[1] = 10;
     Pcrete_time_ms_q[2] = 0;
 
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMIN);
 }
 
@@ -244,7 +254,7 @@ static bool PRINT(test_alarm_pmin_on_mod)
     Pcrete_time_ms_q[7] = 10;
     Pcrete_time_ms_q[0] = 0;
 
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMIN);
 }
 
@@ -259,7 +269,7 @@ static bool PRINT(test_alarm_pmin_off_too_fast)
     Pcrete_time_ms_q[1] = 5;
     Pcrete_time_ms_q[2] = 0;
 
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMIN));
 }
 
@@ -274,7 +284,7 @@ static bool PRINT(test_alarm_pmin_off_disc)
     Pcrete_time_ms_q[1] = 5;
     Pcrete_time_ms_q[2] = 0;
 
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMIN));
 }
 
@@ -283,7 +293,7 @@ static bool PRINT(test_alarm_vt_min_on)
     VTe_ml_q[0] = get_setting_VTmin_mL();
     VTe_ml_q[1] = get_setting_VTmin_mL() - 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VT_MIN);
 }
 
@@ -292,7 +302,7 @@ static bool PRINT(test_alarm_vt_min_on_mod)
     VTe_ml_q[1] = get_setting_VTmin_mL() - 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
     VTe_ml_q[0] = get_setting_VTmin_mL();
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VT_MIN);
 }
 
@@ -301,7 +311,7 @@ static bool PRINT(test_alarm_vt_min_off_disc)
     VTe_ml_q[0] = get_setting_VTmin_mL();
     VTe_ml_q[1] = get_setting_VTmin_mL() + 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_VT_MIN));
 }
 
@@ -310,7 +320,7 @@ static bool PRINT(test_alarm_vm_min_on)
     VM_Lm_q[0] = get_setting_VMmin_Lm();
     VM_Lm_q[1] = get_setting_VMmin_Lm() - 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VM_MIN);
 }
 
@@ -319,7 +329,7 @@ static bool PRINT(test_alarm_vm_min_on_mod)
     VM_Lm_q[1] = get_setting_VMmin_Lm() - 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
     VM_Lm_q[0] = get_setting_VMmin_Lm();
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VM_MIN);
 }
 
@@ -328,7 +338,7 @@ static bool PRINT(test_alarm_vm_min_off_disc)
     VM_Lm_q[0] = get_setting_VMmin_Lm();
     VM_Lm_q[1] = get_setting_VMmin_Lm() + 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_VM_MIN));
 }
 
@@ -337,7 +347,7 @@ static bool PRINT(test_alarm_pep_max_on)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MAX);
 }
 
@@ -346,7 +356,7 @@ static bool PRINT(test_alarm_pep_max_on_mod)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MAX);
 }
 
@@ -356,7 +366,7 @@ static bool PRINT(test_alarm_pep_max_off_disc)
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MAX));
 }
 
@@ -365,7 +375,7 @@ static bool PRINT(test_alarm_pep_min_on)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MIN);
 }
 
@@ -374,7 +384,7 @@ static bool PRINT(test_alarm_pep_min_on_mod)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
-    update_alarms();
+    monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MIN);
 }
 
@@ -384,7 +394,7 @@ static bool PRINT(test_alarm_pep_min_off_disc)
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
     PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
-    update_alarms();
+    monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MIN));
 }
 
