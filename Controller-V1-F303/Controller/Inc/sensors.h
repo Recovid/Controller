@@ -16,7 +16,7 @@
 #define ADDR_NPA700B 	((uint16_t)(0x76 <<1))
 
 
-bool 			sensors_init(I2C_HandleTypeDef *hi2c, TIM_HandleTypeDef* timer1kHz);
+bool 			sensors_init(I2C_HandleTypeDef *hi2c);
 
 void 			sensors_start();
 void 			sensors_stop();

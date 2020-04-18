@@ -281,8 +281,12 @@ void controller_run() {
 	init_time_us(&htim4);
 	start_time_us();
 
-	printf("Press button to initialize Recovid\n");
-	wait_btn_clicked();
+	printf("Turn on FS button to initialize Recovid\n");
+	while(!failsafe_is_on());
+	HAL_Delay(50);
+
+
+	printf("Initializing bavu motor\n");
 
 	// Compress 20° first.
   if(!motor_init(&bavu_motor)) {
@@ -303,6 +307,7 @@ void controller_run() {
 
   // PEP Motor
 	// Set stepping: 8
+	printf("Initializing PEP motor\n");
 	pep_motor_stepping(ZERO,ONE);
 
   // Set indexer mode
@@ -313,13 +318,13 @@ void controller_run() {
 
 
   if(!motor_init(&pep_motor)) {
-  	printf("Failed to init pep motor\n");
+  	printf("Failed to init PEP motor\n");
   } else {
-  	printf("pep motor initialized\n");
+  	printf("PEP motor initialized\n");
   }
 
 
-  printf("Homing pep\n");
+  printf("Homing PEP motor\n");
 
 	motor_enable(&pep_motor);
   motor_run(&pep_motor, PEP_DEC, 150 );
@@ -331,13 +336,13 @@ void controller_run() {
   motor_stop(&pep_motor);
 
   motor_disable(&pep_motor);
-  printf("Pep homed\n");
+  printf("PEP homed\n");
 
 
 	printf("Scanning I2C bus\n");
 	sensors_scan(&hi2c1);
 
-	if(!sensors_init(&hi2c1, &htim7)) {
+	if(!sensors_init(&hi2c1)) {
 		printf("I2C Error!!!\n");
 		while(true);
 	}
@@ -357,7 +362,7 @@ void controller_run() {
 	printf("Testing buzzer\n");
 
 
-	printf("Testing Alarm LOW. Press button to skip\n");
+	printf("Testing Alarm LOW. 		Press button to skip\n");
 	buzzer_set_level(BUZZER_LOW);
 	wait_btn_clicked();
 
@@ -365,16 +370,11 @@ void controller_run() {
 	buzzer_set_level(BUZZER_MEDIUM);
 	wait_btn_clicked();
 
-	printf("Testing Alarm HIGH. Press button to skip\n");
+	printf("Testing Alarm HIGH. 	Press button to skip\n");
 	buzzer_set_level(BUZZER_HIGH);
 	wait_btn_clicked();
 
 	buzzer_set_level(BUZZER_OFF);
-
-	printf("Testing FS_Enabled: Turn ON/OFF button\n");
-	while(!failsafe_is_on());
-	HAL_Delay(50);
-
 
 
 
@@ -411,6 +411,7 @@ void controller_run() {
 	printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
 
 	printf("Running\n");
+	printf("Turn FS button off to stop the system.\n");
 
 	motor_enable(&bavu_motor);
 	bavu_motor_home(HOME_SPEED);
