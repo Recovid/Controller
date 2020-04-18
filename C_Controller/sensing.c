@@ -38,47 +38,12 @@ float get_last_sensed_ms() { return last_sense_ms; }
 
 // ------------------------------------------------------------------------------------------------
 
-//! Compute average flow and slope to adjust A_calibrated and B_calibrated
-//! A_calibrated and B_calibrated the terms of the PID
-//! NB : The PID is only a P for now, so keep that in mind
-//!
-//! \warning not the same as "calibration(float* A, float* B, uint8_t iterations)" !
-//! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
-void compute_pid(float* A, float* B, uint32_t log_index, float log_time_step_sum, float flow_setpoint_slm, float* inhalation_flow)
-{
-    const float P_plateau_slope = 0.1;
-    const float P_plateau_mean = 0.2;
-    const float timeStep = log_time_step_sum/ log_index;
-    uint32_t low;
-    uint32_t high;
-    if(get_plateau(inhalation_flow, log_index, timeStep, 10, &low, &high) == 0) {
-        DEBUG_PRINTF("plateau found from sample %u to %u", low, high);
-    } else {
-        DEBUG_PRINTF("plateau NOT found, considering from sample %u to %u", low, high);
-    }
-    float plateau_slope = linear_fit(inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
-    float plateau_mean = 0;
-    for(uint32_t i=low ; i<high ; i++) {
-        plateau_mean += inhalation_flow[i];
-    }
-    plateau_mean = plateau_mean/(high-low);
-    DEBUG_PRINTF("plateau slope : %d",(int32_t)(1000*plateau_slope));
-    DEBUG_PRINTF("plateau mean  : %d",(int32_t)(1000*plateau_mean ));
-
-    const float error_mean = plateau_mean - (flow_setpoint_slm/60.);
-
-    *A += plateau_slope * P_plateau_slope;
-    *B += error_mean * P_plateau_mean;
-    DEBUG_PRINTF("A = %d", (int32_t)(1000*(*A)));
-    DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
-}
-
 //! Compute slope of samples fetched with specified time_step
 //! \returns R if fit is ok else -1
 float linear_fit(float* samples, size_t samples_len, float time_step_sec, float* slope)
 {
     float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
-    for(int i=0;i<samples_len;i++) {
+    for(int i=0 ; i<samples_len ; i++) {
         sumx  = sumx + (float)i * time_step_sec;
         sumx2 = sumx2 + (float)i*time_step_sec*(float)i*time_step_sec;
         sumy  = sumy + *(samples+i);
@@ -126,6 +91,41 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
     *low_bound = (uint32_t)(samples_len/2);
     DEBUG_PRINT("No plateau found");
     return 1;
+}
+
+//! Compute average flow and slope to adjust A_calibrated and B_calibrated
+//! A_calibrated and B_calibrated the terms of the PID
+//! NB : The PID is only a P for now, so keep that in mind
+//!
+//! \warning not the same as "calibration(float* A, float* B, uint8_t iterations)" !
+//! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
+void compute_pid(float* A, float* B, uint32_t log_index, float log_time_step_sum, float flow_setpoint_slm, float* inhalation_flow)
+{
+    const float P_plateau_slope = 0.1;
+    const float P_plateau_mean = 0.2;
+    const float timeStep = log_time_step_sum/ log_index;
+    uint32_t low;
+    uint32_t high;
+    if (get_plateau(inhalation_flow, log_index, timeStep, 10, &low, &high) == 0) {
+        DEBUG_PRINTF("plateau found from sample %u to %u", low, high);
+    } else {
+        DEBUG_PRINTF("plateau NOT found, considering from sample %u to %u", low, high);
+    }
+    float plateau_slope = linear_fit(inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
+    float plateau_mean = 0;
+    for(uint32_t i=low ; i<high ; i++) {
+        plateau_mean += inhalation_flow[i];
+    }
+    plateau_mean = plateau_mean/(high-low);
+    DEBUG_PRINTF("plateau slope : %d",(int32_t)(1000*plateau_slope));
+    DEBUG_PRINTF("plateau mean  : %d",(int32_t)(1000*plateau_mean ));
+
+    const float error_mean = plateau_mean - (flow_setpoint_slm/60.);
+
+    *A += plateau_slope * P_plateau_slope;
+    *B += error_mean * P_plateau_mean;
+    DEBUG_PRINTF("A = %d", (int32_t)(1000*(*A)));
+    DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
 }
 
 //! Compute the motor step time in us
