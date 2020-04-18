@@ -207,6 +207,7 @@ static bool monitor_sensed_values()
 
 void monitor_battery()
 {
+    /*
     if (is_DC_on()) {
         return;
     }
@@ -219,6 +220,7 @@ void monitor_battery()
     // battery is not charged (<85%)
     // TODO: alarm type (B/C/D) depends on the elpased time on battery
     activeAlarms |= ALARM_BATT_B;
+    */
 }
 
 void blink_LEDs(int level)
