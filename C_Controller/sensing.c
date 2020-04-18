@@ -44,32 +44,33 @@ float get_last_sensed_ms() { return last_sense_ms; }
 //!
 //! \warning not the same as "calibration(float* A, float* B, uint8_t iterations)" !
 //! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
-void compute_pid(float* A, float* B, uint32_t log_index, float log_time_step_sum, float flow_setpoint_slm, float* inhalation_flow){
-    float P_plateau_slope = 0.1;
-    float P_plateau_mean = 0.2;
-    float timeStep = log_time_step_sum/ log_index;
+void compute_pid(float* A, float* B, uint32_t log_index, float log_time_step_sum, float flow_setpoint_slm, float* inhalation_flow)
+{
+    const float P_plateau_slope = 0.1;
+    const float P_plateau_mean = 0.2;
+    const float timeStep = log_time_step_sum/ log_index;
     uint32_t low;
     uint32_t high;
     if(get_plateau(inhalation_flow, log_index, timeStep, 10, &low, &high) == 0) {
-        printf("plateau found from sample %lu to %lu\n", low, high);
+        DEBUG_PRINTF("plateau found from sample %u to %u", low, high);
     } else {
-        printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
+        DEBUG_PRINTF("plateau NOT found, considering from sample %u to %u", low, high);
     }
     float plateau_slope = linear_fit(inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
     float plateau_mean = 0;
-    for(int i=low; i<high; i++) {
+    for(uint32_t i=low ; i<high ; i++) {
         plateau_mean += inhalation_flow[i];
     }
     plateau_mean = plateau_mean/(high-low);
-    printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
-    printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
+    DEBUG_PRINTF("plateau slope : %d",(int32_t)(1000*plateau_slope));
+    DEBUG_PRINTF("plateau mean  : %d",(int32_t)(1000*plateau_mean ));
 
-    float error_mean = plateau_mean - (flow_setpoint_slm/60.);
+    const float error_mean = plateau_mean - (flow_setpoint_slm/60.);
 
     *A += plateau_slope * P_plateau_slope;
     *B += error_mean * P_plateau_mean;
-    //printf("A = %ld\n", (int32_t)(1000*A));
-    //printf("B = %ld\n", (int32_t)(1000*B));
+    DEBUG_PRINTF("A = %d", (int32_t)(1000*(*A)));
+    DEBUG_PRINTF("B = %d", (int32_t)(1000*(*B)));
 }
 
 //! Compute slope of samples fetched with specified time_step
@@ -84,14 +85,14 @@ float linear_fit(float* samples, size_t samples_len, float time_step_sec, float*
         sumy2 = sumy2 + (*(samples+i)) * (*(samples+i));
         sumxy = sumxy + (float)i*(time_step_sec)* (*(samples+i));
     }
-    float denom = (samples_len * sumx2 - (sumx * sumx));
+    const float denom = (samples_len * sumx2 - (sumx * sumx));
     if(denom == 0.) {
-        //printf("Calibration of A is not possible\n");
+        DEBUG_PRINT("Calibration of A is not possible");
         return 1;
     }
     // compute slope a
     *slope = (samples_len * sumxy  -  sumx * sumy) / denom;
-    //	printf("%ld     ", (int32_t)(1000*((samples_len * sumxy  -  sumx * sumy) / denom)));
+    DEBUG_PRINTF("%d     ", (int32_t)(1000*((samples_len * sumxy  -  sumx * sumy) / denom)));
 
     // compute correlation coefficient
     return (sumxy - sumx * sumy / samples_len) / sqrtf((sumx2 - (sumx*sumx)/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
@@ -103,26 +104,27 @@ float linear_fit(float* samples, size_t samples_len, float time_step_sec, float*
 //! of the samples corresponding to the plateau
 //! \remark The high_bound is ALWAYS the last sample index
 //!		If no low_bound is found, low_bound = middle sample index
-int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound){
-    if(windows_number < 2 || windows_number > 30) {return -1;}
+int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound)
+{
+    if (windows_number < 2 || windows_number > 30) { return -1; }
+
     float slopes[30];
     *high_bound = samples_len-1;
     // Compute slope for time windows to detect when signal start increasing/decreasing
     for(int window=0; window<windows_number; window++) {
         float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
-        printf("%ld    ", (int32_t)(*(slopes+window) * 1000));
+        DEBUG_PRINTF("%d    ", (int32_t)(*(slopes+window) * 1000));
     }
-    printf("\n");
-    for(int window=1; window<windows_number; window++) {
+    for(int window=1 ; window<windows_number ; window++) {
         float delta_slope = slopes[window-1] - slopes[window];
         if(delta_slope > 1.) {
             *low_bound = (uint32_t)((samples_len/windows_number)*(window+1));
-            printf("plateau begin at %lu over %lu points\n", *low_bound, (uint32_t)samples_len);
+            DEBUG_PRINTF("plateau begin at %u over %u points", *low_bound, (uint32_t)samples_len);
             return 0;
         }
     }
     *low_bound = (uint32_t)(samples_len/2);
-    printf("No plateau found\n");
+    DEBUG_PRINT("No plateau found");
     return 1;
 }
 
@@ -132,10 +134,11 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
 //!          A_calibrated is the proportional term computed from the slope (previously a somewhat global var, now an input)
 //!          B_calibrated is the constant term (previously a somewhat global var, now an input)
 //! \returns step time in us
-float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed, float A_calibrated,float B_calibrated) {
+float compte_motor_step_time(long step_number, float desired_flow, double calibration_speed, float A_calibrated,float B_calibrated)
+{
     float res = (A_calibrated*calibration_speed*calibration_speed*step_number) + B_calibrated * calibration_speed;
     res = res / desired_flow;
-    if (res * 1000000 < 110) {return 110;}
+    if (res * 1000000 < 110) { return 110; } // FIXME Move magic number to configuration.h
     else {return res * 1000000.;}
 }
 
