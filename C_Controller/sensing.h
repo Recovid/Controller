@@ -17,6 +17,11 @@ float get_sensed_VMe_Lpm     ();
 
 float get_last_sensed_ms();
 
+//! Updates motor_step_times_us (µs) for desired_flow_Lpm
+//! \warning a desired_Vol_mL must be added
+//! \returns predicted Tinsu (ms)
+uint32_t update_motor_step_times_us(float desired_flow_Lpm);
+
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others
 void sense_and_compute(RespirationState state);
 

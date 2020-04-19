@@ -20,6 +20,12 @@ static volatile uint8_t       _npa_measurement_buffer[2]	= { 0 };
 static volatile float _current_flow;
 static volatile float _current_pressure;
 
+static float motor_step_times_us[MOTOR_STEPS_MAX];
+
+static uint16_t flow_samples_index  = 0;
+static float    flow_samples_time_s = 0.f;
+static bool     flow_sampling       = 1;
+
 typedef enum {
     STOPPED,
     REQ_SDP_MEASUREMENT,
@@ -28,6 +34,9 @@ typedef enum {
 } sensor_state_t;
 
 volatile sensor_state_t _sensor_state;
+
+volatile uint16_t _hyperfrish_sdp_time;
+
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
 DMA_HandleTypeDef hdma_i2c1_tx;
@@ -119,6 +128,34 @@ void sensors_stop() {
     _sensor_state= STOPPED;
 }
 
+void sensors_start_sampling_flow()
+{
+    flow_samples_index = 0;
+    flow_samples_time_s = 0.f;
+    flow_sampling = true;
+}
+
+void sensors_stop_sampling_flow()
+{
+    flow_sampling = false;
+}
+
+void sensors_sample_flow()
+{
+    // FIXME
+    // _hyperfrish_sdp_time = (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
+    // hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
+    if(flow_sampling && flow_samples_index < COUNT_OF(motor_step_times_us)) {
+        motor_step_times_us[flow_samples_index] = _current_flow/60.;  // in sls
+        flow_samples_time_s += (float)_hyperfrish_sdp_time/1000000;
+        ++flow_samples_index;
+    }
+}
+
+float sensors_samples_time_s()
+{
+    return flow_samples_time_s;
+}
 
 void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 	//static	uint16_t hyperfrish_npa;
@@ -181,6 +218,8 @@ void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
 			_current_flow = ((float)dp_raw)/105.0;
+
+            // TODO call sensors_sample_flow()
 			//_hyperfrish_sdp_time= (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
 			//hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
 			//_current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);

@@ -24,9 +24,8 @@ static float VMe_Lpm      = 0.f;
 
 static uint32_t last_sense_ms = 0;
 
-static float A_calibrated = CALIB_A;
-static float B_calibrated = CALIB_B;
-static uint16_t motor_step_times_us[MOTOR_STEPS_MAX];
+static float A_calibrated = CALIB_A; //!< \param A_calibrated is the proportional term computed from the slope
+static float B_calibrated = CALIB_B; //!< \param B_calibrated is the constant term
 
 float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
 float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
@@ -100,15 +99,11 @@ int32_t get_plateau(float* samples, size_t samples_len, float time_step_sec, uin
     return 1;
 }
 
-//! Compute average flow and slope to adjust A_calibrated and B_calibrated
-//! A_calibrated and B_calibrated the terms of the PID
-//! NB : The PID is only a P for now, so keep that in mind
-//!
-//! \warning not the same as "calibration(float* A, float* B, uint8_t iterations)" !
-//! calibration() is for testing, compute_pid() is to be called at the end of every EXPIRATION MOVEMENT
-void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, float samples_time_step_sum, float desired_flow_sls)
+//! Compute average flow and slope to adjust A with P_PLATEAU_SLOPE and B with P_PLATEAU_MEAN
+//! \warning The PID is only a P for now, so keep in mind that it may diverge depending on P_PLATEAU_SLOPE, P_PLATEAU_MEAN
+void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, float desired_flow_Lps)
 {
-    const float timeStep = samples_time_step_sum / samples_index;
+    const float timeStep = sensors_samples_time_s() / samples_index;
     uint32_t low;
     uint32_t high;
     if (get_plateau(samples, samples_index, timeStep, 10, &low, &high) == 0) {
@@ -125,7 +120,7 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
     DEBUG_PRINTF("plateau slope : %d",(int32_t)(1000*plateau_slope));
     DEBUG_PRINTF("plateau mean  : %d",(int32_t)(1000*plateau_mean ));
 
-    const float error_mean = plateau_mean - desired_flow_sls;
+    const float error_mean = plateau_mean - desired_flow_Lps;
 
     *A += plateau_slope * P_PLATEAU_SLOPE;
     *B += error_mean    * P_PLATEAU_MEAN ;
@@ -134,26 +129,25 @@ void compute_pid(float* A, float* B, float* samples, uint32_t samples_index, flo
 }
 
 //! \returns step time in µs
-//! \param desired_flow is in sL/s (sic)
-//! \param A_calibrated is the proportional term computed from the slope
-//! \param B_calibrated is the constant termb
-float compute_motor_step_time_us(uint16_t step_index, float desired_flow_sls, float A_calibrated, float B_calibrated)
+//! \param desired_flow_Lps is in L/s
+float compute_motor_step_time_us(uint16_t step_index, float desired_flow_Lps)
 {
     float res = step_index * A_calibrated*CALIB_STEP_TIME_S*CALIB_MAGIC_RATIO + B_calibrated;
     res *= CALIB_STEP_TIME_S;
-    res /= desired_flow_sls;
+    res /= desired_flow_Lps; // FIXME relative to calibration flow of 60 Lpm = 1 Lps ?
     return MAX(res * 1000000.f, MOTOR_STEP_TIME_US_MIN);
 }
 
-//! Compute step_times_len x motor step_times (in µs) for desired_flow_sls
-uint32_t compute_motor_step_times_us(uint32_t* step_times, uint16_t step_times_len, float desired_flow_sls, float A_calibrated, float B_calibrated)
+uint32_t update_motor_step_times_us(float desired_flow_Lps)
 {
+    compute_pid(&A_calibrated, &B_calibrated, motor_step_times_us, COUNT_OF(motor_step_times_us), desired_flow_Lps);
+
     float Tinsu_us = 0.f;
-    for(uint16_t i=0 ; i<step_times_len ; ++i) {
-        const float d = compute_motor_step_time_us(i, desired_flow_sls, A_calibrated, B_calibrated);
+    for(uint16_t i=0 ; i<COUNT_OF(motor_step_times_us) ; ++i) {
+        const float d = compute_motor_step_time_us(i, desired_flow_Lps);
         Tinsu_us += d;
-        step_times[i] = (uint32_t)d;
-        DEBUG_PRINTF("d=%d", step_times[i]);
+        motor_step_times_us[i] = d;
+        DEBUG_PRINTF("d=%d", (uint32_t)motor_step_times_us[i]);
     }
     DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
     return (uint32_t)(Tinsu_us/1000);
@@ -174,6 +168,7 @@ void sense_and_compute(RespirationState state)
         if (last_state==Exhalation || last_state==ExhalationPause) {
             VTi_mL       = 0.f;
             Pcrete_cmH2O = 0.f;
+            sensors_start_sampling_flow();
         }
         else {
             VTi_mL += MAX(0.f, (VolM_Lpm/60.f/*mLpms*/) * (get_time_ms()-last_sense_ms));
@@ -181,7 +176,9 @@ void sense_and_compute(RespirationState state)
         }
         if (state==Plateau) {
             if (last_state==Insufflation) {
-                Pplat_cmH2O  = Pcrete_cmH2O;
+                sensors_stop_sampling_flow();
+                update_motor_step_times_us(get_setting_Vmax_Lpm());
+                Pplat_cmH2O = Pcrete_cmH2O;
             }
             else {
                 Pplat_cmH2O = MIN(Pplat_cmH2O, P_cmH2O); // TODO average over Xms

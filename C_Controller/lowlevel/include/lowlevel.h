@@ -2,6 +2,8 @@
 
 #include "platform.h"
 
+#include "configuration.h"
+
 // Public interface to the lowlevel hardware and/or simulated hardware
 
 // ------------------------------------------------------------------------------------------------
@@ -116,7 +118,15 @@ bool valve_inhale();
 bool init_Pdiff();
 bool init_Paw();
 bool init_Patmo();
+
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
+
+extern float motor_step_times_us[MOTOR_STEPS_MAX];
+
+void sensors_start_sampling_flow();
+void sensors_stop_sampling_flow();
+void sensors_sample_flow();
+float sensors_samples_time_s();
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok();
