@@ -11,6 +11,12 @@ int32_t activeAlarmsExtern = 0;
 int32_t activeAlarms = 0;
 int32_t activeAlarmsOld = 0;
 
+void reset_alarms()
+{
+    activeAlarmsOld = activeAlarms;
+    activeAlarms = 0;
+}
+
 static uint32_t activationTime_ms = 0;
 
 //! Alarms levels
@@ -18,6 +24,7 @@ static const uint8_t ALARM_LEVELS[] = {
     3, // PMAX
     3, // PMIN
     2, // VT_MIN
+    2, // VT_MAX
     0, // FR
     2, // VM_MIN
     3, // PEP_MAX
@@ -26,6 +33,7 @@ static const uint8_t ALARM_LEVELS[] = {
     3, // BATT_B
     2, // BATT_C
     2, // BATT_D
+    3, // BATT_E
     3, // FAILSAFE
     3, // CPU_LOST
     3, // P_KO
@@ -53,7 +61,7 @@ int Pcrete_startIdx = 0;
 float Pcrete_cmH2O_q[PCRETE_Q_LEN] = {0};
 int Pcrete_time_ms_q[PCRETE_Q_LEN] = {0};
 
-// VTmin Alarm
+// VTmin/VTmax Alarm
 #define VTE_Q_LEN 3
 int VTe_startIdx = 0;
 float VTe_ml_q[3] = {0};
@@ -69,7 +77,7 @@ int VM_startIdx = 0;
 float VM_Lm_q[VM_Q_LEN] = {0};
 
 // PEPmax / PEPmin Alarm
-#define PEP_Q_LEN 8
+#define PEP_Q_LEN 3
 int PEP_startIdx = 0;
 float PEP_cmH2O_q[PEP_Q_LEN] = {0};
 
@@ -98,14 +106,11 @@ static bool monitor_sensed_values()
     int Pmax_cycles = PMAX_Q_LEN;
     int Pmin_startFailing_ms = -1;
     int VTmin_cycles = VTE_Q_LEN;
+    int VTmax_cycles = VTE_Q_LEN;
     int FRmin_cycles = FR_Q_LEN;
     int VMmin_cycles = VM_Q_LEN;
     int PEPmax_cycles = PEP_Q_LEN;
     int PEPmin_cycles = PEP_Q_LEN;
-
-    // save and reset all alarms
-    activeAlarmsOld = activeAlarms;
-    activeAlarms = 0;
 
     for (int cycle = 0; cycle < 8; ++cycle)
     {
@@ -149,7 +154,20 @@ static bool monitor_sensed_values()
             }
             else
                 VTmin_cycles = 0; // deactivate VTmin Alarm
-       }
+        }
+        if (VTmax_cycles != 0)
+        {
+            if (VTe_ml_q[(VTe_startIdx + cycle) % VTE_Q_LEN] >= get_setting_VTmax_mL())
+            {
+                --VTmax_cycles;
+                if (VTmax_cycles == 0) {
+                    // VTmax Alarm
+                    activeAlarms |= ALARM_VT_MAX;
+                }
+            }
+            else
+                VTmax_cycles = 0; // deactivate VTmax Alarm
+        }
         /*
         if (FRmin_cycles != 0)
         {
@@ -207,21 +225,52 @@ static bool monitor_sensed_values()
     return true;
 }
 
+#define BATT_C_THRESHOLD_MIN 15
+#define BATT_D_THRESHOLD_MIN 20
+
 void monitor_battery()
 {
+    static bool dc_was_on = true;
+    static uint32_t dc_lost_time_ms = 0;
+    static bool monitoring = false;
+
+    // TODO: uncomment when is_DC_on, is_Battery_charged and is_Battery_ok are implemented on target
     /*
     if (is_DC_on()) {
+        dc_was_on = true;
         return;
     }
 
-    if (is_Battery_charged()) {
+    if (dc_was_on) {
+        // we just lost dc
+        dc_was_on = false;
+        dc_lost_time_ms = get_time_ms();
+
+        // if the battery is charged, we can estimate the remaining time and enter a monitoring state
+        // otherwise, we reach a critical alarm directly
+        monitoring = is_Battery_charged();
+    }
+
+    if (!monitoring) {
+        activeAlarms |= ALARM_BATT_B;
+        return;
+    }
+
+    uint32_t time_spent_battery_min = (get_time_ms() - dc_lost_time_ms) / 1000 / 60;
+
+    if (!is_Battery_ok()) {
+        // imminent stop
+        activeAlarms |= ALARM_BATT_E;
+    } else if (time_spent_battery_min >= BATT_D_THRESHOLD_MIN) {
+        // over 20 minutes spent on battery
+        activeAlarms |= ALARM_BATT_D;
+    } else if (time_spent_battery_min >= BATT_C_THRESHOLD_MIN) {
+        // over 15 minutes spent on battery
+        activeAlarms |= ALARM_BATT_C;
+    } else {
+        // just switched to a charged battery
         activeAlarms |= ALARM_BATT_A;
-        return;
     }
-
-    // battery is not charged (<85%)
-    // TODO: alarm type (B/C/D) depends on the elpased time on battery
-    activeAlarms |= ALARM_BATT_B;
     */
 }
 
@@ -313,9 +362,14 @@ void unset_alarm(int32_t alarm)
 bool update_alarms()
 {
     save_sensed_values();
+
+    // enable all necessary alarms
+    reset_alarms();
     monitor_sensed_values();
     monitor_battery();
+
     trigger_alarms();
+
     return true;
 }
 
@@ -327,6 +381,7 @@ static bool PRINT(test_alarm_pmax_on0)
     pressureMax_startIdx = 1;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) + 1;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMAX);
 }
@@ -335,6 +390,7 @@ static bool PRINT(test_alarm_pmax_off0)
     pressureMax_startIdx = 0;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) - 1;
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMAX));
 }
@@ -343,6 +399,7 @@ static bool PRINT(test_alarm_pmax_off1)
     pressureMax_startIdx = 0;
     pressureMax_cmH2O_q[0] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10);
     pressureMax_cmH2O_q[1] = MAX(get_setting_Pmax_cmH2O(), get_setting_PEP_cmH2O() + 10) - 1;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMAX));
 }
@@ -358,6 +415,7 @@ static bool PRINT(test_alarm_pmin_on)
     Pcrete_time_ms_q[1] = 10;
     Pcrete_time_ms_q[2] = 0;
 
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMIN);
 }
@@ -373,6 +431,7 @@ static bool PRINT(test_alarm_pmin_on_mod)
     Pcrete_time_ms_q[7] = 10;
     Pcrete_time_ms_q[0] = 0;
 
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PMIN);
 }
@@ -388,6 +447,7 @@ static bool PRINT(test_alarm_pmin_off_too_fast)
     Pcrete_time_ms_q[1] = 5;
     Pcrete_time_ms_q[2] = 0;
 
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMIN));
 }
@@ -403,6 +463,7 @@ static bool PRINT(test_alarm_pmin_off_disc)
     Pcrete_time_ms_q[1] = 5;
     Pcrete_time_ms_q[2] = 0;
 
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PMIN));
 }
@@ -412,6 +473,7 @@ static bool PRINT(test_alarm_vt_min_on)
     VTe_ml_q[0] = get_setting_VTmin_mL();
     VTe_ml_q[1] = get_setting_VTmin_mL() - 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VT_MIN);
 }
@@ -421,6 +483,7 @@ static bool PRINT(test_alarm_vt_min_on_mod)
     VTe_ml_q[1] = get_setting_VTmin_mL() - 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
     VTe_ml_q[0] = get_setting_VTmin_mL();
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VT_MIN);
 }
@@ -430,8 +493,39 @@ static bool PRINT(test_alarm_vt_min_off_disc)
     VTe_ml_q[0] = get_setting_VTmin_mL();
     VTe_ml_q[1] = get_setting_VTmin_mL() + 1;
     VTe_ml_q[2] = get_setting_VTmin_mL() - 2;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_VT_MIN));
+}
+
+static bool PRINT(test_alarm_vt_max_on)
+    VTe_startIdx = 0;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    VTe_ml_q[1] = get_setting_VTmax_mL() + 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(activeAlarms & ALARM_VT_MAX);
+}
+
+static bool PRINT(test_alarm_vt_max_on_mod)
+    VTe_startIdx = 1;
+    VTe_ml_q[1] = get_setting_VTmax_mL() + 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(activeAlarms & ALARM_VT_MAX);
+}
+
+static bool PRINT(test_alarm_vt_max_off_disc)
+    VTe_startIdx = 0;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    VTe_ml_q[1] = get_setting_VTmax_mL() - 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(!(activeAlarms & ALARM_VT_MAX));
 }
 
 static bool PRINT(test_alarm_vm_min_on)
@@ -439,6 +533,7 @@ static bool PRINT(test_alarm_vm_min_on)
     VM_Lm_q[0] = get_setting_VMmin_Lm();
     VM_Lm_q[1] = get_setting_VMmin_Lm() - 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VM_MIN);
 }
@@ -448,6 +543,7 @@ static bool PRINT(test_alarm_vm_min_on_mod)
     VM_Lm_q[1] = get_setting_VMmin_Lm() - 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
     VM_Lm_q[0] = get_setting_VMmin_Lm();
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_VM_MIN);
 }
@@ -457,6 +553,7 @@ static bool PRINT(test_alarm_vm_min_off_disc)
     VM_Lm_q[0] = get_setting_VMmin_Lm();
     VM_Lm_q[1] = get_setting_VMmin_Lm() + 1;
     VM_Lm_q[2] = get_setting_VMmin_Lm() - 2;
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_VM_MIN));
 }
@@ -466,15 +563,17 @@ static bool PRINT(test_alarm_pep_max_on)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MAX);
 }
 
 static bool PRINT(test_alarm_pep_max_on_mod)
-    PEP_startIdx = 4;
+    PEP_startIdx = PEP_Q_LEN / 2;
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MAX);
 }
@@ -484,7 +583,8 @@ static bool PRINT(test_alarm_pep_max_off_disc)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
-    PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
+    PEP_cmH2O_q[PEP_Q_LEN / 2] = get_setting_PEP_cmH2O();
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MAX));
 }
@@ -494,15 +594,17 @@ static bool PRINT(test_alarm_pep_min_on)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MIN);
 }
 
 static bool PRINT(test_alarm_pep_min_on_mod)
-    PEP_startIdx = 4;
+    PEP_startIdx = PEP_Q_LEN / 2;
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
+    reset_alarms();
     monitor_sensed_values();
     return TEST(activeAlarms & ALARM_PEP_MIN);
 }
@@ -512,7 +614,8 @@ static bool PRINT(test_alarm_pep_min_off_disc)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
-    PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
+    PEP_cmH2O_q[PEP_Q_LEN / 2] = get_setting_PEP_cmH2O();
+    reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MIN));
 }
@@ -529,6 +632,9 @@ bool PRINT(TEST_ALARMS)
         test_alarm_vt_min_on() &&
         test_alarm_vt_min_on_mod() &&
         test_alarm_vt_min_off_disc() &&
+        test_alarm_vt_max_on() &&
+        test_alarm_vt_max_on_mod() &&
+        test_alarm_vt_max_off_disc() &&
         test_alarm_vm_min_on() &&
         test_alarm_vm_min_on_mod() &&
         test_alarm_vm_min_off_disc() &&

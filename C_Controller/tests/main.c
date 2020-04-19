@@ -67,6 +67,7 @@ bool PRINT(test_default_settings)
     TEST_FLT_EQUALS( 60.00f, get_setting_Pmax_cmH2O  ()) &&
     TEST_FLT_EQUALS( 20.00f, get_setting_Pmin_cmH2O  ()) &&
     TEST_FLT_EQUALS(150.00f, get_setting_VTmin_mL    ()) &&
+    TEST_FLT_EQUALS(1000.00f, get_setting_VTmax_mL    ()) &&
     TEST_FLT_EQUALS( 10.00f, get_setting_FRmin_pm    ()) &&
     TEST_FLT_EQUALS(  3.00f, get_setting_VMmin_Lm    ()) &&
     TEST_FLT_EQUALS(  2.00f, get_setting_PEPmax_cmH2O()) &&

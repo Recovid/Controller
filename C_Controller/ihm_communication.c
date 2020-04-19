@@ -30,6 +30,7 @@ static uint16_t setting_PEP_cmH2O  =   5;
 static uint16_t setting_Pmax_cmH2O =  60;
 static uint16_t setting_Pmin_cmH2O =  20;
 static uint16_t setting_VTmin_mL   = 150;
+static uint16_t setting_VTmax_mL   = 1000;
 static uint16_t setting_FRmin_pm   =  10;
 static uint16_t setting_VMmin_Lpm  =   3;
 
@@ -72,6 +73,7 @@ float get_setting_PEP_cmH2O   () { return setting_PEP_cmH2O       ; }
 float get_setting_Pmax_cmH2O  () { return setting_Pmax_cmH2O      ; }
 float get_setting_Pmin_cmH2O  () { return setting_Pmin_cmH2O      ; }
 float get_setting_VTmin_mL    () { return setting_VTmin_mL        ; }
+float get_setting_VTmax_mL    () { return setting_VTmax_mL        ; }
 float get_setting_FRmin_pm    () { return setting_FRmin_pm        ; }
 float get_setting_VMmin_Lm    () { return setting_VMmin_Lpm       ; }
 
@@ -228,6 +230,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 #define EoI__ "IE___:"
 #define TPLAT "Tplat:"
 #define VTMIN "VTmin:"
+#define VTMAX "VTmax:"
 #define PMAX_ "Pmax_:"
 #define PMIN_ "Pmin_:"
 #define FRMIN "FRmin:"
@@ -240,6 +243,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 #define EoI___FMT 2
 #define TPLAT_FMT 4
 #define VTMIN_FMT 4
+#define VTMAX_FMT 4
 #define PMAX__FMT 3
 #define PMIN__FMT 3
 #define FRMIN_FMT 2
@@ -299,6 +303,7 @@ bool send_INIT(const char* information)
         && send_SET(EoI__, EoI___FMT, setting_EoI_ratio_x10 )
         && send_SET(TPLAT, TPLAT_FMT, get_setting_Tplat_ms())
         && send_SET(VTMIN, VTMIN_FMT, setting_VTmin_mL      )
+        && send_SET(VTMAX, VTMAX_FMT, setting_VTmax_mL      )
         && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
         && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
         && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
@@ -311,6 +316,7 @@ static const char* ALARM_CODES[] = {
     "PMAX",
     "PMIN",
     "VT_MIN",
+    "VT_MAX",
     "FR",
     "VM_MIN",
     "PEP_MAX",
@@ -319,6 +325,7 @@ static const char* ALARM_CODES[] = {
     "BATT_B",
     "BATT_C",
     "BATT_D",
+    "BATT_E",
     "FAILSAFE",
     "CPU_LOST",
     "P_KO",
@@ -429,10 +436,11 @@ void send_and_recv()
                 process(&pl,  4, PEP__, PEP___FMT, &setting_PEP_cmH2O     , NULL) ||
                 process(&pl, -1, TPLAT, TPLAT_FMT, &ignored_Tplat_ms      , NULL) ||
                 process(&pl,  5, VTMIN, VTMIN_FMT, &setting_VTmin_mL      , NULL) ||
-                process(&pl,  6, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
-                process(&pl,  7, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
-                process(&pl,  8, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
-                process(&pl,  9, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
+                process(&pl,  6, VTMAX, VTMAX_FMT, &setting_VTmax_mL      , NULL) ||
+                process(&pl,  7, PMAX_, PMAX__FMT, &setting_Pmax_cmH2O    , NULL) ||
+                process(&pl,  8, PMIN_, PMIN__FMT, &setting_Pmin_cmH2O    , NULL) ||
+                process(&pl,  9, FRMIN, FRMIN_FMT, &setting_FRmin_pm      , NULL) ||
+                process(&pl, 10, VMMIN, VMMIN_FMT, &setting_VMmin_Lpm     , NULL);
             UNUSED(process_result)
         }
         else if ((pl = payload(frame, PINS))) {
@@ -582,6 +590,8 @@ bool PRINT(test_send)
     TEST_ASSUME(strcmp(SET_frame, "SET_ Tplat:0811\tCS8:85\n")==0);
     TEST_ASSUME(send_SET(VTMIN, VTMIN_FMT, 150));
     TEST_ASSUME(strcmp(SET_frame, "SET_ VTmin:0150\tCS8:6A\n")==0);
+    TEST_ASSUME(send_SET(VTMAX, VTMAX_FMT, 1000));
+    TEST_ASSUME(strcmp(SET_frame, "SET_ VTmax:1000\tCS8:6A\n")==0);
     TEST_ASSUME(send_SET(PMAX_, PMAX__FMT,  60));
     TEST_ASSUME(strcmp(SET_frame, "SET_ Pmax_:060\tCS8:41\n" )==0);
     TEST_ASSUME(send_SET(PMIN_, PMIN__FMT,  20));

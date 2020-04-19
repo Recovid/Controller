@@ -78,6 +78,7 @@ uint32_t get_setting_Tplat_ms()
 float    get_setting_Pmax_cmH2O  ();
 float    get_setting_Pmin_cmH2O  ();
 float    get_setting_VTmin_mL    ();
+float    get_setting_VTmax_mL    ();
 float    get_setting_FRmin_pm    ();
 float    get_setting_VMmin_Lm    ();
 float    get_setting_PEPmax_cmH2O();
