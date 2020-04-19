@@ -208,21 +208,52 @@ static bool monitor_sensed_values()
     return true;
 }
 
+#define BATT_C_THRESHOLD_MIN 15
+#define BATT_D_THRESHOLD_MIN 20
+
 void monitor_battery()
 {
+    static bool dc_was_on = true;
+    static uint32_t dc_lost_time_ms = 0;
+    static bool monitoring = false;
+
+    // TODO: uncomment when is_DC_on, is_Battery_charged and is_Battery_ok are implemented on target
     /*
     if (is_DC_on()) {
+        dc_was_on = true;
         return;
     }
 
-    if (is_Battery_charged()) {
+    if (dc_was_on) {
+        // we just lost dc
+        dc_was_on = false;
+        dc_lost_time_ms = get_time_ms();
+
+        // if the battery is charged, we can estimate the remaining time and enter a monitoring state
+        // otherwise, we reach a critical alarm directly
+        monitoring = is_Battery_charged();
+    }
+
+    if (!monitoring) {
+        activeAlarms |= ALARM_BATT_B;
+        return;
+    }
+
+    uint32_t time_spent_battery_min = (get_time_ms() - dc_lost_time_ms) / 1000 / 60;
+
+    if (!is_Battery_ok()) {
+        // imminent stop
+        activeAlarms |= ALARM_BATT_E;
+    } else if (time_spent_battery_min >= BATT_D_THRESHOLD_MIN) {
+        // over 20 minutes spent on battery
+        activeAlarms |= ALARM_BATT_D;
+    } else if (time_spent_battery_min >= BATT_C_THRESHOLD_MIN) {
+        // over 15 minutes spent on battery
+        activeAlarms |= ALARM_BATT_C;
+    } else {
+        // just switched to a charged battery
         activeAlarms |= ALARM_BATT_A;
-        return;
     }
-
-    // battery is not charged (<85%)
-    // TODO: alarm type (B/C/D) depends on the elpased time on battery
-    activeAlarms |= ALARM_BATT_B;
     */
 }
 
