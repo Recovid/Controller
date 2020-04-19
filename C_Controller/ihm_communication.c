@@ -319,6 +319,7 @@ static const char* ALARM_CODES[] = {
     "BATT_B",
     "BATT_C",
     "BATT_D",
+    "BATT_E",
     "FAILSAFE",
     "CPU_LOST",
     "P_KO",

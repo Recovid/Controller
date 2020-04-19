@@ -25,6 +25,7 @@ static const uint8_t ALARM_LEVELS[] = {
     3, // BATT_B
     2, // BATT_C
     2, // BATT_D
+    3, // BATT_E
     3, // FAILSAFE
     3, // CPU_LOST
     3, // P_KO
