@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform.h"
+#include <stdint.h>
 
 // Public interface to the lowlevel hardware and/or simulated hardware
 
@@ -13,6 +14,8 @@ uint32_t get_time_ms();
 
 //! \returns get_time_ms()
 uint32_t wait_ms(uint32_t t_ms);
+
+uint32_t delay(uint32_t ticks_to_wait);
 
 //! Triggers a soft reset that will restart the Controller in a fresh state with the same memorised settings
 //! \warning the actual reset MUST be synchronized with cycle_respiration
