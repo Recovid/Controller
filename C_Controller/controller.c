@@ -24,6 +24,7 @@ float FR_pm        = 0.f;
 
 uint32_t Tpins_ms = 0;
 uint32_t Tpexp_ms = 0;
+static uint16_t _motor_steps_us[MOTOR_MAX];
 
 bool pause_insp(int t_ms)
 {
@@ -120,24 +121,24 @@ int self_tests()
 
     check(&test_bits, 4, init_motor());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_release(get_time_ms()+900));
-    printf("Motor release 900ms\n");
-    wait_ms(1000);
+    check(&test_bits, 4, motor_release());
+    wait_ms(3000);
     check(&test_bits, 4, motor_stop());
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_press(get_setting_Vmax_Lpm())); // 8steps/ms
-    printf("Motor press 400steps\n");
-    wait_ms(50);
-    printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_stop());
-    check(&test_bits, 3, valve_exhale()); // start pos
-    printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
+    motor_press(_motor_steps_us, 3000);
+    wait_ms(1000);
+    //// printf("Motor press 400steps\n");
+    //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    //check(&test_bits, 4, motor_stop());
+    //check(&test_bits, 3, valve_exhale()); // start pos
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
-
+	while(true);
     return test_bits;
 }
 
@@ -183,6 +184,8 @@ void enter_state(RespirationState new)
 //static float    Pmax ;
 //static uint32_t Tplat;
 //#endif
+
+
 void cycle_respiration()
 {
 //#ifdef NTESTS
@@ -204,7 +207,9 @@ void cycle_respiration()
         if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
             enter_state(Plateau);
         }
-        motor_press(VM);
+        for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
+        motor_press(_motor_steps_us, 3000);
+//        motor_press(VM);
     }
     else if (Plateau == state) {
         valve_inhale();
@@ -212,7 +217,8 @@ void cycle_respiration()
             || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
             enter_state(Exhalation);
         }
-        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
+//        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
+        motor_release(); // TODO Check wrap-around
     }
     else if (Exhalation == state) {
         valve_exhale();

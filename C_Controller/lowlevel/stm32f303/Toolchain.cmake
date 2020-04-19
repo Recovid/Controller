@@ -66,11 +66,14 @@ set(REDEFINED_SYMBOLS
 	HAL_MspInit
 	HAL_I2C_MspInit
 	HAL_I2C_MspDeInit
+	TIM1_UP_TIM16_IRQHandler
 	HAL_TIM_MspPostInit
 	HAL_TIM_Base_MspDeInit
 	HAL_SuspendTick
 	HAL_ResumeTick
 	HAL_InitTick
+	pep_nfault_irq
+	pep_home_irq
 )
 
 list(TRANSFORM REDEFINED_SYMBOLS PREPEND "-u")

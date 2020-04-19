@@ -36,7 +36,6 @@
 #define UART_ID_MAX                     	(1)
 
 
-#define RASPI_CONNECTION
 
 #ifndef RASPI_CONNECTION
 
@@ -228,37 +227,6 @@ static ifl_hal_uart_result_t ifl_hal_uart_process_tx_data(uint8_t const id)
 // --------------------------------------------------------------------------------------------------------------------
 // ----- public functions
 // --------------------------------------------------------------------------------------------------------------------
-
-
-/**
-  * @brief This function handles Service UART global interrupt.
-  */
-__attribute__((used))void UART_COM_IHM_IRQHandler(void)
-{
-    if(LL_USART_IsActiveFlag_RTO(uart_object[UART_COM_IHM].husart.Instance))
-    {
-        LL_USART_ClearFlag_RTO(uart_object[UART_COM_IHM].husart.Instance);
-        ifl_hal_uart_process_rx_data(IDLE_LINE_DETECTED, UART_COM_IHM);
-    }
-
-    HAL_UART_IRQHandler(&uart_object[UART_COM_IHM].husart);
-}
-
-/**
-  * @brief This function handles DMA stream for Service TX UART
-  */
-__attribute__((used))void UART_COM_IHM_DMA_CHANNEL_TX_IRQHandler(void)
-{
-    HAL_DMA_IRQHandler(&uart_object[UART_COM_IHM].hdma_usart_tx);
-}
-
-/**
-  * @brief This function handles DMA stream for Service RX UART
-  */
-__attribute__((used))void UART_COM_IHM_DMA_CHANNEL_RX_IRQHandler(void)
-{
-    HAL_DMA_IRQHandler(&uart_object[UART_COM_IHM].hdma_usart_rx);
-}
 
 
 __attribute__((used)) void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)

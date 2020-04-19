@@ -1,5 +1,5 @@
 add_library(hal STATIC
-    stm32f3xx_nucleo.c
+#    stm32f3xx_nucleo.c
     syscalls.c
     sysmem.c
     system_stm32f3xx.c
