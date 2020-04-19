@@ -238,7 +238,7 @@ bool motor_release(uint32_t before_t_ms)
 
 bool init_motor_pep() { return true; }
 
-bool motor_pep_move(float relative_move_cmH2O)
+bool motor_pep_move(int relative_mm)
 {
     return false; // TODO
 }

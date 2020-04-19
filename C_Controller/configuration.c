@@ -30,5 +30,6 @@ float    BAVU_Q_LPM_MAX         =  200.;
 float    BAVU_VALVE_RATIO       =    0.;
 
 float    EXHAL_VALVE_RATIO      =    1.; // no leak, no obstruction
+float    EXHAL_VALVE_P_RATIO    =    2.; // TODO /!\ motor_pep_steps/cmH2O taking into account motor_pep + valve surface ratio
 
 float    PATMO_VARIATION_MBAR   =   50.;

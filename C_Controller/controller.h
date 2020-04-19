@@ -16,6 +16,8 @@ typedef enum { Insufflation, Plateau, Exhalation, ExhalationPause, Unknown } Res
 //! \returns current RespirationState to schedule state-sensitive tasks
 RespirationState current_respiration_state();
 
+typedef enum { Ajustement, Maintien } PEPState;
+
 void cycle_respiration();
 
 const char *get_init_str();

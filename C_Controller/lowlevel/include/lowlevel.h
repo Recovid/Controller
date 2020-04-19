@@ -91,7 +91,7 @@ bool is_motor_pep_ok();
 //! \remark unless some calibration procedure or data is added, the only relationship between steps and cm
 //!         must be computed based on further read_PEP_cmH2O()
 //! \remark any relative_move_cmH2O > +.1 should be checked during following cycles
-bool motor_pep_move(float relative_move_cmH2O);
+bool motor_pep_move(int relative_mm);
 
 //! \warning only use during initialisation as moving to 0 is prohibited during cycle_respiration and the water level may have varied
 bool motor_pep_home();
