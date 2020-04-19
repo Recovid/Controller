@@ -23,6 +23,7 @@ static const uint8_t ALARM_LEVELS[] = {
     3, // PMAX
     3, // PMIN
     2, // VT_MIN
+    2, // VT_MAX
     0, // FR
     2, // VM_MIN
     3, // PEP_MAX
@@ -58,7 +59,7 @@ int Pcrete_startIdx = 0;
 float Pcrete_cmH2O_q[PCRETE_Q_LEN] = {0};
 int Pcrete_time_ms_q[PCRETE_Q_LEN] = {0};
 
-// VTmin Alarm
+// VTmin/VTmax Alarm
 #define VTE_Q_LEN 3
 int VTe_startIdx = 0;
 float VTe_ml_q[3] = {0};
@@ -103,6 +104,7 @@ static bool monitor_sensed_values()
     int Pmax_cycles = PMAX_Q_LEN;
     int Pmin_startFailing_ms = -1;
     int VTmin_cycles = VTE_Q_LEN;
+    int VTmax_cycles = VTE_Q_LEN;
     int FRmin_cycles = FR_Q_LEN;
     int VMmin_cycles = VM_Q_LEN;
     int PEPmax_cycles = PEP_Q_LEN;
@@ -150,6 +152,19 @@ static bool monitor_sensed_values()
             }
             else
                 VTmin_cycles = 0; // deactivate VTmin Alarm
+        }
+        if (VTmax_cycles != 0)
+        {
+            if (VTe_ml_q[(VTe_startIdx + cycle) % VTE_Q_LEN] >= get_setting_VTmax_mL())
+            {
+                --VTmax_cycles;
+                if (VTmax_cycles == 0) {
+                    // VTmax Alarm
+                    activeAlarms |= ALARM_VT_MAX;
+                }
+            }
+            else
+                VTmax_cycles = 0; // deactivate VTmax Alarm
         }
         /*
         if (FRmin_cycles != 0)
@@ -470,6 +485,36 @@ static bool PRINT(test_alarm_vt_min_off_disc)
     return TEST(!(activeAlarms & ALARM_VT_MIN));
 }
 
+static bool PRINT(test_alarm_vt_max_on)
+    VTe_startIdx = 0;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    VTe_ml_q[1] = get_setting_VTmax_mL() + 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(activeAlarms & ALARM_VT_MAX);
+}
+
+static bool PRINT(test_alarm_vt_max_on_mod)
+    VTe_startIdx = 1;
+    VTe_ml_q[1] = get_setting_VTmax_mL() + 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(activeAlarms & ALARM_VT_MAX);
+}
+
+static bool PRINT(test_alarm_vt_max_off_disc)
+    VTe_startIdx = 0;
+    VTe_ml_q[0] = get_setting_VTmax_mL();
+    VTe_ml_q[1] = get_setting_VTmax_mL() - 1;
+    VTe_ml_q[2] = get_setting_VTmax_mL() + 2;
+    reset_alarms();
+    monitor_sensed_values();
+    return TEST(!(activeAlarms & ALARM_VT_MAX));
+}
+
 static bool PRINT(test_alarm_vm_min_on)
     VM_startIdx = 0;
     VM_Lm_q[0] = get_setting_VMmin_Lm();
@@ -574,6 +619,9 @@ bool PRINT(TEST_ALARMS)
         test_alarm_vt_min_on() &&
         test_alarm_vt_min_on_mod() &&
         test_alarm_vt_min_off_disc() &&
+        test_alarm_vt_max_on() &&
+        test_alarm_vt_max_on_mod() &&
+        test_alarm_vt_max_off_disc() &&
         test_alarm_vm_min_on() &&
         test_alarm_vm_min_on_mod() &&
         test_alarm_vm_min_off_disc() &&
