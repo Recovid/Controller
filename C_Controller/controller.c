@@ -24,6 +24,7 @@ float FR_pm        = 0.f;
 
 uint32_t Tpins_ms = 0;
 uint32_t Tpexp_ms = 0;
+static uint16_t _motor_steps_us[MOTOR_MAX];
 
 bool pause_insp(int t_ms)
 {
@@ -120,15 +121,14 @@ int self_tests()
 
     check(&test_bits, 4, init_motor());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-//    check(&test_bits, 4, motor_release(get_time_ms()+900));
     check(&test_bits, 4, motor_release());
-    printf("Motor release 900ms\n");
     wait_ms(1000);
     check(&test_bits, 4, motor_stop());
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    // check(&test_bits, 4, motor_press(get_setting_Vmax_Lpm())); // 8steps/ms
+    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 40; }
+    motor_press(_motor_steps_us, 3000);
     // printf("Motor press 400steps\n");
     // wait_ms(50);
     printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
@@ -138,7 +138,7 @@ int self_tests()
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
-
+	while(true);
     return test_bits;
 }
 
@@ -185,7 +185,6 @@ void enter_state(RespirationState new)
 //static uint32_t Tplat;
 //#endif
 
-static uint16_t _motor_steps_us[MOTOR_MAX];
 
 void cycle_respiration()
 {
