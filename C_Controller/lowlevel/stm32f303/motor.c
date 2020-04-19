@@ -15,7 +15,8 @@ static volatile bool _limit_sw_B;
 static volatile bool _active;
 
 static void check_home() ;
-
+static void enable();
+static void disable();
 
 bool motor_release() {
   motor_stop();
@@ -51,6 +52,9 @@ bool motor_stop() {
   return true;
 }
 
+bool is_motor_ok() {
+  return _motor_tim!=NULL;
+}
 
 
 bool init_motor()
@@ -65,6 +69,9 @@ bool init_motor()
     _limit_sw_A= HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
     _limit_sw_B= HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
     check_home();
+
+    enable();
+
   }
   return true;
 }
@@ -73,13 +80,6 @@ static void period_elapsed_callback(TIM_HandleTypeDef *tim)
 {
   _moving = false;
   HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
-}
-
-static void check_home() {
-  if(_limit_sw_A && _limit_sw_B) {
-    _home=true;
-    if(_homing) motor_stop();
-  }
 }
 
 void motor_limit_sw_A_irq() {
@@ -108,4 +108,20 @@ void motor_active_irq() {
     _active=HAL_GPIO_ReadPin(MOTOR_ACTIVE_GPIO_Port, MOTOR_ACTIVE_Pin);
   }
   last_time=time;
+}
+
+
+static void check_home() {
+  if(_limit_sw_A && _limit_sw_B) {
+    _home=true;
+    if(_homing) motor_stop();
+  }
+}
+
+static void enable() {
+	HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_SET);
+}
+
+static void disable() {
+	HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_RESET);
 }

@@ -3,16 +3,25 @@
 
 #include "platform.h"
 
+#define ALARM_COUNT 15
+
 enum alarm_type {
-    NO_ALARM = 0,
-    PMAX_ALARM = 1 << 0, // Paw > max(Pmax, PEPs+10)
-    PMIN_ALARM = 1 << 1, // Paw < max(Pmin, PEPs+2)
-    VT_MIN_ALARM = 1 << 2, // VTe > VTeMini
-    FR_ALARM = 1 << 3, // Freq non correct ??? -> No longer used
-    VM_MIN_ALARM = 1 << 4, // VMe <= VMin
-    PEP_MAX_ALARM = 1 << 5, // PEP > PEPs - 2
-    PEP_MIN_ALARM = 1 << 6, // PEP < PEPs + 2
-    LOW_BATTERY_ALARM = 1 << 7
+    ALARM_NONE = 0,
+    ALARM_PMAX = 1 << 0, // Paw > max(Pmax, PEPs+10)
+    ALARM_PMIN = 1 << 1, // Paw < max(Pmin, PEPs+2)
+    ALARM_VT_MIN = 1 << 2, // VTe > VTeMini
+    //ALARM_FR = 1 << 3, // Freq non correct ??? -> No longer used
+    ALARM_VM_MIN = 1 << 4, // VMe <= VMin
+    ALARM_PEP_MAX = 1 << 5, // PEP > PEPs - 2
+    ALARM_PEP_MIN = 1 << 6, // PEP < PEPs + 2
+    ALARM_BATT_A = 1 << 7,
+    ALARM_BATT_B = 1 << 8,
+    ALARM_BATT_C = 1 << 9,
+    ALARM_BATT_D = 1 << 10,
+    ALARM_FAILSAFE = 1 << 11,
+    ALARM_CPU_LOST = 1 << 12,
+    ALARM_P_KO = 1 << 13,
+    ALARM_IO_MUTE = 1 << 14,
 };
 
 struct alarm {

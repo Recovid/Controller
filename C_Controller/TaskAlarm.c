@@ -14,6 +14,5 @@ void TaskAlarm(void* task_param)  // This is a task.
   {
     sleepPeriodic(task);
     update_alarms();
-    trigger_alarms();
   }
 }

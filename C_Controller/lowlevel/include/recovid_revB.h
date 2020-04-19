@@ -98,7 +98,8 @@ void motor_active_irq();
 
 
 // PEP Motor
-#define pep_tim       htim3
+#define pep_tim        htim3
+#define PEP_TIM_CHANNEL     TIM_CHANNEL_4
 #define PEP_PULSE_WIDTH_US 10
 
 #define PEP_HOME_Pin GPIO_PIN_3
@@ -122,6 +123,15 @@ void motor_active_irq();
 #define PEP_MODE1_GPIO_Port GPIOB
 #define PEP_STEP_Pin GPIO_PIN_9
 #define PEP_STEP_GPIO_Port GPIOC
+
+#define PEP_STEPS_PER_MM  (200*8/2)
+#define PEP_MAX_SPEED     (8)         //  mm/s
+#define PEP_HOME_SPEED    (1.25)      //  mm/s
+
+#define PEP_DIR_INC	      GPIO_PIN_SET
+#define PEP_DIR_DEC	      GPIO_PIN_RESET
+
+
 
 void pep_home_irq();
 void pep_nfault_irq();

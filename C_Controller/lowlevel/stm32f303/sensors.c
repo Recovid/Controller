@@ -240,7 +240,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				// _hyperfrish_npa_time = get_time_us() - hyperfrish_npa;
 				// hyperfrish_npa = get_time_us();
 				uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
-				_current_pressure = 70.307 * ((float) ( praw - 1638.)/13107.);
+				_current_pressure = 1.01972 * ((float) 160*( praw - 1638.)/13107.);
 			} else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
 			}

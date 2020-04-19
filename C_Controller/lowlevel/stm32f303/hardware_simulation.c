@@ -224,3 +224,23 @@ int read_Battery_level()
 {
     return 2; // TODO simulate lower battery levels
 }
+
+
+bool init_Paw () {
+    return false;
+}
+bool init_Patmo () {
+    return false;
+}
+bool init_Pdiff () {
+    return false;
+}
+bool init_valve () {
+    return false;
+}
+bool init_motor () {
+    return false;
+}
+bool init_motor_pep () {
+    return false;
+}

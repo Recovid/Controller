@@ -105,7 +105,20 @@ int self_tests()
     check(&test_bits,  9, light_green(On )); wait_ms(1000);
     check(&test_bits, 10, light_green(Off)); // start pos
 
+    check(&test_bits, 5, init_Pdiff());
+    check(&test_bits, 6, init_Paw());
+    check(&test_bits, 7, init_Patmo());
+
+    check(&test_bits, 11, sensors_start());
+
+    check(&test_bits, 5, sensor_test(read_Pdiff_Lpm , -100,  100, 2)); printf("Rest    Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm ());
+    check(&test_bits, 6, sensor_test(read_Paw_cmH2O ,  -20,  100, 2)); printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O ());
+    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
+
+    check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
+
+    check(&test_bits, 4, init_motor());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 //    check(&test_bits, 4, motor_release(get_time_ms()+900));
     check(&test_bits, 4, motor_release());
@@ -123,12 +136,8 @@ int self_tests()
     check(&test_bits, 3, valve_exhale()); // start pos
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
-    check(&test_bits, 5, sensor_test(read_Pdiff_Lpm , -100,  100, 2)); printf("Rest    Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm ());
-    check(&test_bits, 6, sensor_test(read_Paw_cmH2O ,  -20,  100, 2)); printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O ());
-    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
-
-    // TODO check(&test_bits, 8, motor_pep ...
-
+    check(&test_bits, 8, init_motor_pep());
+    // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;
 }

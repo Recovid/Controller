@@ -144,6 +144,8 @@ int recv_ihm()
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
+bool init_motor() { return true; }
+
 static uint16_t motor_pos = 0;
 static float    motor_speed_stepspms = 0.f;
 static uint32_t motor_move_from_t_ms = 0;
@@ -234,12 +236,16 @@ bool motor_release(uint32_t before_t_ms)
 
 // ------------------------------------------------------------------------------------------------
 
+bool init_motor_pep() { return true; }
+
 bool motor_pep_move(float relative_move_cmH2O)
 {
     return false; // TODO
 }
 
 // ------------------------------------------------------------------------------------------------
+
+bool init_valve() { return true; }
 
 static enum Valve { Inhale, Exhale } valve_state = Exhale;
 static uint32_t valve_exhale_ms = 0;
@@ -278,6 +284,11 @@ float BAVU_Q_Lpm()
 
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
+
+bool init_Pdiff   () { return true; }
+bool init_Paw     () { return true; }
+bool init_Patmo   () { return true; }
+bool sensors_start() { return true; }
 
 static float saved_VTi_mL;
 

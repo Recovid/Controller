@@ -1,0 +1,51 @@
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_native:
+    env:
+      target: native
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Check ${{env.target}} build
+      run: |
+        git submodule update --init
+        cd C_Controller
+        mkdir -p _build_${target}
+        cd _build_${target}
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
+        make -j$(nproc)
+
+  build_stm32f303:
+    env:
+      target: stm32f303
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: fiam/arm-none-eabi-gcc@v1
+      with:
+        release: '9-2019-q4'
+
+    - name: Check stm32 build
+      run: |
+        git submodule update --init
+        cd C_Controller
+        target=stm32f303
+        mkdir -p _build_${target}
+        cd _build_${target}
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
+        make -j$(nproc)
+
+    - name: Upload stm32 binaries
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: Stm32_binaries
+        path: C_Controller/_build_${{env.target}}/*.elf

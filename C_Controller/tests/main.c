@@ -14,13 +14,12 @@
 #include "lowlevel/include/lowlevel.h"
 #include "lowlevel/include/simple_indicators.h"
 #ifndef WIN32
-#include "tasks_recovid.h"
-#include "TaskSensing.h"
+#   include "tasks_recovid.h"
 
-//FreeRTOS Include
-#include <FreeRTOS.h>
-#include <task.h>
-#include <queue.h>
+    //FreeRTOS Include
+#   include <FreeRTOS.h>
+#   include <task.h>
+#   include <queue.h>
 #endif
 
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");

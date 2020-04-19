@@ -32,6 +32,7 @@ set(LOWLEVEL_SOURCES
     simple_indicators.c
     flash.c
 	i2c.c
+    ups.c
 )
 
 if(NOT CMAKE_HOST_WIN32)

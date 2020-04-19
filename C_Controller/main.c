@@ -13,12 +13,11 @@
 #include "lowlevel/include/lowlevel.h"
 #include "lowlevel/include/hardware_real.h"
 #ifndef WIN32
-//FreeRTOS Include
-#include <FreeRTOS.h>
-#include <task.h>
-#include <queue.h>
-#include "tasks_recovid.h"
-#include "TaskSensing.h"
+    // FreeRTOS Include
+#   include <FreeRTOS.h>
+#   include <task.h>
+#   include <queue.h>
+#   include "tasks_recovid.h"
 #endif
 
 int main(int argc, const char** argv)

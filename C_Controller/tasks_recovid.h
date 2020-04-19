@@ -24,12 +24,7 @@ int initTask(struct periodic_task* task);
 int sleepPeriodic(struct periodic_task* task);
 void Serialprintf( const char * format, ... );
 
-void TaskAlarm(void* param);
-void TaskSensing(void* param);
 void TaskMessageManagement(void* param);
 void TaskRespirationCycle(void* param);
-void TaskSerialSending(void* param);
-
-
 
 #endif //TASK_RECOVID_H
