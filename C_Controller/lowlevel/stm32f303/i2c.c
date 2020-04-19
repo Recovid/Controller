@@ -20,7 +20,7 @@ static volatile uint8_t       _npa_measurement_buffer[2]	= { 0 };
 static volatile float _current_flow;
 static volatile float _current_pressure;
 
-static float motor_step_times_us[MOTOR_STEPS_MAX];
+float motor_step_times_us[MOTOR_STEPS_MAX];
 
 static uint16_t flow_samples_index  = 0;
 static float    flow_samples_time_s = 0.f;
