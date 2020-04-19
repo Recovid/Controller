@@ -74,7 +74,7 @@ int VM_startIdx = 0;
 float VM_Lm_q[VM_Q_LEN] = {0};
 
 // PEPmax / PEPmin Alarm
-#define PEP_Q_LEN 8
+#define PEP_Q_LEN 3
 int PEP_startIdx = 0;
 float PEP_cmH2O_q[PEP_Q_LEN] = {0};
 
@@ -480,7 +480,7 @@ static bool PRINT(test_alarm_pep_max_on)
 }
 
 static bool PRINT(test_alarm_pep_max_on_mod)
-    PEP_startIdx = 4;
+    PEP_startIdx = PEP_Q_LEN / 2;
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
@@ -494,7 +494,7 @@ static bool PRINT(test_alarm_pep_max_off_disc)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() + 2 + i;
     }
-    PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
+    PEP_cmH2O_q[PEP_Q_LEN / 2] = get_setting_PEP_cmH2O();
     reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MAX));
@@ -511,7 +511,7 @@ static bool PRINT(test_alarm_pep_min_on)
 }
 
 static bool PRINT(test_alarm_pep_min_on_mod)
-    PEP_startIdx = 4;
+    PEP_startIdx = PEP_Q_LEN / 2;
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
@@ -525,7 +525,7 @@ static bool PRINT(test_alarm_pep_min_off_disc)
     for (int i = 0; i < PEP_Q_LEN; ++i) {
         PEP_cmH2O_q[i] = get_setting_PEP_cmH2O() - 2 - i;
     }
-    PEP_cmH2O_q[4] = get_setting_PEP_cmH2O();
+    PEP_cmH2O_q[PEP_Q_LEN / 2] = get_setting_PEP_cmH2O();
     reset_alarms();
     monitor_sensed_values();
     return TEST(!(activeAlarms & ALARM_PEP_MIN));
