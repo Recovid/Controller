@@ -469,16 +469,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 }
 
 
-__weak void motor_limit_sw_A_irq() {
-}
-__weak void motor_limit_sw_B_irq() {  
-}
-__weak void motor_active_irq() {
-}
-__weak void pep_home_irq() {
-}
-__weak void pep_nfault_irq() {
-}
 __weak void fs_enabled_irq() {
 }
 __weak void ups_fail_irq() {

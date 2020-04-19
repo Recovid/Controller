@@ -72,6 +72,8 @@ set(REDEFINED_SYMBOLS
 	HAL_SuspendTick
 	HAL_ResumeTick
 	HAL_InitTick
+	pep_nfault_irq
+	pep_home_irq
 )
 
 list(TRANSFORM REDEFINED_SYMBOLS PREPEND "-u")
