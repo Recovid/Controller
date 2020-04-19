@@ -7,6 +7,7 @@
 #include "lowlevel/include/lowlevel.h"
 
 //! Bit flags for currently active alarms
+int32_t activeAlarmsExtern = 0;
 int32_t activeAlarms = 0;
 int32_t activeAlarmsOld = 0;
 
@@ -37,6 +38,7 @@ static const uint8_t ALARM_LEVELS[] = {
     3, // CPU_LOST
     3, // P_KO
     1, // IO_MUTE
+    3, // SENSOR_FAIL
 };
 
 /* NB: the bounded queues belows implemented as circular buffers are filled by
@@ -329,6 +331,7 @@ void trigger_alarms()
     // compute the maximum active level
     uint8_t levelMax = 0;
     uint8_t levelMaxOld = 0;
+    activeAlarms |= activeAlarmsExtern;
     for (int i = 0; i < ALARM_COUNT; ++i) {
         if (activeAlarms & (1 << i))
             levelMax = MAX(levelMax, ALARM_LEVELS[i]);
@@ -344,6 +347,16 @@ void trigger_alarms()
     blink_LEDs(levelMax);
 
     send_ALRM(activeAlarms);
+}
+
+void set_alarm(int32_t alarm)
+{
+    activeAlarmsExtern |= alarm;
+}
+
+void unset_alarm(int32_t alarm)
+{
+    activeAlarmsExtern &= ~alarm;
 }
 
 bool update_alarms()

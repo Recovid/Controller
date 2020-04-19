@@ -175,6 +175,65 @@ void enter_state(RespirationState new)
     }
 }
 
+PEPState pep_state = Ajustement;
+unsigned int pep_cycle=0;
+unsigned int good_dpep_count=0;
+unsigned int bad_dpep_count=0;
+float bad_dpep_threshold=0.3;
+
+bool regulation_pep()
+{
+
+    const float VTi     = get_sensed_VTi_mL         ();
+    const float VTe     = get_sensed_VTe_mL         ();
+    const float Pcrete  = get_sensed_Pcrete_cmH2O   ();
+    const float PEP     = get_sensed_PEP_cmH2O      ();
+    const float setPEP  = get_setting_PEP_cmH2O     ();
+
+    float dpep=0;
+    if(Pcrete<PEP+2 && VTe>VTi/2)
+    {
+        set_alarm(ALARM_SENSOR_FAIL);
+    }
+    else
+    {
+        unset_alarm(ALARM_SENSOR_FAIL);
+        pep_cycle++;
+        dpep = setPEP - PEP;
+        if(Ajustement == pep_state)
+        {
+            if(abs(dpep)>0.1)
+            {
+                motor_pep_move(EXHAL_VALVE_P_RATIO*dpep/3);
+            }
+        }
+        else if(Maintien == pep_state)
+        {
+            if(dpep>0.1)
+            {
+                motor_pep_move(EXHAL_VALVE_P_RATIO*dpep/3);
+            }
+        }
+    }
+    if(dpep<bad_dpep_threshold)
+    {
+        good_dpep_count++;
+        bad_dpep_count=0;
+    }else
+    {
+        good_dpep_count=0;
+        bad_dpep_count++;
+    }
+    if(Ajustement == pep_state && good_dpep_count >= 2)
+    {
+        pep_state=Maintien;
+    }
+    else if(Maintien == pep_state && bad_dpep_count >= 10)
+    {
+        pep_state=Ajustement;
+    }
+}
+
 
 // TODO
 //#ifndef NTESTS
@@ -228,7 +287,7 @@ void cycle_respiration()
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
             // TODO ...
-
+            regulation_pep();
             send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
             enter_state(Insufflation);
         }

@@ -329,7 +329,8 @@ static const char* ALARM_CODES[] = {
     "FAILSAFE",
     "CPU_LOST",
     "P_KO",
-    "IO_MUTE"
+    "IO_MUTE",
+    "SENSOR_FAIL"
 };
 
 bool send_ALRM(uint32_t alarms)

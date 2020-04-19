@@ -3,7 +3,7 @@
 
 #include "platform.h"
 
-#define ALARM_COUNT 17
+#define ALARM_COUNT 18
 
 enum alarm_type {
     ALARM_NONE = 0,
@@ -24,6 +24,7 @@ enum alarm_type {
     ALARM_CPU_LOST = 1 << 14,
     ALARM_P_KO = 1 << 15,
     ALARM_IO_MUTE = 1 << 16,
+    ALARM_SENSOR_FAIL = 1 << 17,
 };
 
 struct alarm {
