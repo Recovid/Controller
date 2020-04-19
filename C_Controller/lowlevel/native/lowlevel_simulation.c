@@ -285,12 +285,12 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
+static float saved_VTi_mL;
+
 bool init_Pdiff   () { return true; }
 bool init_Paw     () { return true; }
 bool init_Patmo   () { return true; }
 bool sensors_start() { return true; }
-
-static float saved_VTi_mL;
 
 float read_Pdiff_Lpm()
 {
@@ -343,6 +343,36 @@ float read_Patmo_mbar()
 int read_Battery_level()
 {
     return 2; // TODO simulate lower battery levels
+}
+
+// ------------------------------------------------------------------------------------------------
+
+float motor_step_times_us[MOTOR_STEPS_MAX];
+
+static uint16_t flow_samples_index  = 0;
+static float    flow_samples_time_s = 0.f;
+static bool     flow_sampling       = false;
+
+void sensors_start_sampling_flow()
+{
+    flow_samples_index = 0;
+    flow_samples_time_s = 0.f;
+    flow_sampling = true;
+}
+
+void sensors_stop_sampling_flow()
+{
+    flow_sampling = false;
+}
+
+void sensors_sample_flow()
+{
+    // TODO
+}
+
+float sensors_samples_time_s()
+{
+    return get_setting_Tinsu_ms();
 }
 
 // ================================================================================================

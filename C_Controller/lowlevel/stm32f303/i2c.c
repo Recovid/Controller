@@ -24,7 +24,7 @@ float motor_step_times_us[MOTOR_STEPS_MAX];
 
 static uint16_t flow_samples_index  = 0;
 static float    flow_samples_time_s = 0.f;
-static bool     flow_sampling       = 1;
+static bool     flow_sampling       = false;
 
 typedef enum {
     STOPPED,
@@ -105,8 +105,6 @@ static HAL_StatusTypeDef sdp6_request_measure_it()
 	return ret;
 }
 
-
-
 static HAL_StatusTypeDef npa700_receive_measure_it()
 {
 	int ret = HAL_I2C_Master_Receive_IT(&hi2c1, NPA_HSCMRNN001PG2A3_ADDR , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
@@ -146,7 +144,7 @@ void sensors_sample_flow()
     // _hyperfrish_sdp_time = (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
     // hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
     if(flow_sampling && flow_samples_index < COUNT_OF(motor_step_times_us)) {
-        motor_step_times_us[flow_samples_index] = _current_flow/60.;  // in sls
+        motor_step_times_us[flow_samples_index] = _current_flow/60.;  // in L/s
         flow_samples_time_s += (float)_hyperfrish_sdp_time/1000000;
         ++flow_samples_index;
     }
