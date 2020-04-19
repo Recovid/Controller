@@ -122,19 +122,19 @@ int self_tests()
     check(&test_bits, 4, init_motor());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 4, motor_release());
-    wait_ms(1000);
+    wait_ms(3000);
     check(&test_bits, 4, motor_stop());
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 40; }
+    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
     motor_press(_motor_steps_us, 3000);
-    // printf("Motor press 400steps\n");
-    // wait_ms(50);
-    printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_stop());
-    check(&test_bits, 3, valve_exhale()); // start pos
-    printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    wait_ms(1000);
+    //// printf("Motor press 400steps\n");
+    //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    //check(&test_bits, 4, motor_stop());
+    //check(&test_bits, 3, valve_exhale()); // start pos
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
