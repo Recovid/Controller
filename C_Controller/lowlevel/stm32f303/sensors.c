@@ -84,11 +84,6 @@ static bool sensors_init(I2C_HandleTypeDef* hi2c) {
 	_i2c->MasterRxCpltCallback=process_i2c_callback;
 	_i2c->ErrorCallback=process_i2c_callback;
 
-	// _flow_callback = NULL;
-
-	_sensor_state= REQ_SDP_MEASUREMENT;
-	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
-
 	return true;
 }
 
@@ -130,89 +125,13 @@ float read_Patmo_mbar() {
   return 0;
 }
 
-
-// bool sensors_init() {
-
-// 	_i2c= hi2c;
-
-// 	_i2c->MasterTxCpltCallback=process_i2c_callback;
-// 	_i2c->MasterRxCpltCallback=process_i2c_callback;
-// 	_i2c->ErrorCallback=process_i2c_callback;
-
-// 	_flow_callback = NULL;
-
-// 	_sensor_state= STOPPED;
-
-// 	HAL_Delay(100);
-
-// 	// First try to complete pending sdp rad request if any !!!
-// 	if(HAL_I2C_Master_Receive(_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000)!= HAL_I2C_ERROR_NONE) {
-// 		printf("Tried to finished pending sdp read request... but nothing came...\n");
-// 	}
-
-// 	// Reset SDP
-// 	if(HAL_I2C_Master_Transmit(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_reset_req, sizeof(_sdp_reset_req), 1000 )!= HAL_I2C_ERROR_NONE) {
-// 		return false;
-// 	}
-
-
-// 	HAL_Delay(100);
-// 	// Now read sdp advanced user register
-// 	if(HAL_I2C_Master_Transmit(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_readAUR_req, sizeof(_sdp_readAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
-// 		return false;
-// 	}
-// 	HAL_Delay(100);
-// 	if(HAL_I2C_Master_Receive(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_AUR_buffer, sizeof(_sdp_AUR_buffer), 1000 )!= HAL_I2C_ERROR_NONE) {
-// 		return false;
-// 	}
-// 	// print AUR (Advances User Register)
-// 	uint16_t sdp_aur = (uint16_t)((_sdp_AUR_buffer[0] << 8) | _sdp_AUR_buffer[1]);
-// //	printf("sdp AUR = %d\n", (uint16_t)(sdp_aur));
-// 	uint16_t sdp_aur_no_i2c_hold = sdp_aur & 0xFFFD;
-// 	_sdp_writeAUR_req[1] = (uint16_t)(sdp_aur_no_i2c_hold >> 8);
-// 	_sdp_writeAUR_req[2] = (uint16_t)(sdp_aur_no_i2c_hold & 0xFF);
-// 	// Now disable i2c hold master mode
-// 	if(HAL_I2C_Master_Transmit(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_writeAUR_req, sizeof(_sdp_writeAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
-// 		return false;
-// 	}
-// 	// Sensors settle time
-// 	HAL_Delay(100);
-
-// 	return true;
-// }
-
-// void sensors_start() {
-// 	// Start sensor state machine.
-// 	// This state machine is managed in the I2C interupt routine.
-// 	_sensor_state= REQ_SDP_MEASUREMENT;
-// 	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
-// }
-
-// void sensors_stop() {
-// 	_sensor_state=STOPPING;
-// 	while(!_sensor_state==STOPPED);
-// }
-
-
-// void sensors_set_flow_callback(void (*callback)(float flow, uint32_t delta_t_us)) {
-// 	_flow_callback= callback;
-// }
-
-
-// void sensors_scan(I2C_HandleTypeDef *hi2c) {
-
-// 	for (int t = 1; t < 127; ++t) {
-// 		if(HAL_I2C_IsDeviceReady(hi2c, (uint16_t)(t<<1), 2, 2) == HAL_OK) {
-// 			printf("Found device at address: %02X\n", t);
-// 		}
-
-// 	}
-
-
-// 	printf("Done...\n");
-
-// }
-
+bool sensors_start() {
+    // Start sensor state machine.
+    // This state machine is managed in the I2C interupt routine.
+	_sensor_state= REQ_SDP_MEASUREMENT;
+	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+	return true;
+}
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 	static	uint32_t hyperfrish_npa;

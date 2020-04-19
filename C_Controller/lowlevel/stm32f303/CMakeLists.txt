@@ -10,15 +10,12 @@ add_library(lowlevel STATIC
     hardware_serial.c
     ihm.c
     motor.c
+    motor_pep.c
     sensors.c
     buzzer.c
     lights.c
     pep_valve.c
     flash.c
-#    hardware_simulation.c
-#    simple_indicators.c
-#    i2c.c
-#    motor.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
