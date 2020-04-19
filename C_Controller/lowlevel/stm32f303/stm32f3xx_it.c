@@ -357,6 +357,11 @@ void EXTI15_10_IRQHandler(void)
   /* USER CODE END EXTI15_10_IRQn 1 */
 }
 
+
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+	  HAL_TIM_IRQHandler(&htim16);
+}
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
