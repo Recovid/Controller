@@ -84,7 +84,7 @@ void motor_limit_sw_A_irq() {
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
   if(time-last_time>20) {
-    _limit_sw_A=HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
+    _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
     check_home();
   }
   last_time=time;
@@ -94,7 +94,7 @@ void motor_limit_sw_B_irq() {
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
   if(time-last_time>20) {
-    _limit_sw_B=HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
+    _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
     check_home();
   }
   last_time=time;
