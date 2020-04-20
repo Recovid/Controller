@@ -124,6 +124,7 @@ void sense_and_compute(RespirationState state)
         if (last_state==Exhalation || last_state==ExhalationPause) {
             VTi_mL       = 0.f;
             Pcrete_cmH2O = 0.f;
+            sensors_start_sampling_flow();
         }
         else {
             VTi_mL += MAX(0.f, (VolM_Lpm/60.f/*mLpms*/) * (get_time_ms()-last_sense_ms));
@@ -131,7 +132,9 @@ void sense_and_compute(RespirationState state)
         }
         if (state==Plateau) {
             if (last_state==Insufflation) {
-                Pplat_cmH2O  = Pcrete_cmH2O;
+                sensors_stop_sampling_flow();
+                update_motor_step_times_us(get_setting_Vmax_Lpm());
+                Pplat_cmH2O = Pcrete_cmH2O;
             }
             else {
                 Pplat_cmH2O = MIN(Pplat_cmH2O, P_cmH2O); // TODO average over Xms

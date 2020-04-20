@@ -1,5 +1,6 @@
 //FreeRTOS Include
 #include <FreeRTOS.h>
+#include <stdint.h>
 #include <task.h>
 #include <queue.h>
 
@@ -15,12 +16,24 @@
 #include "struct_recovid.h"
 
 
-long get_time_ms()
+uint32_t get_time_ms()
 {
   return xTaskGetTickCount() * portTICK_PERIOD_MS;
 }
 
-long wait_ms(long t_ms)
+uint32_t delay(uint32_t ticks_to_wait)
+{
+  if(xTaskGetCurrentTaskHandle() != NULL)
+    vTaskDelay(ticks_to_wait);
+#ifdef stm32f303
+  else {
+	HAL_Delay(ticks_to_wait);
+  }
+#endif
+  return get_time_ms();
+}
+
+uint32_t wait_ms(uint32_t t_ms)
 {
   if(xTaskGetCurrentTaskHandle() != NULL)
     vTaskDelay(t_ms/portTICK_PERIOD_MS);

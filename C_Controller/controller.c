@@ -24,6 +24,7 @@ float FR_pm        = 0.f;
 
 uint32_t Tpins_ms = 0;
 uint32_t Tpexp_ms = 0;
+static uint16_t _motor_steps_us[MOTOR_MAX];
 
 bool pause_insp(int t_ms)
 {
@@ -120,24 +121,24 @@ int self_tests()
 
     check(&test_bits, 4, init_motor());
     printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_release(get_time_ms()+900));
-    printf("Motor release 900ms\n");
-    wait_ms(1000);
+    check(&test_bits, 4, motor_release());
+    wait_ms(3000);
     check(&test_bits, 4, motor_stop());
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_press(get_setting_Vmax_Lpm())); // 8steps/ms
-    printf("Motor press 400steps\n");
-    wait_ms(50);
-    printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    check(&test_bits, 4, motor_stop());
-    check(&test_bits, 3, valve_exhale()); // start pos
-    printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
+    motor_press(_motor_steps_us, 3000);
+    wait_ms(1000);
+    //// printf("Motor press 400steps\n");
+    //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    //check(&test_bits, 4, motor_stop());
+    //check(&test_bits, 3, valve_exhale()); // start pos
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
-
+	while(true);
     return test_bits;
 }
 
@@ -174,6 +175,65 @@ void enter_state(RespirationState new)
     }
 }
 
+PEPState pep_state = Ajustement;
+unsigned int pep_cycle=0;
+unsigned int good_dpep_count=0;
+unsigned int bad_dpep_count=0;
+float bad_dpep_threshold=0.3;
+
+bool regulation_pep()
+{
+
+    const float VTi     = get_sensed_VTi_mL         ();
+    const float VTe     = get_sensed_VTe_mL         ();
+    const float Pcrete  = get_sensed_Pcrete_cmH2O   ();
+    const float PEP     = get_sensed_PEP_cmH2O      ();
+    const float setPEP  = get_setting_PEP_cmH2O     ();
+
+    float dpep=0;
+    if(Pcrete<PEP+2 && VTe>VTi/2)
+    {
+        set_alarm(ALARM_SENSOR_FAIL);
+    }
+    else
+    {
+        unset_alarm(ALARM_SENSOR_FAIL);
+        pep_cycle++;
+        dpep = setPEP - PEP;
+        if(Ajustement == pep_state)
+        {
+            if(abs(dpep)>0.1)
+            {
+                motor_pep_move(EXHAL_VALVE_P_RATIO*dpep/3);
+            }
+        }
+        else if(Maintien == pep_state)
+        {
+            if(dpep>0.1)
+            {
+                motor_pep_move(EXHAL_VALVE_P_RATIO*dpep/3);
+            }
+        }
+    }
+    if(dpep<bad_dpep_threshold)
+    {
+        good_dpep_count++;
+        bad_dpep_count=0;
+    }else
+    {
+        good_dpep_count=0;
+        bad_dpep_count++;
+    }
+    if(Ajustement == pep_state && good_dpep_count >= 2)
+    {
+        pep_state=Maintien;
+    }
+    else if(Maintien == pep_state && bad_dpep_count >= 10)
+    {
+        pep_state=Ajustement;
+    }
+}
+
 
 // TODO
 //#ifndef NTESTS
@@ -183,6 +243,8 @@ void enter_state(RespirationState new)
 //static float    Pmax ;
 //static uint32_t Tplat;
 //#endif
+
+
 void cycle_respiration()
 {
 //#ifdef NTESTS
@@ -204,7 +266,9 @@ void cycle_respiration()
         if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
             enter_state(Plateau);
         }
-        motor_press(VM);
+        for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
+        motor_press(_motor_steps_us, 3000);
+//        motor_press(VM);
     }
     else if (Plateau == state) {
         valve_inhale();
@@ -212,7 +276,8 @@ void cycle_respiration()
             || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
             enter_state(Exhalation);
         }
-        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
+//        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
+        motor_release(); // TODO Check wrap-around
     }
     else if (Exhalation == state) {
         valve_exhale();
@@ -222,7 +287,7 @@ void cycle_respiration()
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
             // TODO ...
-
+            regulation_pep();
             send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
             enter_state(Insufflation);
         }

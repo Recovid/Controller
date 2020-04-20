@@ -21,7 +21,7 @@ uint16_t get_usable_pdiff_readings_start(float time_step_sec);
 
 uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
 
-    //! \returns last steps_t_us motion to reach vol_mL
+//! \returns last steps_t_us motion to reach vol_mL
 uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL);
 
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others

@@ -20,6 +20,12 @@ static volatile uint8_t       _npa_measurement_buffer[2]	= { 0 };
 static volatile float _current_flow;
 static volatile float _current_pressure;
 
+float motor_step_times_us[MOTOR_STEPS_MAX];
+
+static uint16_t flow_samples_index  = 0;
+static float    flow_samples_time_s = 0.f;
+static bool     flow_sampling       = false;
+
 typedef enum {
     STOPPED,
     REQ_SDP_MEASUREMENT,
@@ -28,6 +34,9 @@ typedef enum {
 } sensor_state_t;
 
 volatile sensor_state_t _sensor_state;
+
+volatile uint16_t _hyperfrish_sdp_time;
+
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
 DMA_HandleTypeDef hdma_i2c1_tx;
@@ -95,8 +104,6 @@ static HAL_StatusTypeDef sdp6_request_measure_it()
 	}
 	return ret;
 }
-
-
 
 static HAL_StatusTypeDef npa700_receive_measure_it()
 {

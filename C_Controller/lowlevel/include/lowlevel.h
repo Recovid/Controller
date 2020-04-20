@@ -1,6 +1,9 @@
 #pragma once
 
 #include "platform.h"
+#include <stdint.h>
+
+#include "configuration.h"
 
 #include "configuration.h"
 
@@ -15,6 +18,8 @@ uint32_t get_time_ms();
 
 //! \returns get_time_ms()
 uint32_t wait_ms(uint32_t t_ms);
+
+uint32_t delay(uint32_t ticks_to_wait);
 
 //! Triggers a soft reset that will restart the Controller in a fresh state with the same memorised settings
 //! \warning the actual reset MUST be synchronized with cycle_respiration
@@ -65,13 +70,13 @@ bool is_motor_ok();
 
 //! Press the BAVU to insufflate air to the patient according to VM_Lpm
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_press(float VM_Lpm);
+bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_release(uint32_t before_t_ms);
+bool motor_release();
 
 //! \remark Only used in self-tests
 bool motor_stop();
@@ -91,7 +96,7 @@ bool is_motor_pep_ok();
 //! \remark unless some calibration procedure or data is added, the only relationship between steps and cm
 //!         must be computed based on further read_PEP_cmH2O()
 //! \remark any relative_move_cmH2O > +.1 should be checked during following cycles
-bool motor_pep_move(float relative_move_cmH2O);
+bool motor_pep_move(int relative_mm);
 
 //! \warning only use during initialisation as moving to 0 is prohibited during cycle_respiration and the water level may have varied
 bool motor_pep_home();
@@ -118,6 +123,7 @@ bool valve_inhale();
 bool init_Pdiff();
 bool init_Paw();
 bool init_Patmo();
+
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 
 extern uint16_t steps_t_us[MOTOR_STEPS_MAX];

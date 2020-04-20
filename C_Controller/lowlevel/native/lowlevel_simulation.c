@@ -239,7 +239,7 @@ bool motor_release(uint32_t before_t_ms)
 
 bool init_motor_pep() { return true; }
 
-bool motor_pep_move(float relative_move_cmH2O)
+bool motor_pep_move(int relative_mm)
 {
     return false; // TODO
 }
@@ -286,12 +286,12 @@ float BAVU_Q_Lpm()
 // ------------------------------------------------------------------------------------------------
 //! HW sensors simulation
 
+static float saved_VTi_mL;
+
 bool init_Pdiff   () { return true; }
 bool init_Paw     () { return true; }
 bool init_Patmo   () { return true; }
 bool sensors_start() { return true; }
-
-static float saved_VTi_mL;
 
 float read_Pdiff_Lpm()
 {
