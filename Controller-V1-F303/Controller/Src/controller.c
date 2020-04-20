@@ -71,7 +71,6 @@ void sensors_stop_logging();
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
 
-
 // ------------------------------------------------------------
 // Python reporting
 // ------------------------------------------------------------
@@ -170,6 +169,96 @@ float P_plateau_mean = 0.1;
 float errors_mean[PID_I_SIZE]  = {0};
 float errors_slope[PID_I_SIZE] = {0};
 
+// ------------------------------------------------------------------------------------------------
+
+#define COUNT_OF(_array) (sizeof(_array)/sizeof(_array[0]))
+
+#define MAX(_a,_b) ((_a)>(_b) ? (_a) : (_b))
+#define MIN(_a,_b) ((_a)<(_b) ? (_a) : (_b))
+
+const float MOTOR_STEP_TIME_US_MIN = 110.f;
+
+const float SAMPLES_T_US = 1000; //!< Between sensors interrupts
+
+const float   CALIB_PDIFF_LPS_RATIO    = 105.0f; //! To convert raw readings to Lps
+const float   CALIB_UNUSABLE_PDIFF_LPS =   0.1f; //!< Part of Pdiff readings that cannot be used to adjust flow
+const uint8_t CALIB_PDIFF_SAMPLES_MIN  =  11   ; //!< For sliding average
+
+float samples_Q_Lps[2000]; // > max Tinsu_ms
+float average_Q_Lps[2000]; // > max Tinsu_ms
+
+//! \returns estimated latency (µs) between motor motion and Pdiff readings
+uint32_t compute_samples_average_and_latency_us()
+{
+    bool unusable_samples = true;
+    uint32_t latency_us = 0;
+    float sum = 0.f;
+    for (uint16_t i=0 ; i<COUNT_OF(inhalation_flow_sls) ; ++i) {
+        if (unusable_samples) {
+            if (inhalation_flow_sls[i] > CALIB_UNUSABLE_PDIFF_LPS) {
+                unusable_samples = false;
+            }
+            else {
+                latency_us += SAMPLES_T_US;
+            }
+        }
+        // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
+        sum += inhalation_flow_sls[i];
+        if (i >= CALIB_PDIFF_SAMPLES_MIN) {
+            sum -= inhalation_flow_sls[i-CALIB_PDIFF_SAMPLES_MIN];
+        }
+        const uint16_t average_index = i-CALIB_PDIFF_SAMPLES_MIN/2;
+        if (i >= sensor_logging_index) {
+            average_Q_Lps[average_index] = average_Q_Lps[average_index-1];
+#if 0
+            printf("s=%d average=%f\n", average_index, average_Q_Lps[average_index]);
+#endif
+        }
+        else if (i >= CALIB_PDIFF_SAMPLES_MIN) {
+            average_Q_Lps[average_index] = sum / CALIB_PDIFF_SAMPLES_MIN;
+#if 0
+            printf("s=%d average=%f\n", average_index, average_Q_Lps[average_index]);
+#endif
+        }
+        else {
+            average_Q_Lps[i] = 0.f;
+        }
+    }
+    return latency_us;
+}
+
+//! \returns last steps_t_us motion to reach vol_mL
+uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
+{
+    uint16_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
+
+    uint32_t last_step = 0;
+    float Tinsu_us = 0.f;
+    for (uint16_t i=0 ; i<COUNT_OF(motor_speed_table) ; ++i) {
+        uint16_t Q_index = (Tinsu_us + latency_us) / SAMPLES_T_US;
+        const uint16_t average_Q_index = MIN(sensor_logging_index-(1+CALIB_PDIFF_SAMPLES_MIN/2),Q_index);
+        const float actual_vs_desired = average_Q_Lps[average_Q_index];
+        const float correction = (flow_Lps / actual_vs_desired);
+        const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)motor_speed_table[i]) / correction);
+        const float vol = Tinsu_us/1000/*ms*/ * flow_Lps;
+        if (vol > 1.1f * vol_mL) { // actual Q will almost always be lower than desired
+        	motor_speed_table[i] = UINT16_MAX; // slowest motion
+        }
+        else {
+            Tinsu_us += new_step_t_us;
+            motor_speed_table[i] = new_step_t_us;
+#if 0
+            printf("t_us=%f steps_t_us=%d vol=%f\n", Tinsu_us, motor_speed_table[i], vol);
+#endif
+            last_step = i;
+        }
+    }
+    printf("Tinsu predicted = %d ms\n", (uint32_t)(Tinsu_us/1000));
+    return last_step;
+}
+
+// ------------------------------------------------------------------------------------------------
+
 void controller_run() {
 	uint32_t time;
 	uint16_t steps;
@@ -267,11 +356,12 @@ void controller_run() {
 		//************************************** EXPIRATION MOVEMENT ********************************* //
 		motor_run(RELEASE, EXHALE_SPEED);
 //************************************************* PID ZONE ********************************************//
-		// Compute average flow and slope to adjust A_calibrated and B_calibrated
+// Compute average flow and slope to adjust A_calibrated and B_calibrated
 //		printf("Average flow=%lu slm\n", (uint32_t)(flow_avg));
 //		float flow_error = flow_avg - flow_setpoint_slm;
 //		B_calibrated += 0.01 * flow_error;
 //		printf("error=%ld slm\n", (int32_t)(flow_error));
+/*
 		float timeStep = sensor_logging_time_step_sum/sensor_logging_index;
 		uint32_t low;
 		uint32_t high;
@@ -305,7 +395,10 @@ void controller_run() {
 			motor_speed_table[t]= (uint32_t)d;
 		}
 		printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
-//*******************************************************************************************************//
+*/
+		compute_motor_steps_and_Tinsu_ms(1.f, 600.f); // TODO change float flow_Lps, float vol_mL
+
+		//*******************************************************************************************************//
 		// home will be set in EXTI interrupt handler. PWM will also be stopped.
 		while(!motor_is_home());
 		motor_stop();
