@@ -72,7 +72,7 @@ PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externalt
 #Add openocd to your path for flashing
 PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externaltools.openocd.linux64_1.3.0.202002181050/tools/bin/
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUIDL_TYPE=Debug -G"Unix Makefiles"
+cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the bin to flash
 make -j16 C_Controller.stm32f303.elf
 # and flash it using OpenOCD
