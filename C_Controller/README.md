@@ -33,11 +33,11 @@ C_Controller $ ./C_Controller -s /dev/pts/3 # Replace with output of socat
 
 
 
-# How build real firmware
+# How to build real firmware
 
 Both scenarios need a proper install of STM32CubeIDE.
 
-If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONFIG=1"
+If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONNECTION=1"
 
 ## Using windows
 
