@@ -264,43 +264,50 @@ void cycle_respiration()
 
 
         // Start Inhalation
+        light_yellow(Off);
         valve_inhale();
         motor_press_constant(200, 4000); // TODO compute_motor_steps_and_Tinsu_ms(VM, VT); // RCM motor_pos > pos(V)+10% in case Pdiff understimates VT
-
         while(Insufflation == state ) {
-            if (Pmax <= get_sensed_P_cmH2O()) {
-                enter_state(Exhalation);
-            }
-            if (VT <= get_sensed_VTi_mL()) {
-                enter_state(Plateau);
-            }
-            if( 800 > get_time_ms() - respi_start_ms ) {
-                enter_state(Plateau);
-            }
-            wait_ms(1);
+            // wait_ms(1);
+            // // if (Pmax <= get_sensed_P_cmH2O()) {
+            // //     light_yellow(On);
+            // //     enter_state(Exhalation);
+            // // } else if (VT <= get_sensed_VTi_mL()) {
+            // //     enter_state(Plateau);
+            // // } else 
+            // if( 1500 > get_time_ms() - respi_start_ms ) {
+            //     enter_state(Plateau);
+            // }
+            HAL_Delay(1000);
+            enter_state(Plateau);
         }
-
         motor_release();
         while(Plateau == state) {
-            if (Pmax <= get_sensed_P_cmH2O()
-                || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
-                enter_state(Exhalation);
-            }
-            wait_ms(1);
+            // wait_ms(1);
+            // // if (Pmax <= get_sensed_P_cmH2O()) { // TODO check Tpins_ms < first_pause_ms+5000
+            // //     enter_state(Exhalation);
+            // // } else 
+            // if ( (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms() )  { // TODO check Tpins_ms < first_pause_ms+5000
+            //     enter_state(Exhalation);
+            // }
+            HAL_Delay(1000);
+            enter_state(Exhalation);
         }        
         valve_exhale();
         while(Exhalation == state) { 
-            if ((respi_start_ms + MAX(T,Tpexp_ms)) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
-                uint32_t t_ms = get_time_ms();
+//             wait_ms(1);
+//             if ((respi_start_ms + MAX(T,Tpexp_ms)) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
+//                 uint32_t t_ms = get_time_ms();
 
-                EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
-                FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
+//                 EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
+//                 FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
 
-                // TODO regulation_pep();
-//                send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
-                enter_state(Insufflation);
-            }
-            wait_ms(1);
+//                 // TODO regulation_pep();
+// //                send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
+//                 enter_state(Insufflation);
+//             }
+            HAL_Delay(2000);
+            enter_state(Insufflation);
         }
     }
 }

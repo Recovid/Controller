@@ -408,8 +408,14 @@ bool MX_GPIO_Init(void)
   HAL_GPIO_Init(MOTOR_INDEXPULSE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MOTOR_ACTIVE_Pin MOTOR_LIMIT_SW_A_Pin MOTOR_LIMIT_SW_B_Pin */
-  GPIO_InitStruct.Pin = MOTOR_ACTIVE_Pin|MOTOR_LIMIT_SW_A_Pin|MOTOR_LIMIT_SW_B_Pin;
+  GPIO_InitStruct.Pin = MOTOR_LIMIT_SW_A_Pin|MOTOR_LIMIT_SW_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : MOTOR_ACTIVE_Pin */
+  GPIO_InitStruct.Pin = MOTOR_ACTIVE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
