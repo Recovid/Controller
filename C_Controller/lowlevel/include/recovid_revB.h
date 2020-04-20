@@ -68,6 +68,7 @@ extern "C"
 #define MOTOR_RELEASE_DIR   GPIO_PIN_SET
 
 #define MOTOR_RELEASE_STEP_US   200
+#define MOTOR_HOME_STEP_US      400
 
 
 

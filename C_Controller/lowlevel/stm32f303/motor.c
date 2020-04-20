@@ -71,14 +71,27 @@ bool init_motor()
 
     motor_enable(true);
 
+    if(_home) {
+      HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
+      _motor_tim->Instance->ARR = MOTOR_HOME_STEP_US;
+      HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);    
+      while(_home);
+      motor_stop();
+    }
+    _homing=true;
+    _moving=true;
+    HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
+    _motor_tim->Instance->ARR = MOTOR_HOME_STEP_US;
+    HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);    
+    while(!_home);
   }
   return true;
 }
 
 static void period_elapsed_callback(TIM_HandleTypeDef *tim)
 {
-  _moving = false;
   HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
+  _moving = false;
 }
 
 void motor_limit_sw_A_irq() {
