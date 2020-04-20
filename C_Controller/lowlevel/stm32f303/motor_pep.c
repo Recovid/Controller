@@ -29,7 +29,7 @@ bool init_motor_pep()
   if(_motor_tim==NULL) {
     _motor_tim= &pep_tim;
     // register IT callbacks
-    _motor_tim->PWM_PulseFinishedCallback= step_callback;
+    _motor_tim->PeriodElapsedCallback= step_callback;
 
     // Enable the PWM channel
     TIM_CCxChannelCmd(_motor_tim->Instance, PEP_TIM_CHANNEL, TIM_CCx_ENABLE);
@@ -40,6 +40,8 @@ bool init_motor_pep()
     HAL_GPIO_WritePin(PEP_CONFIG_GPIO_Port, PEP_CONFIG_Pin, GPIO_PIN_SET);
     // Activate
     HAL_GPIO_WritePin(PEP_nSLEEP_GPIO_Port, PEP_nSLEEP_Pin, GPIO_PIN_SET);
+
+    set_enable(false);
 
     _home= !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
   }
@@ -56,6 +58,7 @@ bool motor_pep_move(int relative_mm) {
     _remaining_steps = (uint32_t) fabs(relative_mm) * PEP_STEPS_PER_MM;
     _motor_tim->Instance->ARR= (uint16_t)(1000000.0/(PEP_MAX_SPEED*PEP_STEPS_PER_MM));
     set_direction(relative_mm<0?PEP_DIR_DEC:PEP_DIR_INC);
+    set_enable(true);
     HAL_TIM_Base_Start_IT(_motor_tim);
   }
   return true;
@@ -70,15 +73,16 @@ bool motor_pep_home() {
   _homing=true;
   HAL_TIM_Base_Start_IT(_motor_tim);
 
-  while(!_home) vTaskDelay(10/portTICK_PERIOD_MS);
+  while(!_home) ;
   return true;
 }
 
 bool motor_pep_stop() {
   if(_motor_tim==NULL) return false;
-  HAL_TIM_Base_Stop_IT(_motor_tim);
+  HAL_TIM_Base_Stop(_motor_tim);
   _homing=false;
   _remaining_steps=0;
+  set_enable(false);
   return true;
 }
 

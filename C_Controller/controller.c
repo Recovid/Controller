@@ -113,18 +113,23 @@ int self_tests()
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
-    motor_press_constant(400, 3000);
+    motor_press_constant(400, 1000);
     wait_ms(1000);
-
+    motor_stop();
     //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     //check(&test_bits, 4, motor_stop());
     //check(&test_bits, 3, valve_exhale()); // start pos
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
 
     check(&test_bits, 8, init_motor_pep());
+    motor_pep_home();
+    wait_ms(1000);
+    motor_pep_move(10);
     // TODO check(&test_bits, 8, motor_pep_...
+    wait_ms(30000);
 
-    while(true) {
+    volatile bool b=false;
+    while(!b) {
         ; // FIXME remove after HW integration tests
     }
 
