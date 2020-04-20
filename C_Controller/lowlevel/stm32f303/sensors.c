@@ -34,7 +34,6 @@ static volatile uint16_t _hyperfrish_sdp_time;
 
 // static void (*_flow_callback)(float flow, uint32_t delta_t_us);
 
-uint16_t steps_t_us[MOTOR_STEPS_MAX];
 float    samples_Q_Lps[2000]; // > max Tinsu_ms
 float    average_Q_Lps[2000]; // > max Tinsu_ms
 

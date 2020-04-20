@@ -60,7 +60,7 @@ int recv_ihm();
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
-#define MOTOR_MAX (4800) // for v2 motor according to preliminary tests
+#define MOTOR_MAX (4500) // for v2 motor according to preliminary tests
 
 //! Called during initialisation only
 bool init_motor();
@@ -68,7 +68,7 @@ bool init_motor();
 //! \returns false in case of hardware failure
 bool is_motor_ok();
 
-//! Press the BAVU to insufflate air to the patient according to VM_Lpm
+//! Press the BAVU to insufflate air to the patient according to the defined steps_profile in µs/step
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 
@@ -126,7 +126,6 @@ bool init_Patmo();
 
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 
-extern uint16_t steps_t_us[MOTOR_STEPS_MAX];
 extern float    samples_Q_Lps[2000]; // > max Tinsu_ms
 extern float    average_Q_Lps[2000]; // > max Tinsu_ms
 
@@ -135,7 +134,6 @@ bool sensors_stop_sampling_flow();
 bool sensors_sample_flow();
 float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
-bool set_motor_table(uint16_t step_t_us);
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok();

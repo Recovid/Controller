@@ -25,7 +25,6 @@ float FR_pm        = 0.f;
 
 uint32_t Tpins_ms = 0;
 uint32_t Tpexp_ms = 0;
-static uint16_t _motor_steps_us[MOTOR_MAX];
 
 bool pause_insp(int t_ms)
 {
@@ -49,8 +48,8 @@ void check(int* bits, int bit, bool success)
 bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 {
     // Sample sensor
-    const int samples = 10;
-    float value[samples], stddev = 0., sumX=0., sumX2=0., sumY=0., sumXY=0.;
+    float value[10], stddev = 0., sumX=0., sumX2=0., sumY=0., sumXY=0.;
+    const int samples = COUNT_OF(value);
     for (int i=0; i<samples; i++) {
         value[i] = (*sensor)();
         if (value[i] < min || max < value[i]) {
@@ -128,10 +127,10 @@ int self_tests()
     printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
-    for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
-    motor_press(_motor_steps_us, 3000);
+
+    motor_press_constant(400, 3000);
     wait_ms(1000);
-    //// printf("Motor press 400steps\n");
+
     //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
     //check(&test_bits, 4, motor_stop());
     //check(&test_bits, 3, valve_exhale()); // start pos
@@ -139,9 +138,11 @@ int self_tests()
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
+
     while(true) {
         ; // FIXME remove after HW integration tests
     }
+
     return test_bits;
 }
 
@@ -269,9 +270,7 @@ void cycle_respiration()
         if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
             enter_state(Plateau);
         }
-        for(int t=0; t<3000; ++t) { _motor_steps_us[t]= 400; }
-        motor_press(_motor_steps_us, 3000);
-//        motor_press(VM);
+        motor_press_constant(400, 3000);
     }
     else if (Plateau == state) {
         valve_inhale();
