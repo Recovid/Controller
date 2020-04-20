@@ -37,7 +37,7 @@ C_Controller $ ./C_Controller -s /dev/pts/3 # Replace with output of socat
 
 Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
 
-If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONNECTION=1"
+Output will be on UART4 only (as it's incompatible with I2C)
 
 ## Using windows
 

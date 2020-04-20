@@ -18,7 +18,10 @@
 
 uint32_t get_time_ms()
 {
-  return xTaskGetTickCount() * portTICK_PERIOD_MS;
+  if(xTaskGetCurrentTaskHandle() != NULL)
+	return xTaskGetTickCount() * portTICK_PERIOD_MS;
+  else
+    return HAL_GetTick();
 }
 
 uint32_t delay(uint32_t ticks_to_wait)

@@ -19,10 +19,6 @@ endif()
 
 SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
 
-if(RASPI_CONNECTION)
-	add_compile_definitions(RASPI_CONNECTION)
-endif()
-
 add_compile_definitions(${TARGET})
 
 find_program(CCACHE_FOUND ccache)
