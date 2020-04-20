@@ -50,7 +50,7 @@ set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.
 # Add unix build tools (make, ...)
 set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.make.win32_1.1.0.201910081157\tools\bin;
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUIDL_TYPE=Debug -G"Unix Makefiles"
+cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
 make -j8
 
