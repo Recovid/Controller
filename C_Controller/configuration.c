@@ -2,6 +2,15 @@
 
 #include "lowlevel/include/lowlevel.h"
 
+const float MOTOR_STEP_TIME_US_MIN = 110.f;
+
+const float SAMPLES_T_US = 1000; //!< Between sensors interrupts
+
+// Calibration
+const float   CALIB_PDIFF_LPS_RATIO    = 105.0f; //! To convert raw readings to Lps
+const float   CALIB_UNUSABLE_PDIFF_LPS =   0.1f; //!< Part of Pdiff readings that cannot be used to adjust flow
+const uint8_t CALIB_PDIFF_SAMPLES_MIN  =  11   ; //!< For sliding average
+
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
 

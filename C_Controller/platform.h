@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define COUNT_OF(_array) (sizeof(_array)/sizeof(_array[0]))
+
 #ifndef UNUSED
 # define UNUSED(_expression) (void)_expression;
 #endif
