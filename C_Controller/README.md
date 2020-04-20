@@ -53,6 +53,7 @@ set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.
 cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
 make -j8
+make -j8 C_Controller.stm32f303.elf.binary
 
 #Flash IT
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
