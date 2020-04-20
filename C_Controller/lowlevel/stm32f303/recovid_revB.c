@@ -368,7 +368,7 @@ bool MX_GPIO_Init(void)
   /*Configure GPIO pins : TAMPON_FULL_Pin FS_Enabled_Pin */
   GPIO_InitStruct.Pin = TAMPON_FULL_Pin|FS_Enabled_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PEP_HOME_Pin */
@@ -398,7 +398,7 @@ bool MX_GPIO_Init(void)
   /*Configure GPIO pins : PEP_nFAULT_Pin TAMPON_FAIL_Pin BATT_FAULT_Pin */
   GPIO_InitStruct.Pin = PEP_nFAULT_Pin|TAMPON_FAIL_Pin|BATT_FAULT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOTOR_INDEXPULSE_Pin */
