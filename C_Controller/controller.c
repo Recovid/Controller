@@ -23,21 +23,6 @@ const char *get_init_str() { return init_str; }
 float EoI_ratio    = 0.f;
 float FR_pm        = 0.f;
 
-uint32_t Tpins_ms = 0;
-uint32_t Tpexp_ms = 0;
-
-bool pause_insp(int t_ms)
-{
-    Tpins_ms = get_time_ms()+t_ms;
-    return true;
-}
-
-bool pause_exp(int t_ms)
-{
-    Tpexp_ms = get_time_ms()+t_ms;
-    return true;
-}
-
 void check(int* bits, int bit, bool success)
 {
     if ((*bits &   (1 << bit)) && !success) {
@@ -252,11 +237,13 @@ bool regulation_pep()
 void cycle_respiration()
 {
 //#ifdef NTESTS
-    const uint32_t T     = get_setting_T_ms      ();
-    const float    VT    = get_setting_VT_mL     ();
-    const float    VM    = get_setting_Vmax_Lpm  ();
-    const float    Pmax  = get_setting_Pmax_cmH2O();
-    const uint32_t Tplat = get_setting_Tplat_ms  ();
+    const uint32_t T        = get_setting_T_ms      ();
+    const float    VT       = get_setting_VT_mL     ();
+    const float    VM       = get_setting_Vmax_Lpm  ();
+    const float    Pmax     = get_setting_Pmax_cmH2O();
+    const uint32_t Tplat    = get_setting_Tplat_ms  ();
+    const uint32_t Tpins_ms = get_command_Tpins_ms  ();
+    const uint32_t Tpexp_ms = get_command_Tpexp_ms  ();
 //#endif
     if (Unknown == state) {
         send_INIT(get_init_str());
