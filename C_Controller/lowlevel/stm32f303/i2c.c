@@ -126,33 +126,33 @@ void sensors_stop() {
     _sensor_state= STOPPED;
 }
 
-void sensors_start_sampling_flow()
+bool sensors_start_sampling_flow()
 {
-    flow_samples_index = 0;
-    flow_samples_time_s = 0.f;
-    flow_sampling = true;
+    samples_Q_index = 0;
+    samples_Q_t_ms = 0.f;
+    sampling_Q = true;
+    return sampling_Q;
 }
 
-void sensors_stop_sampling_flow()
+bool sensors_stop_sampling_flow()
 {
-    flow_sampling = false;
+    sampling_Q = false;
+    return !sampling_Q;
 }
 
-void sensors_sample_flow()
+bool sensors_sample_flow(uint32_t t_ms, float Q_Lps)
 {
-    // FIXME
-    // _hyperfrish_sdp_time = (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
-    // hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
-    if(flow_sampling && flow_samples_index < COUNT_OF(motor_step_times_us)) {
-        motor_step_times_us[flow_samples_index] = _current_flow/60.;  // in L/s
-        flow_samples_time_s += (float)_hyperfrish_sdp_time/1000000;
-        ++flow_samples_index;
+    if (sampling_Q && samples_Q_index < COUNT_OF(samples_Q_Lps)) {
+        samples_Q_Lps[samples_Q_index] = Q_Lps;
+        samples_Q_t_ms  += t_ms;
+        samples_Q_index ++;
     }
+    return true;
 }
 
 float sensors_samples_time_s()
 {
-    return flow_samples_time_s;
+    return samples_Q_t_ms;
 }
 
 void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
@@ -214,20 +214,16 @@ void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			break;
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
-			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-			_current_flow = ((float)dp_raw)/105.0;
+            int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
+            _current_flow = ((float)dp_raw) / CALIB_PDIFF_LPS_RATIO;
+            _hyperfrish_sdp_time= (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
+            hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
+            _current_volume += (_current_flow/60.f) * ((float)_hyperfrish_sdp_time/1000000);
 
-            // TODO call sensors_sample_flow()
-			//_hyperfrish_sdp_time= (uint16_t)htim3.Instance->CNT - hyperfrish_sdp;
-			//hyperfrish_sdp = (uint16_t)htim3.Instance->CNT;
-			//_current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
-			// log flow in global array if needed
-			//if(sensor_logging == 1 && sensor_logging_index < sizeof(inhalation_flow)/sizeof(inhalation_flow[0])) {
-			//	inhalation_flow[sensor_logging_index] = _current_flow/60.;  // in sls
-			//	sensor_logging_time_step_sum += (float)_hyperfrish_sdp_time/1000000;
-			//	++sensor_logging_index;
-			//}
-			_sensor_state= REQ_SDP_MEASUREMENT;
+            // log flow in global array if needed
+            sensors_sample_flow(_hyperfrish_sdp_time/1000, _current_flow/60.f);
+
+            _sensor_state= REQ_SDP_MEASUREMENT;
             sdp6_request_measure_it();
 		} else {
 			_sensor_state= READ_NPA_MEASUREMENT;

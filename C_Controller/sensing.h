@@ -13,14 +13,16 @@ float get_sensed_Pcrete_cmH2O(); //!< \returns max sensed Paw during Insufflatio
 float get_sensed_Pplat_cmH2O (); //!< \returns sensed Paw at end of Plateau
 float get_sensed_PEP_cmH2O   (); //!< \returns sensed Paw at end of Exhale
 
-float get_sensed_VMe_Lpm     ();
+float get_sensed_VMe_Lpm();
 
 float get_last_sensed_ms();
 
-//! Updates motor_step_times_us (µs) for desired_flow_Lpm
-//! \warning a desired_Vol_mL must be added
-//! \returns predicted Tinsu (ms)
-uint32_t update_motor_step_times_us(float desired_flow_Lpm);
+uint16_t get_usable_pdiff_readings_start(float time_step_sec);
+
+uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
+
+//! \returns last steps_t_us motion to reach vol_mL
+uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL);
 
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others
 void sense_and_compute(RespirationState state);

@@ -50,12 +50,12 @@ bool is_motor_pep_ok() {
   return _motor_tim!=NULL;
 }
 
-bool motor_pep_move(float relative_move_cmH2O) {
+bool motor_pep_move(int relative_mm) {
   if(_motor_tim==NULL) return false;
-  if(relative_move_cmH2O!=0) {
-    _remaining_steps = (uint32_t) fabs(relative_move_cmH2O)* 10 * PEP_STEPS_PER_MM;
+  if(relative_mm!=0) {
+    _remaining_steps = (uint32_t) fabs(relative_mm) * PEP_STEPS_PER_MM;
     _motor_tim->Instance->ARR= (uint16_t)(1000000.0/(PEP_MAX_SPEED*PEP_STEPS_PER_MM));
-    set_direction(relative_move_cmH2O<0?PEP_DIR_DEC:PEP_DIR_INC);
+    set_direction(relative_mm<0?PEP_DIR_DEC:PEP_DIR_INC);
     HAL_TIM_Base_Start_IT(_motor_tim);
   }
   return true;

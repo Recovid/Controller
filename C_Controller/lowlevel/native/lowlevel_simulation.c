@@ -16,6 +16,7 @@
 #include "sensing.h"
 #include "configuration.h"
 #include "ihm_communication.h"
+#include "flow_samples.h"
 
 //Low-level include
 #ifndef WIN32
@@ -209,11 +210,16 @@ void motor_move()
     }
 }
 
-bool motor_press(float VM_Lpm)
+bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+{
+    return false; // TODO
+}
+
+bool motor_press_speed(float speed)
 {
     motor_move();
     motor_move_from_t_ms = get_time_ms();
-    motor_speed_stepspms = motor_speed_stepspms_at(motor_pos, VM_Lpm);
+    motor_speed_stepspms = speed;
     return true; // TODO simulate driver failure
 }
 
@@ -347,32 +353,68 @@ int read_Battery_level()
 
 // ------------------------------------------------------------------------------------------------
 
-float motor_step_times_us[MOTOR_STEPS_MAX];
+uint16_t steps_t_us   [MOTOR_STEPS_MAX];
+float    samples_Q_Lps[2000];
+float    average_Q_Lps[2000];
 
-static uint16_t flow_samples_index  = 0;
-static float    flow_samples_time_s = 0.f;
-static bool     flow_sampling       = false;
+static float    samples_Q_t_ms  = 0.f;
+static uint16_t samples_Q_index = 0;
+static bool     sampling_Q      = false;
 
-void sensors_start_sampling_flow()
+bool set_motor_table(uint16_t step_t_us)
 {
-    flow_samples_index = 0;
-    flow_samples_time_s = 0.f;
-    flow_sampling = true;
+    for (uint16_t i=0 ; i<COUNT_OF(steps_t_us) ; i++) {
+        steps_t_us[i] = step_t_us;
+    }
+    return true;
 }
 
-void sensors_stop_sampling_flow()
+bool sensors_start_sampling_flow()
 {
-    flow_sampling = false;
+    samples_Q_t_ms = 0.f;
+    samples_Q_index = 0;
+    sampling_Q = true;
+    return sampling_Q;
 }
 
-void sensors_sample_flow()
+bool sensors_stop_sampling_flow()
 {
-    // TODO
+    sampling_Q = false;
+    return !sampling_Q;
+}
+
+bool sensors_sample_flow()
+{
+    if (!sampling_Q) return false;
+
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
+        samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
+        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_index ++;
+    }
+    return true;
+}
+
+bool sensors_sample_flow_low_C()
+{
+    if (!sampling_Q) return false;
+
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
+        samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
+        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_index ++;
+    }
+    return true;
 }
 
 float sensors_samples_time_s()
 {
     return get_setting_Tinsu_ms();
+}
+
+uint16_t get_samples_Q_index_size()
+{
+    return samples_Q_index;
 }
 
 // ================================================================================================
@@ -400,7 +442,7 @@ bool PRINT(test_insufflate)
             TEST_ASSUME(valve_inhale ());
             TEST_ASSUME(motor_at_home());
             for (uint32_t t_ms=0; t_ms<=100; t_ms+=poll_ms) {
-                TEST_ASSUME(motor_press(start));
+                TEST_ASSUME(motor_press_speed(start));
                 wait_ms(poll_ms);
                 const float VMt = read_Pdiff_Lpm();
                 const float Paw = read_Paw_cmH2O();
@@ -474,8 +516,32 @@ bool PRINT(test_Patmo_over_time)
     return true;
 }
 
+bool flow_samples()
+{
+    TEST_ASSUME(sensors_start_sampling_flow());
+    TEST_ASSUME(sensors_sample_flow());
+    TEST_ASSUME(sensors_stop_sampling_flow());
+    return true;
+}
+
+bool PRINT(test_compute_samples_average_and_latency_us)
+    TEST_ASSUME(flow_samples());
+    uint32_t latency_us = compute_samples_average_and_latency_us();
+    return TEST_EQUALS(10*SAMPLES_T_US, latency_us)
+        && TEST_FLT_EQUALS(2.7f, samples_Q_Lps[171]);
+}
+
+bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
+    TEST_ASSUME(flow_samples());
+    TEST_ASSUME(set_motor_table(1000));
+    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
+    return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
+}
+
 bool PRINT(TEST_LOWLEVEL_SIMULATION)
     return
+        test_compute_samples_average_and_latency_us() &&
+        test_compute_motor_steps_and_Tinsu_ms() &&
         test_insufflate() &&
         test_plateau() &&
         test_exhale() &&

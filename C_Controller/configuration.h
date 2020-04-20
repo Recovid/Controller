@@ -4,17 +4,17 @@
 #include "platform.h"
 
 //! motor map size
-#define MOTOR_STEPS_MAX (4700)
+#define MOTOR_STEPS_MAX (4500)
 
-#define P_PLATEAU_SLOPE  (0.1f) /* V1 was 0.05 */
-#define P_PLATEAU_MEAN   (0.2f) /* V1 was 0.1 */
+extern const float MOTOR_STEP_TIME_US_MIN; //!< Inverse of maximum motor speed in µs/step
+// TODO extern const float MOTOR_ACCEL_MAX; //!< Maximum motor acceleration in step/s^2
 
-#define MOTOR_STEP_TIME_US_MIN  (110.f)
+extern const float SAMPLES_T_US; //!< Between sensors interrupts
 
-#define CALIB_STEP_TIME_S  (1.f) /*s*/ / MOTOR_STEPS_MAX /* V1 was 1/(MOTOR_STEPS_MAX*200/360) ?! */
-#define CALIB_MAGIC_RATIO  (1.f) /* V1 was 0.8 */
-#define CALIB_A (1.275f)
-#define CALIB_B (0.046f)
+// Calibration
+extern const float   CALIB_PDIFF_LPS_RATIO   ; //!< To convert raw readings to Lps
+extern const float   CALIB_UNUSABLE_PDIFF_LPS; //!< Part of Pdiff readings that cannot be used to adjust flow
+extern const uint8_t CALIB_PDIFF_SAMPLES_MIN ; //!< For sliding average
 
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
