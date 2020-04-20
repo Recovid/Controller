@@ -13,7 +13,7 @@
 
 #define ADDR_SPD610 	((uint16_t)(0x40 <<1))
 //#define ADDR_NPA700B 	((uint16_t)(0x28 <<1))
-#define ADDR_NPA700B 	((uint16_t)(0x76 <<1))
+#define ADDR_NPA700B 	((uint16_t)(0x68 <<1)) // (0x76 <<1))
 
 
 bool 			sensors_init(I2C_HandleTypeDef *hi2c);

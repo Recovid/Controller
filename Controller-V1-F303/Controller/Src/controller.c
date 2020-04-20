@@ -103,7 +103,6 @@ static bool bavu_is_home_B();
 static bool bavu_motor_is_home() { return bavu_is_home_A() && bavu_is_home_B(); }
 
 
-
 // ------------------------------------------------------------
 // Pep Motor
 // ------------------------------------------------------------
@@ -234,7 +233,7 @@ static bool failsafe_is_on() {
 void wait_btn_clicked();
 #define INHALATION_FLOW_ARRAY_SIZE	400
 
-static float 							_inhalation_flow[INHALATION_FLOW_ARRAY_SIZE];		//  used as buffer for flow analysis and motor command computing
+static float 				_inhalation_flow[INHALATION_FLOW_ARRAY_SIZE];		//  used as buffer for flow analysis and motor command computing
 static volatile uint32_t 	_logging_index = 0;
 static volatile float 		_logging_time_step_sum = 0;
 
@@ -269,7 +268,96 @@ float A_calibrated = 0.917;
 float B_calibrated = 1.;
 //uint32_t min_angle = 10;
 
-float flow_setpoint_slm = 60;
+// ------------------------------------------------------------------------------------------------
+
+#define COUNT_OF(_array) (sizeof(_array)/sizeof(_array[0]))
+
+#define MAX(_a,_b) ((_a)>(_b) ? (_a) : (_b))
+#define MIN(_a,_b) ((_a)<(_b) ? (_a) : (_b))
+
+const float MOTOR_STEP_TIME_US_MIN = 110.f;
+
+const float SAMPLES_T_US = 1000; //!< Between sensors interrupts
+
+const float   CALIB_PDIFF_LPS_RATIO    = 105.0f; //! To convert raw readings to Lps
+const float   CALIB_UNUSABLE_PDIFF_LPS =   0.1f; //!< Part of Pdiff readings that cannot be used to adjust flow
+const uint8_t CALIB_PDIFF_SAMPLES_MIN  =  11   ; //!< For sliding average
+
+float samples_Q_Lps[2000]; // > max Tinsu_ms
+float average_Q_Lps[2000]; // > max Tinsu_ms
+
+//! \returns estimated latency (µs) between motor motion and Pdiff readings
+uint32_t compute_samples_average_and_latency_us()
+{
+    bool unusable_samples = true;
+    uint32_t latency_us = 0;
+    float sum = 0.f;
+    for (uint16_t i=0 ; i<COUNT_OF(_inhalation_flow) ; ++i) {
+        if (unusable_samples) {
+            if (_inhalation_flow[i] > CALIB_UNUSABLE_PDIFF_LPS) {
+                unusable_samples = false;
+            }
+            else {
+                latency_us += SAMPLES_T_US;
+            }
+        }
+        // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
+        sum += _inhalation_flow[i];
+        if (i >= CALIB_PDIFF_SAMPLES_MIN) {
+            sum -= _inhalation_flow[i-CALIB_PDIFF_SAMPLES_MIN];
+        }
+        const uint16_t average_index = i-CALIB_PDIFF_SAMPLES_MIN/2;
+        if (i >= _logging_index) {
+            average_Q_Lps[average_index] = average_Q_Lps[average_index-1];
+#if 0
+            printf("s=%d average=%f\n", average_index, average_Q_Lps[average_index]);
+#endif
+        }
+        else if (i >= CALIB_PDIFF_SAMPLES_MIN) {
+            average_Q_Lps[average_index] = sum / CALIB_PDIFF_SAMPLES_MIN;
+#if 0
+            printf("s=%d average=%f\n", average_index, average_Q_Lps[average_index]);
+#endif
+        }
+        else {
+            average_Q_Lps[i] = 0.f;
+        }
+    }
+    return latency_us;
+}
+
+//! \returns last steps_t_us motion to reach vol_mL
+uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
+{
+    uint16_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
+
+    uint32_t last_step = 0;
+    float Tinsu_us = 0.f;
+    for (uint16_t i=0 ; i<COUNT_OF(bavu_motor_speed_table) ; ++i) {
+        uint16_t Q_index = (Tinsu_us + latency_us) / SAMPLES_T_US;
+        const uint16_t average_Q_index = MIN(_logging_index-(1+CALIB_PDIFF_SAMPLES_MIN/2),Q_index);
+        const float actual_vs_desired = average_Q_Lps[average_Q_index];
+        const float correction = (flow_Lps / actual_vs_desired);
+        const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)bavu_motor_speed_table[i]) / correction);
+        const float vol = Tinsu_us/1000/*ms*/ * flow_Lps;
+        if (vol > 1.1f * vol_mL) { // actual Q will almost always be lower than desired
+        	bavu_motor_speed_table[i] = UINT16_MAX; // slowest motion
+        }
+        else {
+            Tinsu_us += new_step_t_us;
+            bavu_motor_speed_table[i] = new_step_t_us;
+#if 0
+            printf("t_us=%f steps_t_us=%d vol=%f\n", Tinsu_us, bavu_motor_speed_table[i], vol);
+#endif
+            last_step = i;
+        }
+    }
+    printf("Tinsu predicted = %d ms\n", (uint32_t)(Tinsu_us/1000));
+    return last_step;
+}
+
+// ------------------------------------------------------------------------------------------------
+
 void controller_run() {
 	uint32_t time;
 	uint16_t steps;
@@ -461,52 +549,16 @@ void controller_run() {
 		_is_home = false;
 		//************************************** EXPIRATION MOVEMENT ********************************* //
 		motor_run(&bavu_motor, RELEASE, EXHALE_SPEED);
-//************************************************* PID ZONE ********************************************//
-		// Compute average flow and slope to adjust A_calibrated and B_calibrated
-////		printf("Average flow=%lu slm\n", (uint32_t)(flow_avg));
-////		float flow_error = flow_avg - flow_setpoint_slm;
-////		B_calibrated += 0.01 * flow_error;
-////		printf("error=%ld slm\n", (int32_t)(flow_error));
-//		float P_plateau_slope = 0.1;
-//		float P_plateau_mean = 0.2;
-//		float timeStep = _logging_time_step_sum/_logging_index;
-//		uint32_t low;
-//		uint32_t high;
-//		if(get_plateau(_inhalation_flow, _logging_index, timeStep, 10, &low, &high) == 0) {
-//			printf("plateau found from sample %lu to %lu\n", low, high);
-//		} else {
-//			printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
-//		}
-//		float plateau_slope = linear_fit(_inhalation_flow+low, high-low-1, timeStep, &plateau_slope);
-//		float plateau_mean = 0;
-//		for(int i=low; i<high; i++) {
-//			plateau_mean += _inhalation_flow[i];
-//		}
-//		plateau_mean = plateau_mean/(high-low);
-//		printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
-//		printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
-//
-//		float error_mean = plateau_mean - (flow_setpoint_slm/60.);
-//
-//		A_calibrated += plateau_slope * P_plateau_slope;
-//		B_calibrated += error_mean * P_plateau_mean;
-//		printf("A = %ld\n", (int32_t)(1000*A_calibrated));
-//		printf("B = %ld\n", (int32_t)(1000*B_calibrated));
-//
-//		// Recompute motor steps
-//		Ti = 0.;
-//		for(long t=0; t<steps; ++t) {
-//			float d = compte_motor_step_time(t, flow_setpoint_slm/60., CALIBRATION_SPEED);
-//			Ti+=d;
-//			//printf("d=%ld\n", (uint32_t)(d));
-//			bavu_motor_speed_table[t]= (uint32_t)d;
-//		}
-//		printf("Ti_predicted = %ld ms\n", (uint32_t)(Ti/1000));
-//*******************************************************************************************************//
+		//************************************************* PID ZONE ********************************************//
+
+		compute_motor_steps_and_Tinsu_ms(1.f, 600.f); // TODO change float flow_Lps, float vol_mL
+
 		// Wait for motor to home.
 		while(!bavu_motor_is_home());
 		printf("motor homed.\n");
 		motor_stop(&bavu_motor);
+		//*******************************************************************************************************//
+		// home will be set in EXTI interrupt handler. PWM will also be stopped.
 		//HAL_Delay(1000);
 		time = HAL_GetTick() - time;
 		if(time < Te-1) {
