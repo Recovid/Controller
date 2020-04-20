@@ -31,17 +31,17 @@ bool motor_release() {
   return true;
 }
 
-bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps) {
-  motor_stop();
-	if(nb_steps>0) {
-
-    HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
-    _moving=true;
-    _motor_tim->Instance->ARR = steps_profile_us[0];
-    HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
-    HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
-  }
-  return true;
+bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+{
+    motor_stop();
+    if (nb_steps > 0) {
+        HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
+        _moving=true;
+        _motor_tim->Instance->ARR = steps_profile_us[0];
+        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
+        HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
+    }
+    return true;
 }
 
 bool motor_stop() {

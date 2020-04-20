@@ -24,6 +24,8 @@ static float VMe_Lpm      = 0.f;
 
 static uint32_t last_sense_ms = 0;
 
+static uint16_t steps_t_us[MOTOR_MAX];
+
 float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
 float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
 float get_sensed_VolM_Lpm    () { return         VolM_Lpm ; }
@@ -77,6 +79,22 @@ uint32_t compute_samples_average_and_latency_us()
         }
     }
     return latency_us;
+}
+
+uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
+{
+    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
+    for(int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
+    motor_press(steps_t_us, nb_steps);
+    return max_steps;
+}
+
+uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
+{
+    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
+    for(int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
+    motor_press(steps_t_us, nb_steps);
+    return max_steps;
 }
 
 //! \returns last steps_t_us motion to reach vol_mL
