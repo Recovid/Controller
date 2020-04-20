@@ -210,11 +210,16 @@ void motor_move()
     }
 }
 
-bool motor_press(float VM_Lpm)
+bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+{
+    return false; // TODO
+}
+
+bool motor_press_speed(float speed)
 {
     motor_move();
     motor_move_from_t_ms = get_time_ms();
-    motor_speed_stepspms = motor_speed_stepspms_at(motor_pos, VM_Lpm);
+    motor_speed_stepspms = speed;
     return true; // TODO simulate driver failure
 }
 
@@ -437,7 +442,7 @@ bool PRINT(test_insufflate)
             TEST_ASSUME(valve_inhale ());
             TEST_ASSUME(motor_at_home());
             for (uint32_t t_ms=0; t_ms<=100; t_ms+=poll_ms) {
-                TEST_ASSUME(motor_press(start));
+                TEST_ASSUME(motor_press_speed(start));
                 wait_ms(poll_ms);
                 const float VMt = read_Pdiff_Lpm();
                 const float Paw = read_Paw_cmH2O();

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "alarms.h"
 #include "configuration.h"
 #include "ihm_communication.h"
 #include "sensing.h"
@@ -138,7 +139,9 @@ int self_tests()
 
     check(&test_bits, 8, init_motor_pep());
     // TODO check(&test_bits, 8, motor_pep_...
-	while(true);
+    while(true) {
+        ; // FIXME remove after HW integration tests
+    }
     return test_bits;
 }
 
@@ -183,7 +186,6 @@ float bad_dpep_threshold=0.3;
 
 bool regulation_pep()
 {
-
     const float VTi     = get_sensed_VTi_mL         ();
     const float VTe     = get_sensed_VTe_mL         ();
     const float Pcrete  = get_sensed_Pcrete_cmH2O   ();
@@ -202,7 +204,7 @@ bool regulation_pep()
         dpep = setPEP - PEP;
         if(Ajustement == pep_state)
         {
-            if(abs(dpep)>0.1)
+            if(fabsf(dpep)>0.1)
             {
                 motor_pep_move(EXHAL_VALVE_P_RATIO*dpep/3);
             }
@@ -232,6 +234,7 @@ bool regulation_pep()
     {
         pep_state=Ajustement;
     }
+    return true;
 }
 
 
