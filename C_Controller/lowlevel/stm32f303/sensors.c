@@ -2,9 +2,6 @@
 #include "lowlevel.h"
 
 
-
-
-
 typedef enum {
 	STOPPED,
 	STOPPING,
@@ -12,7 +9,6 @@ typedef enum {
 	READ_SDP_MEASUREMENT,
 	READ_NPA_MEASUREMENT
 } sensors_state_t;
-
 
 
 static I2C_HandleTypeDef* _i2c= NULL;
@@ -33,10 +29,18 @@ static volatile float _current_pressure;
 
 volatile sensors_state_t _sensor_state;
 
-// static volatile uint16_t _hyperfrish_sdp_time;
+static volatile uint16_t _hyperfrish_sdp_time;
 // static volatile uint16_t _hyperfrish_npa_time;
 
 // static void (*_flow_callback)(float flow, uint32_t delta_t_us);
+
+uint16_t steps_t_us[MOTOR_STEPS_MAX];
+float    samples_Q_Lps[2000]; // > max Tinsu_ms
+float    average_Q_Lps[2000]; // > max Tinsu_ms
+
+static float    samples_Q_t_ms  = 0.f;
+static uint16_t samples_Q_index = 0;
+static bool     sampling_Q      = false;
 
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
@@ -125,6 +129,25 @@ float read_Patmo_mbar() {
   return 0;
 }
 
+bool sensors_start_sampling_flow()
+{
+    samples_Q_t_ms = 0.f;
+    samples_Q_index = 0;
+    sampling_Q = true;
+    return sampling_Q;
+}
+
+bool sensors_stop_sampling_flow()
+{
+    sampling_Q = false;
+    return !sampling_Q;
+}
+
+uint16_t get_samples_Q_index_size()
+{
+    return 0; // TODO
+}
+
 bool sensors_start() {
     // Start sensor state machine.
     // This state machine is managed in the I2C interupt routine.
@@ -196,11 +219,13 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			break;
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
-			// _hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
-			// hyperfrish_sdp = get_time_us();
+            _hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
+            hyperfrish_sdp = get_time_us();
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
 			_current_flow = -((float)dp_raw)/105.0;
-      // _current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
+            // _current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
+
+            // TODO sensors_sample_flow()
 
 			// if(_flow_callback != NULL) {
 			// 	_flow_callback(_current_flow, _hyperfrish_sdp_time);
