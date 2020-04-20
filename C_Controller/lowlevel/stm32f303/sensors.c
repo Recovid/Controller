@@ -219,8 +219,8 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			break;
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
-            _hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
-            hyperfrish_sdp = get_time_us();
+//            _hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
+//            hyperfrish_sdp = get_time_us();
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
 			_current_flow = -((float)dp_raw)/105.0;
             // _current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
