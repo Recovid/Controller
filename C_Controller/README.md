@@ -35,7 +35,7 @@ C_Controller $ ./C_Controller -s /dev/pts/3 # Replace with output of socat
 
 # How to build real firmware
 
-Both scenarios need a proper install of STM32CubeIDE.
+Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
 
 If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONNECTION=1"
 
@@ -50,9 +50,10 @@ set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.
 # Add unix build tools (make, ...)
 set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.make.win32_1.1.0.201910081157\tools\bin;
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUIDL_TYPE=Debug -G"Unix Makefiles"
+cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
 make -j8
+make -j8 C_Controller.stm32f303.elf.binary
 
 #Flash IT
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
@@ -71,7 +72,7 @@ PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externalt
 #Add openocd to your path for flashing
 PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externaltools.openocd.linux64_1.3.0.202002181050/tools/bin/
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUIDL_TYPE=Debug -G"Unix Makefiles"
+cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the bin to flash
 make -j16 C_Controller.stm32f303.elf
 # and flash it using OpenOCD

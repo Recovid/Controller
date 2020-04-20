@@ -124,9 +124,9 @@ void motor_active_irq();
 #define PEP_STEP_Pin GPIO_PIN_9
 #define PEP_STEP_GPIO_Port GPIOC
 
-#define PEP_STEPS_PER_MM  (200*8/2)   // steps*microstepping
-#define PEP_MAX_SPEED     (8)         // mm/s
-#define PEP_HOME_SPEED    (1.25)      // mm/s
+#define PEP_STEPS_PER_MM  (200*8)       // steps*microstepping
+#define PEP_MAX_SPEED     (4)           // mm/s
+#define PEP_HOME_SPEED    (0.6)         // mm/s
 
 #define PEP_DIR_INC	      GPIO_PIN_SET
 #define PEP_DIR_DEC	      GPIO_PIN_RESET

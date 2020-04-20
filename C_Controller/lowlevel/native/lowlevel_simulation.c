@@ -231,12 +231,11 @@ bool motor_stop()
     return true; // TODO simulate driver failure
 }
 
-bool motor_release(uint32_t before_t_ms)
+bool motor_release()
 {
-    UNUSED(before_t_ms)
     motor_move();
     motor_move_from_t_ms = get_time_ms();
-    motor_speed_stepspms = -MAX(20, ((float)motor_pos) / before_t_ms-motor_move_from_t_ms); // TODO simulate moving away from home part of motor_position(Vol_mL)
+    motor_speed_stepspms = -MAX(20, ((float)motor_pos) / (400-motor_move_from_t_ms)); // TODO simulate moving away from home part of motor_position(Vol_mL)
     return true; // TODO simulate driver failure
 }
 
@@ -353,21 +352,12 @@ int read_Battery_level()
 
 // ------------------------------------------------------------------------------------------------
 
-uint16_t steps_t_us   [MOTOR_STEPS_MAX];
 float    samples_Q_Lps[2000];
 float    average_Q_Lps[2000];
 
 static float    samples_Q_t_ms  = 0.f;
 static uint16_t samples_Q_index = 0;
 static bool     sampling_Q      = false;
-
-bool set_motor_table(uint16_t step_t_us)
-{
-    for (uint16_t i=0 ; i<COUNT_OF(steps_t_us) ; i++) {
-        steps_t_us[i] = step_t_us;
-    }
-    return true;
-}
 
 bool sensors_start_sampling_flow()
 {
@@ -429,7 +419,7 @@ bool lung_at_rest()
 }
 bool motor_at_home()
 {
-    TEST_ASSUME(motor_release(get_time_ms()+250));
+    TEST_ASSUME(motor_release());
     wait_ms(100);
     TEST_ASSUME(motor_stop());
     return true;
@@ -460,7 +450,7 @@ bool PRINT(test_insufflate)
 bool PRINT(test_plateau)
     for (uint32_t start = 0; start <= LUNG_EXHALE_MS*2 ; start += 500) { // plateau is independant from motor_stop/release
         TEST_ASSUME(lung_at_rest());
-        TEST_ASSUME(start ? motor_release(get_time_ms()+start) : motor_stop());
+        TEST_ASSUME(start ? motor_release() : motor_stop());
         TEST_ASSUME(valve_inhale());
         for (int t=0; t<=3 ; t++) {
             wait_ms(LUNG_EXHALE_MS/2);
@@ -533,7 +523,7 @@ bool PRINT(test_compute_samples_average_and_latency_us)
 
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
     TEST_ASSUME(flow_samples());
-    TEST_ASSUME(set_motor_table(1000));
+    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
     uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
     return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
 }

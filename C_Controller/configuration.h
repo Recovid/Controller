@@ -3,9 +3,6 @@
 
 #include "platform.h"
 
-//! motor map size
-#define MOTOR_STEPS_MAX (4500)
-
 extern const float MOTOR_STEP_TIME_US_MIN; //!< Inverse of maximum motor speed in µs/step
 // TODO extern const float MOTOR_ACCEL_MAX; //!< Maximum motor acceleration in step/s^2
 
