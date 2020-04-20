@@ -133,7 +133,7 @@ void sense_and_compute(RespirationState state)
         if (state==Plateau) {
             if (last_state==Insufflation) {
                 sensors_stop_sampling_flow();
-                update_motor_step_times_us(get_setting_Vmax_Lpm());
+                compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
                 Pplat_cmH2O = Pcrete_cmH2O;
             }
             else {
