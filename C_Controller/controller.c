@@ -267,10 +267,10 @@ void cycle_respiration()
         if (Pmax <= get_sensed_P_cmH2O()) {
             enter_state(Exhalation);
         }
-        if (VT <= get_sensed_VTi_mL()) { // TODO RCM? motor_pos > pos(V) in case Pdiff understimates VT
+        if (VT <= get_sensed_VTi_mL()) {
             enter_state(Plateau);
         }
-        motor_press_constant(400, 3000);
+        motor_press_constant(400, 3000); // TODO compute_motor_steps_and_Tinsu_ms(VM, VT); // RCM motor_pos > pos(V)+10% in case Pdiff understimates VT
     }
     else if (Plateau == state) {
         valve_inhale();
@@ -278,8 +278,7 @@ void cycle_respiration()
             || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
             enter_state(Exhalation);
         }
-//        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
-        motor_release(); // TODO Check wrap-around
+        motor_release();
     }
     else if (Exhalation == state) {
         valve_exhale();
@@ -288,12 +287,12 @@ void cycle_respiration()
 
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
-            // TODO ...
-            regulation_pep();
+
+            // TODO regulation_pep();
             send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
             enter_state(Insufflation);
         }
-        motor_release(respi_start_ms+(T-BAVU_REST_MS)); // TODO Check wrap-around
+        motor_release();
     }
 }
 

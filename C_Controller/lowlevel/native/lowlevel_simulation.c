@@ -231,12 +231,11 @@ bool motor_stop()
     return true; // TODO simulate driver failure
 }
 
-bool motor_release(uint32_t before_t_ms)
+bool motor_release()
 {
-    UNUSED(before_t_ms)
     motor_move();
     motor_move_from_t_ms = get_time_ms();
-    motor_speed_stepspms = -MAX(20, ((float)motor_pos) / before_t_ms-motor_move_from_t_ms); // TODO simulate moving away from home part of motor_position(Vol_mL)
+    motor_speed_stepspms = -MAX(20, ((float)motor_pos) / (400-motor_move_from_t_ms)); // TODO simulate moving away from home part of motor_position(Vol_mL)
     return true; // TODO simulate driver failure
 }
 
@@ -420,7 +419,7 @@ bool lung_at_rest()
 }
 bool motor_at_home()
 {
-    TEST_ASSUME(motor_release(get_time_ms()+250));
+    TEST_ASSUME(motor_release());
     wait_ms(100);
     TEST_ASSUME(motor_stop());
     return true;
@@ -451,7 +450,7 @@ bool PRINT(test_insufflate)
 bool PRINT(test_plateau)
     for (uint32_t start = 0; start <= LUNG_EXHALE_MS*2 ; start += 500) { // plateau is independant from motor_stop/release
         TEST_ASSUME(lung_at_rest());
-        TEST_ASSUME(start ? motor_release(get_time_ms()+start) : motor_stop());
+        TEST_ASSUME(start ? motor_release() : motor_stop());
         TEST_ASSUME(valve_inhale());
         for (int t=0; t<=3 ; t++) {
             wait_ms(LUNG_EXHALE_MS/2);
