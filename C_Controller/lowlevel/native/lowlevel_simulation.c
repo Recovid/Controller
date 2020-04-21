@@ -248,6 +248,11 @@ bool motor_pep_move(int relative_mm)
     return false; // TODO
 }
 
+bool motor_pep_home()
+{
+    return false; // TODO
+}
+
 // ------------------------------------------------------------------------------------------------
 
 bool init_valve() { return true; }
