@@ -143,6 +143,7 @@ uint32_t state_start_ms = 0;
 void enter_state(RespirationState new)
 {
 #ifndef NDEBUG
+    const char* current = NULL;
     switch (state) {
     case Insufflation   : current = "Insufflation"   ; break;
     case Plateau        : current = "Plateau"        ; break;
