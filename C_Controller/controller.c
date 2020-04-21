@@ -91,27 +91,24 @@ int self_tests()
     check(&test_bits,  9, light_green(On )); wait_ms(1000);
     check(&test_bits, 10, light_green(Off)); // start pos
 
-    check(&test_bits, 5, init_Pdiff());
-    check(&test_bits, 6, init_Paw());
-    check(&test_bits, 7, init_Patmo());
-
+    check(&test_bits, 5, init_sensors());
     check(&test_bits, 11, sensors_start());
 
-    check(&test_bits, 5, sensor_test(read_Pdiff_Lpm , -100,  100, 2)); printf("Rest    Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm ());
-    check(&test_bits, 6, sensor_test(read_Paw_cmH2O ,  -20,  100, 2)); printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O ());
-    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
+    check(&test_bits, 5, sensor_test(get_sensed_VolM_Lpm  , -100,  100, 2)); printf("Rest    Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm  ());
+    check(&test_bits, 6, sensor_test(get_sensed_P_cmH2O   ,  -20,  100, 2)); printf("Rest    Paw  cmH2O:%+.1g\n", get_sensed_P_cmH2O   ());
+    check(&test_bits, 7, sensor_test(get_sensed_Patmo_mbar,  900, 1100, 2)); printf("Rest    Patmo mbar:%+.1g\n", get_sensed_Patmo_mbar());
 
     check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
 
     check(&test_bits, 4, init_motor());
-    printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     check(&test_bits, 4, motor_release());
     wait_ms(3000);
     check(&test_bits, 4, motor_stop());
-    printf("Release Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     check(&test_bits, 3, valve_inhale());
-    printf("Inhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
     motor_press_constant(400, 1000);
     wait_ms(1000);
@@ -121,10 +118,10 @@ int self_tests()
     wait_ms(3000);
 
 
-    //printf("Press   Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    //printf("Press   Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     //check(&test_bits, 4, motor_stop());
     //check(&test_bits, 3, valve_exhale()); // start pos
-    //printf("Exhale  Pdiff  Lpm:%+.1g\n", read_Pdiff_Lpm());
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
     check(&test_bits, 8, init_motor_pep());
     motor_pep_home();
@@ -262,7 +259,6 @@ void cycle_respiration()
 
         // TODO: Compute cycle adaptation 
 
-
         // Start Inhalation
         light_yellow(Off);
         valve_inhale();
@@ -278,7 +274,7 @@ void cycle_respiration()
             // if( 1500 > get_time_ms() - respi_start_ms ) {
             //     enter_state(Plateau);
             // }
-            HAL_Delay(1000);
+//            HAL_Delay(1000);
             enter_state(Plateau);
         }
         motor_release();
@@ -290,7 +286,7 @@ void cycle_respiration()
             // if ( (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms() )  { // TODO check Tpins_ms < first_pause_ms+5000
             //     enter_state(Exhalation);
             // }
-            HAL_Delay(1000);
+//            HAL_Delay(1000);
             enter_state(Exhalation);
         }        
         valve_exhale();
@@ -306,7 +302,7 @@ void cycle_respiration()
 // //                send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
 //                 enter_state(Insufflation);
 //             }
-            HAL_Delay(2000);
+//            HAL_Delay(2000);
             enter_state(Insufflation);
         }
     }

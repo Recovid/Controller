@@ -212,7 +212,7 @@ float BAVU_Q_Lpm()
 
 
 
-float read_Patmo_mbar()
+float get_sensed_Patmo_mbar()
 {
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }

@@ -23,49 +23,7 @@ static uint8_t       _sdp_AUR_buffer[3] 		= { 0 };
 
 static uint8_t       _npa_measurement_buffer[2]	= { 0 };
 
-static volatile float _current_flow;
-static volatile float _current_pressure;
-static volatile float _current_volume;
-
 volatile sensors_state_t _sensor_state;
-
-float samples_Q_Lps[2000]; // > max Tinsu_ms
-float average_Q_Lps[2000]; // > max Tinsu_ms
-
-static float    samples_Q_t_ms  = 0.f;
-static uint16_t samples_Q_index = 0;
-static bool     sampling_Q      = false;
-
-void compute_corrected_pressure(uint16_t pressure_read)
-{
-    // TODO Correct based on last Pcrete, or better later, last Pplat
-    _current_pressure = 1.01972f/*mbar/cmH2O*/
-                        * (160.f*(pressure_read - 1638.f)/13107.f); // V1 Calibration
-}
-
-void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us)
-{
-    static float previous_flow_uncorrected = 0.f;
-    static float  current_flow_uncorrected = 0.f;
-
-    previous_flow_uncorrected = current_flow_uncorrected;
-    current_flow_uncorrected  = - flow_read / 105.f; // V1 Calibration
-
-    const float delta_flow = current_flow_uncorrected - previous_flow_uncorrected;
-    float temp_Debit_calcul;
-    float fact_erreur;
-    if(delta_flow > 0){ // expression polynomiale de l'erreur
-        fact_erreur       = 0.0037f * _current_pressure -0.5124f * _current_pressure + 16.376f; // V2 Calibration
-        temp_Debit_calcul = current_flow_uncorrected * 0.88f;                                   // V2 Calibration
-    }
-    else { // expression lineaire de l'erreur
-        fact_erreur = -0.0143 * _current_pressure + 1.696;                                      // V2 Calibration
-        temp_Debit_calcul = current_flow_uncorrected * 0.87f;                                   // V2 Calibration
-    }
-
-    _current_flow = temp_Debit_calcul + delta_flow * fact_erreur;
-    _current_volume += (_current_flow/*L/m*/ / 60.f) * dt_us;
-}
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
@@ -116,72 +74,13 @@ static bool sensors_init(I2C_HandleTypeDef* hi2c) {
 }
 
 
-bool init_Pdiff() {
-  return sensors_init(&sensors_i2c);
-}
-bool init_Paw() {
-  return sensors_init(&sensors_i2c);
-}
-
-bool init_Patmo() {
+bool init_sensors() {
   return sensors_init(&sensors_i2c);
 }
 
 //! \returns false in case of hardware failure
-bool is_Pdiff_ok() {
+bool is_sensors_ok() {
   return _i2c!=NULL;
-}
-bool is_Paw_ok() {
-  return _i2c!=NULL;
-}
-bool is_Patmo_ok() {
-  return _i2c!=NULL;
-}
-
-//! \returns the airflow corresponding to a pressure difference in Liters / minute
-float read_Pdiff_Lpm() {
-  return _current_flow;
-}
-
-//! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float read_Paw_cmH2O() {
-  return _current_pressure;
-}
-
-//! \returns the atmospheric pressure in mbar
-float read_Patmo_mbar() {
-  return 0;
-}
-
-bool sensors_start_sampling_flow()
-{
-    samples_Q_t_ms = 0.f;
-    samples_Q_index = 0;
-    sampling_Q = true;
-    return sampling_Q;
-}
-
-bool sensors_sample_flow(uint32_t dt_us)
-{
-    if (!sampling_Q) return false;
-
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps); i++) {
-        samples_Q_Lps[i] = _current_flow;
-        samples_Q_t_ms  += dt_us;
-        samples_Q_index ++;
-    }
-    return true;
-}
-
-bool sensors_stop_sampling_flow()
-{
-    sampling_Q = false;
-    return !sampling_Q;
-}
-
-uint16_t get_samples_Q_index_size()
-{
-    return 0; // TODO
 }
 
 bool sensors_start() {
@@ -216,7 +115,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			if( (_npa_measurement_buffer[0]>>6)==0) {
                 uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
 
-                compute_corrected_pressure(praw);
+                compute_corrected_pressure(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
             }
             else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
@@ -254,14 +153,14 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			break;
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
-            const uint32_t  t_us = 1000*get_time_ms(); // TODO get_time_us()
+            const uint32_t  t_us = 1000*get_time_ms();
             const uint32_t dt_us = t_us - last_sdp_t_us;
             last_sdp_t_us = t_us;
 
             int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
                                                  | (uint8_t )_sdp_measurement_buffer[1]);
 
-            compute_corrected_flow_volume(uncorrected_flow, dt_us);
+            compute_corrected_flow_volume(uncorrected_flow, dt_us); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
             sensors_sample_flow(dt_us); // save samples for later processing
 
 			_sensor_state= REQ_SDP_MEASUREMENT;

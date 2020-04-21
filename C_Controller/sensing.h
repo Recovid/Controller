@@ -4,20 +4,26 @@
 #include "platform.h"
 #include "controller.h"
 
-float get_sensed_P_cmH2O ();
-float get_sensed_VolM_Lpm();
-float get_sensed_VTi_mL  ();
-float get_sensed_VTe_mL  ();
+float get_sensed_P_cmH2O   ();
+
+float get_sensed_VolM_Lpm  ();
+
+float get_sensed_Vol_mL    ();
+
+float get_sensed_VTi_mL    ();
+float get_sensed_VTe_mL    ();
 
 float get_sensed_Pcrete_cmH2O(); //!< \returns max sensed Paw during Insufflation
 float get_sensed_Pplat_cmH2O (); //!< \returns sensed Paw at end of Plateau
 float get_sensed_PEP_cmH2O   (); //!< \returns sensed Paw at end of Exhale
+float get_sensed_Patmo_mbar  ();
 
 float get_sensed_VMe_Lpm();
 
 float get_last_sensed_ms();
 
-uint16_t get_usable_pdiff_readings_start(float time_step_sec);
+void compute_corrected_pressure(uint16_t pressure_read);
+void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us);
 
 uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
 

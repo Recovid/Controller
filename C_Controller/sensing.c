@@ -11,8 +11,6 @@
 
 // DATA
 
-static float VolM_Lpm     = 0.f;
-static float P_cmH2O      = 0.f;
 static float VTi_mL       = 0.f;
 static float VTe_mL       = 0.f;
 
@@ -26,20 +24,114 @@ static uint32_t last_sense_ms = 0;
 
 static uint16_t steps_t_us[MOTOR_MAX];
 
-float get_sensed_VTi_mL      () { return MAX(0.f,VTi_mL  ); }
-float get_sensed_VTe_mL      () { return MIN(0.f,VTe_mL  ); }
-float get_sensed_VolM_Lpm    () { return         VolM_Lpm ; }
-float get_sensed_P_cmH2O     () { return MAX(0.f,P_cmH2O ); }
+// Updated by sensors.c
+
+static volatile float current_VolM_Lpm = 0.f;
+static volatile float current_P_cmH2O  = 0.f;
+static volatile float current_Vol_mL   = 0.f;
+
+static volatile float    samples_Q_t_ms  = 0.f;
+static volatile uint16_t samples_Q_index = 0;
+static volatile bool     sampling_Q      = false;
+
+float samples_Q_Lps[2000]; // > max Tinsu_ms
+float average_Q_Lps[2000]; // > max Tinsu_ms
+
+// ------------------------------------------------------------------------------------------------
+
+float get_sensed_VTi_mL      () { return MAX(0.f, VTi_mL); }
+float get_sensed_VTe_mL      () { return MIN(0.f, VTe_mL); }
+
+#ifdef NTESTS
+//! \returns the volume (corresponding to corrected integration of pressure differences) in mLiters
+float get_sensed_Vol_mL      () { return current_Vol_mL; }
+
+//! \returns the airflow corresponding to a pressure difference in Liters / minute
+float get_sensed_VolM_Lpm    () { return current_VolM_Lpm; }
+#endif
+
+//! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
+float get_sensed_P_cmH2O     () { return MAX(0.f, current_P_cmH2O); }
 
 float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O; }
 float get_sensed_Pplat_cmH2O () { return Pplat_cmH2O ; }
 float get_sensed_PEP_cmH2O   () { return PEP_cmH2O   ; }
 
-float get_sensed_VMe_Lpm     () { return 0; } // TODO
+float get_sensed_VMe_Lpm() { return 0; } // TODO
 
 float get_last_sensed_ms() { return last_sense_ms; }
 
+
+#ifdef NTESTS
+//! \returns the atmospheric pressure in mbar
+//! \warning NOT IMPLEMENTED
+float get_sensed_Patmo_mbar() { return 0; } // TODO
+
+uint16_t get_samples_Q_index_size() { return samples_Q_index; }
+#endif
+
 // ------------------------------------------------------------------------------------------------
+
+void compute_corrected_pressure(uint16_t pressure_read)
+{
+    current_P_cmH2O = 1.01972f/*mbar/cmH2O*/
+                        * (160.f*(pressure_read - 1638.f)/13107.f); // V1 Calibration
+}
+
+//! \warning compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
+void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us)
+{
+    static float previous_flow_uncorrected = 0.f;
+    static float  current_flow_uncorrected = 0.f;
+
+    previous_flow_uncorrected = current_flow_uncorrected;
+    current_flow_uncorrected  = - flow_read / 105.f; // V1 Calibration
+
+    const float P = get_sensed_Pcrete_cmH2O();
+
+    const float delta_flow = current_flow_uncorrected - previous_flow_uncorrected;
+    float temp_Debit_calcul;
+    float fact_erreur;
+    if(delta_flow > 0){ // expression polynomiale de l'erreur
+        fact_erreur       = 0.0037f * P*P - 0.5124f * P + 16.376f;  // V2 Calibration
+        temp_Debit_calcul = current_flow_uncorrected * 0.88f;       // V2 Calibration
+    }
+    else { // expression lineaire de l'erreur
+        fact_erreur = -0.0143 * P + 1.696;                          // V2 Calibration
+        temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
+    }
+
+    current_VolM_Lpm = temp_Debit_calcul + delta_flow * dt_us*1000/*ms*/ * fact_erreur;
+    current_Vol_mL  += (current_VolM_Lpm/*L/m*/ / 60.f) * dt_us;
+}
+
+#ifdef NTESTS
+bool sensors_start_sampling_flow()
+{
+    samples_Q_t_ms = 0.f;
+    samples_Q_index = 0;
+    sampling_Q = true;
+    return sampling_Q;
+}
+
+bool sensors_sample_flow(uint32_t dt_us)
+{
+    if (!sampling_Q) return false;
+
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps); i++) {
+        samples_Q_Lps[i] = current_VolM_Lpm;
+        samples_Q_t_ms  += dt_us;
+        samples_Q_index ++;
+    }
+    return true;
+}
+
+bool sensors_stop_sampling_flow()
+{
+    sampling_Q = false;
+    return !sampling_Q;
+}
+#endif
 
 //! \returns estimated latency (µs) between motor motion and Pdiff readings
 uint32_t compute_samples_average_and_latency_us()
@@ -134,9 +226,7 @@ void sense_and_compute(RespirationState state)
     static unsigned long last_state = Insufflation;
     static unsigned long sent_DATA_ms = 0;
 
-    // TODO float Patmo_mbar = read_Patmo_mbar();
-    P_cmH2O  = read_Paw_cmH2O();
-    VolM_Lpm = read_Pdiff_Lpm(); // TODO Compute corrected QPatientSLM based on Patmo
+    const float P_cmH2O  = get_sensed_P_cmH2O ();
     float Vol_mL = 0.f;
     if (state==Insufflation || state==Plateau) {
         if (last_state==Exhalation || last_state==ExhalationPause) {
@@ -145,7 +235,7 @@ void sense_and_compute(RespirationState state)
             sensors_start_sampling_flow();
         }
         else {
-            VTi_mL += MAX(0.f, (VolM_Lpm/60.f/*mLpms*/) * (get_time_ms()-last_sense_ms));
+            VTi_mL = get_sensed_Vol_mL();
             Pcrete_cmH2O = MAX(Pcrete_cmH2O, P_cmH2O); // TODO check specs
         }
         if (state==Plateau) {
@@ -166,14 +256,14 @@ void sense_and_compute(RespirationState state)
             PEP_cmH2O = 0.f;
         }
         else {
-            VTe_mL += MIN(0.f, (VolM_Lpm/60.f/*mLpms*/) * (get_time_ms()-last_sense_ms));
+            VTe_mL    = get_sensed_Vol_mL();
             PEP_cmH2O = P_cmH2O; // TODO average over Xms
         }
         Vol_mL = VTi_mL+VTe_mL;
     }
 
     if ((sent_DATA_ms+50 < get_time_ms()) // @ 20Hz
-        && send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), Vol_mL)) { // TODO send_DATA_X
+        && send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), Vol_mL)) { // TODO send_DATA_X if state==ExhalationPause or InspirationPause
         sent_DATA_ms = get_time_ms();
     }
 
@@ -187,7 +277,7 @@ void sense_and_compute(RespirationState state)
 
 bool PRINT(test_non_negative_sensing)
     VTi_mL   = -1.f;
-    P_cmH2O  = -1.f;
+    current_P_cmH2O  = -1.f;
     return
         TEST_FLT_EQUALS(0.f, get_sensed_VTi_mL ()) &&
         TEST_FLT_EQUALS(0.f, get_sensed_P_cmH2O()) &&

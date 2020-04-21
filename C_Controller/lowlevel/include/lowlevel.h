@@ -120,14 +120,9 @@ bool valve_inhale();
 //! HW sensors
 
 //! Called during initialisation only
-bool init_Pdiff();
-bool init_Paw();
-bool init_Patmo();
+bool init_sensors();
 
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
-
-extern float    samples_Q_Lps[2000]; // > max Tinsu_ms
-extern float    average_Q_Lps[2000]; // > max Tinsu_ms
 
 bool sensors_start_sampling_flow();
 bool sensors_stop_sampling_flow();
@@ -136,18 +131,7 @@ float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
 
 //! \returns false in case of hardware failure
-bool is_Pdiff_ok();
-bool is_Paw_ok();
-bool is_Patmo_ok();
-
-//! \returns the airflow corresponding to a pressure difference in Liters / minute
-float read_Pdiff_Lpm();
-
-//! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float read_Paw_cmH2O();
-
-//! \returns the atmospheric pressure in mbar
-float read_Patmo_mbar();
+bool is_sensors_ok();
 
 
 // ------------------------------------------------------------------------------------------------
