@@ -21,6 +21,9 @@ add_library(lowlevel STATIC
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
 target_link_libraries(lowlevel PUBLIC hal freertos)
 
+target_compile_definitions(lowlevel PUBLIC NTESTS) # remove unit-tests from target
+target_compile_definitions(hal PUBLIC NTESTS) # remove unit-tests from target
+target_compile_definitions(freertos PUBLIC NTESTS) # remove unit-tests from target
 
 ###############################################################################
 # Setup OpenOCD
