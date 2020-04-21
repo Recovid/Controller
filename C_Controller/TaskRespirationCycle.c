@@ -10,8 +10,8 @@
 
 void TaskRespirationCycle(void* task_param)  // This is a task.
 {
-  // struct periodic_task* task = (struct periodic_task*) task_param;
-  // initTask(task);
+  //struct periodic_task* task = (struct periodic_task*) task_param;
+  //initTask(task);
 
   cycle_respiration();
 

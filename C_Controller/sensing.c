@@ -241,7 +241,7 @@ void sense_and_compute(RespirationState state)
         if (state==Plateau) {
             if (last_state==Insufflation) {
                 sensors_stop_sampling_flow();
-                compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+                //compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
                 Pplat_cmH2O = Pcrete_cmH2O;
             }
             else {
@@ -262,8 +262,7 @@ void sense_and_compute(RespirationState state)
         Vol_mL = VTi_mL+VTe_mL;
     }
 
-    if ((sent_DATA_ms+50 < get_time_ms()) // @ 20Hz
-        && send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), Vol_mL)) { // TODO send_DATA_X if state==ExhalationPause or InspirationPause
+    if (send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), Vol_mL)) { // TODO send_DATA_X
         sent_DATA_ms = get_time_ms();
     }
 
