@@ -116,7 +116,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			if( (_npa_measurement_buffer[0]>>6)==0) {
                 uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
 
-                compute_corrected_pressure(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
+                sensors_sample_P(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
             }
             else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
@@ -161,7 +161,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
             int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
                                                  | (uint8_t )_sdp_measurement_buffer[1]);
 
-            compute_corrected_flow_volume(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
+            sensors_sample_VolM(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
             sensors_sample_flow(dt_ms); // save samples for later processing
 
 			_sensor_state= REQ_SDP_MEASUREMENT;

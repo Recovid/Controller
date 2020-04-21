@@ -26,9 +26,13 @@ static uint16_t steps_t_us[MOTOR_MAX];
 
 // Updated by sensors.c
 
-static volatile float current_VolM_Lpm = 0.f;
-static volatile float current_P_cmH2O  = 0.f;
-static volatile float current_Vol_mL   = 0.f;
+static float current_VolM_Lpm = 0.f;
+static float current_P_cmH2O  = 0.f;
+static float current_Vol_mL   = 0.f;
+
+static volatile uint16_t raw_P     = 0.f;
+static volatile uint16_t raw_VolM  = 0.f;
+static volatile uint16_t raw_dt_ms = 0.f;
 
 static volatile float    samples_Q_t_ms  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
@@ -72,20 +76,31 @@ uint16_t get_samples_Q_index_size() { return samples_Q_index; }
 
 // ------------------------------------------------------------------------------------------------
 
-void compute_corrected_pressure(uint16_t pressure_read)
+void sensors_sample_VolM(int16_t read, uint32_t dt_ms)
+{
+    raw_VolM = read;
+    raw_dt_ms = dt_ms;
+}
+
+void sensors_sample_P(uint16_t read)
+{
+    raw_P = read;
+}
+
+void compute_corrected_pressure()
 {
     current_P_cmH2O = 1.01972f/*mbar/cmH2O*/
-                        * (160.f*(pressure_read - 1638.f)/13107.f); // V1 Calibration
+                        * (160.f*(raw_P - 1638.f)/13107.f); // V1 Calibration
 }
 
 //! \warning compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
-void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_ms)
+void compute_corrected_flow_volume()
 {
     static float previous_flow_uncorrected = 0.f;
     static float  current_flow_uncorrected = 0.f;
 
     previous_flow_uncorrected = current_flow_uncorrected;
-    current_flow_uncorrected  = - flow_read / 105.f; // V1 Calibration
+    current_flow_uncorrected  = - raw_VolM / 105.f; // V1 Calibration
 
     const float P = get_sensed_Pcrete_cmH2O();
 
@@ -101,8 +116,8 @@ void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_ms)
         temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
     }
 
-    current_VolM_Lpm = temp_Debit_calcul + delta_flow * dt_ms * fact_erreur;
-    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * dt_ms;
+    current_VolM_Lpm = temp_Debit_calcul + delta_flow * raw_dt_ms * fact_erreur;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_ms;
 }
 
 #ifdef NTESTS
@@ -225,6 +240,10 @@ void sense_and_compute(RespirationState state)
 {
     static unsigned long last_state = Insufflation;
     static unsigned long sent_DATA_ms = 0;
+
+    // Handle correction outside from I2C interrupt handler
+    compute_corrected_pressure();
+    compute_corrected_flow_volume();
 
     const float P_cmH2O  = get_sensed_P_cmH2O ();
     float Vol_mL = 0.f;
