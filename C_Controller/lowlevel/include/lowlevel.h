@@ -131,7 +131,7 @@ extern float    average_Q_Lps[2000]; // > max Tinsu_ms
 
 bool sensors_start_sampling_flow();
 bool sensors_stop_sampling_flow();
-bool sensors_sample_flow();
+bool sensors_sample_flow(uint32_t dt_us);
 float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
 

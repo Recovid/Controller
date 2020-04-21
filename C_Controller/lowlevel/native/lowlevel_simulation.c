@@ -378,13 +378,13 @@ bool sensors_stop_sampling_flow()
     return !sampling_Q;
 }
 
-bool sensors_sample_flow()
+bool sensors_sample_flow(uint32_t dt_us)
 {
     if (!sampling_Q) return false;
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_t_ms  += dt_us;
         samples_Q_index ++;
     }
     return true;
@@ -514,7 +514,7 @@ bool PRINT(test_Patmo_over_time)
 bool flow_samples()
 {
     TEST_ASSUME(sensors_start_sampling_flow());
-    TEST_ASSUME(sensors_sample_flow());
+    TEST_ASSUME(sensors_sample_flow(SAMPLES_T_US));
     TEST_ASSUME(sensors_stop_sampling_flow());
     return true;
 }
