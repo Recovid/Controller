@@ -383,13 +383,13 @@ bool sensors_stop_sampling_flow()
     return !sampling_Q;
 }
 
-bool sensors_sample_flow(uint32_t dt_us)
+bool sensors_sample_flow(uint32_t dt_ms)
 {
     if (!sampling_Q) return false;
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_us;
+        samples_Q_t_ms  += dt_ms;
         samples_Q_index ++;
     }
     return true;

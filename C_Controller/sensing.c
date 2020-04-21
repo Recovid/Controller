@@ -79,7 +79,7 @@ void compute_corrected_pressure(uint16_t pressure_read)
 }
 
 //! \warning compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
-void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us)
+void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_ms)
 {
     static float previous_flow_uncorrected = 0.f;
     static float  current_flow_uncorrected = 0.f;
@@ -101,8 +101,8 @@ void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us)
         temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
     }
 
-    current_VolM_Lpm = temp_Debit_calcul + delta_flow * dt_us*1000/*ms*/ * fact_erreur;
-    current_Vol_mL  += (current_VolM_Lpm/*L/m*/ / 60.f) * dt_us;
+    current_VolM_Lpm = temp_Debit_calcul + delta_flow * dt_ms * fact_erreur;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * dt_ms;
 }
 
 #ifdef NTESTS

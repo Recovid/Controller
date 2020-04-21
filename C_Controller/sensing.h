@@ -23,7 +23,7 @@ float get_sensed_VMe_Lpm();
 float get_last_sensed_ms();
 
 void compute_corrected_pressure(uint16_t pressure_read);
-void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_us);
+void compute_corrected_flow_volume(int16_t flow_read, uint32_t dt_ms);
 
 uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
 
