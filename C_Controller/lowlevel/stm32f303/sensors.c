@@ -1,3 +1,4 @@
+#include "configuration.h"
 #include "recovid_revB.h"
 #include "lowlevel.h"
 
@@ -94,6 +95,7 @@ bool sensors_start() {
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
     static uint32_t last_sdp_t_ms = 0;
+    static uint32_t last_npa_t_ms = 0;
 
 	switch (_sensor_state) {
 	case STOPPING:
@@ -115,8 +117,11 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
 			if( (_npa_measurement_buffer[0]>>6)==0) {
                 uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
-
-                sensors_sample_P(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
+				const uint32_t  npa_t_ms = get_time_ms();
+				if(last_npa_t_ms < npa_t_ms + (SAMPLES_T_US/1000)) {
+                	sensors_sample_P(praw); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
+					last_npa_t_ms = npa_t_ms;
+				}
             }
             else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
@@ -155,15 +160,16 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		}
 		if(_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF){
             const uint32_t  t_ms = get_time_ms();
-            const uint32_t dt_ms = t_ms - last_sdp_t_ms;
-            last_sdp_t_ms = t_ms;
+			if(last_sdp_t_ms < t_ms+ (SAMPLES_T_US/1000)) {
+				light_yellow(On);
+				const uint32_t dt_ms = t_ms - last_sdp_t_ms;
+				last_sdp_t_ms = t_ms;
 
-            int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
-                                                 | (uint8_t )_sdp_measurement_buffer[1]);
+				int16_t uncorrected_flow = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8)
+						| (uint8_t )_sdp_measurement_buffer[1]);
 
-            sensors_sample_VolM(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
-            sensors_sample_flow(dt_ms); // save samples for later processing
-
+				sensors_sample_flow(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
+			}
 			_sensor_state= REQ_SDP_MEASUREMENT;
 			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
         }

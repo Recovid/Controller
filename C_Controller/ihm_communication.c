@@ -144,12 +144,12 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
 {
     strncpy(DATA_frame, DATA_pattern, sizeof(DATA_frame));
 
-    if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
+    /*if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
         && CHECK_RANGE(-1000, VolM_Lpm,  1000)
         && CHECK_RANGE(-1000, P_cmH2O ,  1000)))
     {
         return false;
-    }
+    }*/
 
     replace_int_with_padding(DATA_frame, get_time_ms() % 1000000l, 6, 10);
     replace_int_with_padding(DATA_frame, Vol_mL, 4, 10);

@@ -28,9 +28,15 @@ bool motor_release() {
   return true;
 }
 
+static char buf[200];
 bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 {
     motor_stop();
+	//for(int i =0; i < nb_steps;i+=100)
+	//{
+	//	sprintf(buf, "step [ %d]  : %d\n", i, steps_profile_us[i]);
+	//	hardware_serial_write_data(buf, strlen(buf)); 
+	//}
     if (nb_steps > 0) {
         HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
         _moving=true;

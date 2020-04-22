@@ -378,10 +378,10 @@ int hardware_serial_init(const char * serial_port)
 
     LL_USART_EnableIT_RTO(uart_object[UART_COM_IHM].husart.Instance);
 
-    if(HAL_UART_Receive_DMA(&uart_object[UART_COM_IHM].husart,  uart_object[UART_COM_IHM].dma_buffer_rx, UART_RX_DMA_BUFFER_SIZE) != HAL_OK)
+    /*if(HAL_UART_Receive_DMA(&uart_object[UART_COM_IHM].husart,  uart_object[UART_COM_IHM].dma_buffer_rx, UART_RX_DMA_BUFFER_SIZE) != HAL_OK)
     {
         return IFL_HAL_UART_ERROR;
-    }
+    }*/
 
     HAL_NVIC_SetPriority(UART_COM_IHM_DMA_CHANNEL_RX_IRQ, 5, 0);
     HAL_NVIC_EnableIRQ(UART_COM_IHM_DMA_CHANNEL_RX_IRQ);

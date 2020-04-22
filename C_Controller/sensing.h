@@ -42,6 +42,10 @@ uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps);
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others
 void sense_and_compute(RespirationState state);
 
+extern  uint16_t steps_t_us[];
+extern  uint16_t last_step;
+
+
 #ifndef NTESTS
 bool TEST_SENSING();
 #endif
