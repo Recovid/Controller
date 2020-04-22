@@ -67,6 +67,32 @@ int main(int argc, const char** argv)
         }
     }
 
+    for (size_t task_idx = 0; task_idx < size_timer_array; task_idx++)
+    {
+    	// Set up timer tasks
+    	timer_array[task_idx].handle = xTimerCreate(
+    			timer_array[task_idx].name,
+				pdMS_TO_TICKS(timer_array[task_idx].periodMs),
+				timer_array[task_idx].autoReload,
+				timer_array[task_idx].id,
+				timer_array[task_idx].callback);
+
+		if(timer_array[task_idx].handle == NULL)
+		{
+			// The timer was not created.
+			return -1;
+		}
+		else
+		{
+			// Start the timer.
+			if(xTimerStart(timer_array[task_idx].handle, 0) != pdPASS )
+			{
+				// The timer could not be set into the Active
+				return -1;
+			}
+		}
+    }
+
     // start scheduler
     DEBUG_PRINT("Start tasks");
     vTaskStartScheduler();

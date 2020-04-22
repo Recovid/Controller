@@ -48,7 +48,7 @@ set "STM32CubePath=C:\ST\STM32CubeIDE_1.3.0\STM32CubeIDE"
 rem Add cross toolchain to your path
 set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.win32_1.0.0.201904181610\tools\bin;"
 # Add unix build tools (make, ...)
-set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.make.win32_1.1.0.201910081157\tools\bin;
+set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.make.win32_1.1.0.201910081157\tools\bin;"
 #Run cmake to generate the makefile
 cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
@@ -56,9 +56,9 @@ make -j8
 make -j8 C_Controller.stm32f303.elf.binary
 
 #Flash IT
-"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
-"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -rdu
-"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w TON_BINAIRE C_Controller.stm32f303.elf.binary --start
+"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
+"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -rdu
+"C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w TON_BINAIRE C_Controller.stm32f303.elf.binary --start
 
 ````
 

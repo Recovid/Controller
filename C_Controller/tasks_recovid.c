@@ -64,10 +64,25 @@ int initTask(struct periodic_task* task)
   return 0;
 }
 
+void vTimerCallback_Sensor_200Hz( TimerHandle_t xTimer )
+{
+	// TODO : get sensor value
+}
+void vTimerCallback_Sensor_1Hz( TimerHandle_t xTimer )
+{
+	// TODO : get sensor value
+}
 
 struct periodic_task task_array[] = {
   { TaskMessageManagement,         1,  "Message Management",  0, 0, 0},
   { TaskRespirationCycle,          1,  "Respiration Cycle",   0, 0, 0},
 };
 
+struct timer_task timer_array[] = {
+  { 0, "SENSOR_200Hz",      5,     pdTRUE,   0, vTimerCallback_Sensor_200Hz},
+  { 0, "SENSOR_1Hz",        1000,  pdTRUE,   0, vTimerCallback_Sensor_1Hz},
+};
+
 size_t size_task_array = sizeof(task_array) / sizeof(task_array[0]);
+size_t size_timer_array = sizeof(timer_array) / sizeof(timer_array[0]);
+
