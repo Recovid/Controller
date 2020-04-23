@@ -1,5 +1,6 @@
 #include "sensing.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -12,15 +13,6 @@
 #endif
 
 // DATA
-
-static float VTi_mL       = 0.f;
-static float VTe_mL       = 0.f;
-
-static float Pcrete_cmH2O = 0.f;
-static float Pplat_cmH2O  = 0.f;
-static float PEP_cmH2O    = 0.f;
-
-static float VMe_Lpm      = 0.f;
 
 static uint32_t last_sense_ms = 0;
 
@@ -40,16 +32,15 @@ static volatile float    samples_Q_t_ms  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
-float samples_Q_Lps[200]; // > max Tinsu_ms
-float average_Q_Lps[200]; // > max Tinsu_ms
+float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
 
-float get_sensed_VTi_mL      () { return MAX(0.f, VTi_mL); }
-float get_sensed_VTe_mL      () { return MIN(0.f, VTe_mL); }
 
 //! \returns the volume (corresponding to corrected integration of pressure differences) in mLiters
 float get_sensed_Vol_mL      () { return current_Vol_mL; }
+void  reset_sensed_Vol_mL    () { current_Vol_mL = 0.0f; }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
 float get_sensed_VolM_Lpm()
@@ -62,7 +53,7 @@ float get_sensed_VolM_Lpm()
     }
     else if (get_valve_state() == Exhale) {
         return get_valve_exhale_ms()+LUNG_EXHALE_MS>get_time_ms() ?
-          -(60.f*VTi_mL/LUNG_EXHALE_MS)*(get_valve_exhale_ms()+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
+          -(60.f*get_sensed_VTi_mL()/LUNG_EXHALE_MS)*(get_valve_exhale_ms()+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
             0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
     }
     else {
@@ -85,12 +76,6 @@ float get_sensed_P_cmH2O()
     return Paw_cmH2O;
 #endif
 }
-
-float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O; }
-float get_sensed_Pplat_cmH2O () { return Pplat_cmH2O ; }
-float get_sensed_PEP_cmH2O   () { return PEP_cmH2O   ; }
-
-float get_sensed_VMe_Lpm() { return 0; } // TODO
 
 float get_last_sensed_ms() { return last_sense_ms; }
 
@@ -133,7 +118,7 @@ void compute_corrected_flow_volume()
     const float P = get_sensed_Pcrete_cmH2O();
 
     const float delta_flow = current_flow_uncorrected - previous_flow_uncorrected;
-    float temp_Debit_calcul;
+    /*float temp_Debit_calcul;
     float fact_erreur;
     if(delta_flow > 0){ // expression polynomiale de l'erreur
         fact_erreur       = 0.0037f * P*P - 0.5124f * P + 16.376f;  // V2 Calibration
@@ -142,7 +127,7 @@ void compute_corrected_flow_volume()
     else { // expression lineaire de l'erreur
         fact_erreur = -0.0143 * P + 1.696;                          // V2 Calibration
         temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
-    }
+    }*/
 
 //    current_VolM_Lpm = temp_Debit_calcul + delta_flow * raw_dt_ms * fact_erreur;
     current_VolM_Lpm = current_flow_uncorrected;
@@ -170,10 +155,11 @@ bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 
 	if (!sampling_Q) return false;
 
-	samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
-	samples_Q_t_ms  += dt_ms;
-	samples_Q_index ++;
-
+	if(samples_Q_index < SAMPLING_SIZE) {
+		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
+		samples_Q_t_ms  += dt_ms;
+		samples_Q_index++ ;
+	}
     return true;
 }
 #else
@@ -253,21 +239,30 @@ uint32_t compute_samples_average_and_latency_us()
 uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
 {
     const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
-    motor_press(steps_t_us, nb_steps);
+    for(unsigned int i = 0; i < COUNT_OF(steps_t_us); i++)
+    {
+        if(i < max_steps) {
+		steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
+        }
+        else {
+		steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
+        }
+    }
+    motor_press(steps_t_us, max_steps);
     return max_steps;
 }
 
 uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
 {
     const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
+    for(unsigned int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
     motor_press(steps_t_us, nb_steps);
     return max_steps;
 }
 
+float corrections[MOTOR_MAX];
 //! \returns last steps_t_us motion to reach vol_mL
-uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
+uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 {
     uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
 //	sprintf(buf, "latency : %d\n", latency_us);
@@ -284,32 +279,38 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
 //			sprintf(buf, "Q_Index : %d\n", Q_index);
 //			hardware_serial_write_data(buf, strlen(buf)); 
 //		}
-        const float actual_vs_desired = average_Q_Lps[average_Q_index];
+        const float actual_Lps = average_Q_Lps[average_Q_index];
         float correction;
-		if(CHECK_FLT_EQUALS(0.0f, actual_vs_desired) || CHECK_FLT_EQUALS(0.0f, flow_Lps))
+		if(CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps))
 		{
 			light_red(On);
 			correction = 1;
 		}
 		else {
-			correction = (flow_Lps / actual_vs_desired) ;
+			correction = MAX(0.5, MIN(2.0f, desired_flow_Lps / actual_Lps));
 			light_red(Off);
 		}
+		corrections[i] = correction;
+
         const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)steps_t_us[i]) / correction);
-        const float vol = Tinsu_us/1000/*ms*/ * flow_Lps;
-        if (vol > 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10% 
-            steps_t_us[i] = UINT16_MAX; // slowest motion
-        }
-        else {
-            Tinsu_us += new_step_t_us;
-            steps_t_us[i] = new_step_t_us;
-#ifndef NTESTS
-            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
-#endif
-            last_step = i;
-        }
+        const float vol = Tinsu_us/1000/*ms*/ * desired_flow_Lps;
+		Tinsu_us += new_step_t_us;
+		if(new_step_t_us < MOTOR_STEP_TIME_INIT - (A*i)) {
+			steps_t_us[i] = MOTOR_STEP_TIME_INIT - (A*i);
+			last_step = i;
+		}
+		else if (vol < 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10%
+			steps_t_us[i] = new_step_t_us;
+			last_step = i;
+		}
+		else {
+			steps_t_us[i] = MIN(UINT16_MAX, new_step_t_us + (A)*(i-last_step));
+		}
+//#ifndef NTESTS
+//            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
+//#endif
     }
-    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
+//    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
     return last_step;
 }
 
@@ -320,7 +321,6 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
 bool PRINT(test_non_negative_sensing)
-    VTi_mL   = -1.f;
     current_P_cmH2O  = -1.f;
     return
         TEST_FLT_EQUALS(0.f, get_sensed_VTi_mL ()) &&

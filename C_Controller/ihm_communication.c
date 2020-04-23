@@ -199,7 +199,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 {
     strncpy(RESP_frame, RESP_pattern, sizeof(RESP_frame));
 
-    if (!( CHECK_RANGE(   0, EoI_ratio*10,  100)
+    /*if (!( CHECK_RANGE(   0, EoI_ratio*10,  100)
         && CHECK_RANGE(   0, FR_pm       ,  100)
         && CHECK_RANGE(   0, VTe_mL      , 1000)
         && CHECK_RANGE(-100, VM_Lpm      ,  100)
@@ -207,7 +207,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
         && CHECK_RANGE(   0, PEP_cmH2O   ,  100)))
     {
         return false;
-    }
+    }*/
     replace_int_with_padding(RESP_frame, EoI_ratio*10    , 2, 10);
     replace_int_with_padding(RESP_frame, FR_pm           , 2, 10);
     replace_int_with_padding(RESP_frame, VTe_mL          , 3, 10);

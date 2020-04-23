@@ -12,6 +12,11 @@ extern const float SAMPLES_T_US; //!< Between sensors interrupts
 extern const float   CALIB_PDIFF_LPS_RATIO   ; //!< To convert raw readings to Lps
 extern const float   CALIB_UNUSABLE_PDIFF_LPS; //!< Part of Pdiff readings that cannot be used to adjust flow
 extern const uint8_t CALIB_PDIFF_SAMPLES_MIN ; //!< For sliding average
+extern const int ACC_STEPS;
+extern const float A;
+#define MOTOR_STEP_TIME_INIT      400.0f
+#define ACC_STEPS                 50
+#define A                         (MOTOR_STEP_TIME_INIT/ ACC_STEPS)
 
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation

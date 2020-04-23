@@ -7,6 +7,7 @@
 #include "alarms.h"
 #include "configuration.h"
 #include "ihm_communication.h"
+#include "platform.h"
 #include "sensing.h"
 #include "lowlevel.h"
 #include "simple_indicators.h"
@@ -117,6 +118,16 @@ int self_tests()
     motor_release();
     wait_ms(3000);
 
+	light_green(On);
+	valve_inhale();
+	motor_press_constant(MOTOR_STEP_TIME_US_MIN, 3800);
+	wait_ms(1000);
+	motor_stop();
+	valve_exhale();
+	motor_release();
+	light_green(Off);
+	wait_ms(3000);
+
 
     //printf("Press   Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     //check(&test_bits, 4, motor_stop());
@@ -199,11 +210,17 @@ uint32_t respi_start_ms = 0;
 uint32_t state_start_ms = 0;
 
 static float VTi_mL       = 0.f;
+float get_sensed_VTi_mL() { return VTi_mL;}
 static float VTe_mL       = 0.f;
+float get_sensed_VTe_mL() { return VTe_mL;}
+static float VTe_start_mL       = 0.f;
+static float VTe_end_mL       = 0.f;
 
 static float Pcrete_cmH2O = 0.f;
-static float Pplat_cmH2O  = 0.f;
-static float PEP_cmH2O    = 0.f;
+float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O;}
+static float Pplat_cmH2O  = 100.f;
+static float PEP_cmH2O    = 100.f;
+float get_sensed_PEP_cmH2O() { return PEP_cmH2O;}
 
 static float VMe_Lpm      = 0.f;
 
@@ -238,29 +255,31 @@ void enter_state(RespirationState new)
     if (state == Insufflation) {
         VTi_mL       = 0.f;
         Pcrete_cmH2O = 0.f;
+        reset_sensed_Vol_mL();
         sensors_start_sampling_flow();
 
         valve_inhale();
 		if(last_step != 0) {
-        	motor_press(steps_t_us, last_step); 
+            motor_press(steps_t_us, last_step);
 		}
 		else {
-        	motor_press_constant(200, 3000); 
+			motor_press_constant(MOTOR_STEP_TIME_US_MIN*(60.f / get_setting_Vmax_Lpm()) , 6*get_setting_VT_mL());
 		}
         respi_start_ms = get_time_ms();
     }
 	else if(state==Plateau) {
         sensors_stop_sampling_flow();
         //valve_inhale();
+        VTe_start_mL = get_sensed_Vol_mL();
         motor_release();
 	}
 	else if(state==Exhalation) {
 		sensors_stop_sampling_flow();
         valve_exhale();
         motor_release();
-		VTe_mL = 0.f;
+		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;
-		last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+		//last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
 	}
 	else if(state==ExhalationPause) {
         valve_inhale();
@@ -280,6 +299,8 @@ void enter_state(RespirationState new)
 //static uint32_t Tplat;
 //#endif
 
+extern float corrections[MOTOR_MAX];
+extern float average_Q_Lps[SAMPLING_SIZE];
 
 void cycle_respiration()
 {
@@ -295,7 +316,24 @@ void cycle_respiration()
 
 	if(last_sensed_ms + 25 <= get_time_ms())
 	{
-		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), get_sensed_Vol_mL());
+		float display = get_sensed_Vol_mL();
+		//int current_correction_idx = COUNT_OF(steps_t_us)*( get_setting_T_ms() - respi_start_ms) / 1000;
+		//if(current_correction_idx < COUNT_OF(steps_t_us))
+		//{
+		//	display = corrections[current_correction_idx] * 300;
+		//}
+		//else {
+		//	display = 0;
+		//}
+		//if(current_respiration_state() == Insufflation)
+		//{
+		//	int current_average_idx = (float) COUNT_OF(average_Q_Lps) * (((float) (get_setting_T_ms() - respi_start_ms)) /1000.0f);
+		//	if(current_average_idx < COUNT_OF(average_Q_Lps))
+		//	{
+		//		display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
+		//	}
+		//}
+		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display);
 		last_sensed_ms = get_time_ms();
 	}
 	
@@ -307,9 +345,9 @@ void cycle_respiration()
         //if (Pmax <= get_sensed_P_cmH2O()) {
         //    enter_state(Exhalation);
         //}
-        //if (VT <= get_sensed_VTi_mL()) {
-        //    enter_state(Plateau);
-        //}
+        /*if (VT <= get_sensed_VTi_mL()) {
+            enter_state(Plateau);
+        }*/
         VTi_mL = get_sensed_Vol_mL();
         Pcrete_cmH2O = MAX(Pcrete_cmH2O, get_sensed_P_cmH2O()); // TODO check specs
 
@@ -332,7 +370,8 @@ void cycle_respiration()
 
     }
     else if (Exhalation == state ) {
-        VTe_mL    = get_sensed_Vol_mL();
+        VMe_Lpm   = get_sensed_VolM_Lpm();
+
         PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
         if (Tpexp_ms > 0) {
 			enter_state(ExhalationPause);
@@ -340,25 +379,31 @@ void cycle_respiration()
 		else if ((respi_start_ms + T) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
             uint32_t t_ms = get_time_ms();
 
+            VTe_end_mL    = get_sensed_Vol_mL();
+            VTe_mL        = VTe_start_mL - VTe_end_mL;
+
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
 
             // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
+            send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
 	}
     else if (ExhalationPause == state) {
-        VTe_mL    = get_sensed_Vol_mL();
+        VMe_Lpm   = get_sensed_VolM_Lpm();
         PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
         if ((respi_start_ms + Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
             uint32_t t_ms = get_time_ms();
+
+            VTe_end_mL    = get_sensed_Vol_mL();
+            VTe_mL        = VTe_start_mL - VTe_end_mL;
 
             EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
 
             // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
+            send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
 	}
