@@ -13,9 +13,6 @@
 
 // DATA
 
-static float VTi_mL       = 0.f;
-static float VTe_mL       = 0.f;
-
 static uint32_t last_sense_ms = 0;
 
 uint16_t steps_t_us[MOTOR_MAX];
@@ -39,11 +36,10 @@ float average_Q_Lps[200]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
 
-float get_sensed_VTi_mL      () { return MAX(0.f, VTi_mL); }
-float get_sensed_VTe_mL      () { return MIN(0.f, VTe_mL); }
 
 //! \returns the volume (corresponding to corrected integration of pressure differences) in mLiters
 float get_sensed_Vol_mL      () { return current_Vol_mL; }
+float reset_sensed_Vol_mL      () { current_Vol_mL = 0.0f; }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
 float get_sensed_VolM_Lpm()
