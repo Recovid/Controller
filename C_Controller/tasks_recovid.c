@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 
 //Recovid include
@@ -20,7 +21,11 @@
 
 uint32_t get_time_ms()
 {
+#ifdef stm32f303
     return HAL_GetTick();
+#else
+    return clock()/(CLOCKS_PER_SEC/1000);
+#endif
 }
 
 uint32_t delay(uint32_t ticks_to_wait)
