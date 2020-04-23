@@ -103,6 +103,8 @@ bool motor_pep_home();
 
 // ------------------------------------------------------------------------------------------------
 
+typedef enum { Inhale, Exhale } Valve;
+
 //! Called during initialisation only
 bool init_valve();
 
@@ -115,7 +117,10 @@ bool valve_exhale();
 //! Positions electrovalve to connect patient with BAVU to insufflate him or keep its airway pressure higher than PEP
 bool valve_inhale();
 
-
+#ifndef NTESTS
+Valve get_valve_state();
+uint32_t get_valve_exhale_ms();
+#endif
 // ------------------------------------------------------------------------------------------------
 //! HW sensors
 

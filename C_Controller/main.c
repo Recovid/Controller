@@ -73,7 +73,6 @@ int main(int argc, const char** argv)
 #else
     // Deterministic simulation for test purposes
     for (uint32_t t_ms=0; true; t_ms=wait_ms(1)) { // 1kHz
-        sense_and_compute(current_respiration_state());
         cycle_respiration();
         if (t_ms % 25) { // 40Hz
             update_alarms();
