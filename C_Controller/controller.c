@@ -260,7 +260,7 @@ void enter_state(RespirationState new)
             motor_press(steps_t_us, last_step);
 		}
 		else {
-			motor_press_constant(MOTOR_STEP_TIME_US_MIN, 3800);
+			motor_press_constant(MOTOR_STEP_TIME_US_MIN*(60.f / get_setting_Vmax_Lpm()) , 6*get_setting_VT_mL());
 		}
         respi_start_ms = get_time_ms();
     }
