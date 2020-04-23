@@ -91,6 +91,7 @@ if(NOT native_win32) # !POSIX for high-level deterministic tests only
         tasks_recovid.c
         TaskMessageManagement.c
         TaskRespirationCycle.c
+        TaskTimers.c
         # Sensing is performed by interrupts once init_sensors is called
         # Alarms are monitored and triggered in TaskRespirationCycle
     )

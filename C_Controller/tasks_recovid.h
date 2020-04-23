@@ -40,4 +40,7 @@ void Serialprintf( const char * format, ... );
 void TaskMessageManagement(void* param);
 void TaskRespirationCycle(void* param);
 
+void TaskTimerCallback_Sensor_200Hz(void* param);
+void TaskTimerCallback_Sensor_1kHz(void* param);
+
 #endif //TASK_RECOVID_H
