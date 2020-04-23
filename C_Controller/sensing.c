@@ -32,8 +32,8 @@ static volatile float    samples_Q_t_ms  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
-float samples_Q_Lps[200]; // > max Tinsu_ms
-float average_Q_Lps[200]; // > max Tinsu_ms
+float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
 
@@ -155,10 +155,11 @@ bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 
 	if (!sampling_Q) return false;
 
-	samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
-	samples_Q_t_ms  += dt_ms;
-	samples_Q_index ++;
-
+	if(samples_Q_index < SAMPLING_SIZE) {
+		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
+		samples_Q_t_ms  += dt_ms;
+		samples_Q_index++ ;
+	}
     return true;
 }
 #else

@@ -297,7 +297,7 @@ void enter_state(RespirationState new)
 //#endif
 
 extern float corrections[MOTOR_MAX];
-extern float average_Q_Lps[200];
+extern float average_Q_Lps[SAMPLING_SIZE];
 
 void cycle_respiration()
 {
@@ -314,8 +314,8 @@ void cycle_respiration()
 	if(last_sensed_ms + 25 <= get_time_ms())
 	{
 		float display = get_sensed_Vol_mL();
-		//int current_correction_idx = MOTOR_MAX*( get_setting_T_ms() - respi_start_ms) / 1000;
-		//if(current_correction_idx < MOTOR_MAX)
+		//int current_correction_idx = COUNT_OF(steps_t_us)*( get_setting_T_ms() - respi_start_ms) / 1000;
+		//if(current_correction_idx < COUNT_OF(steps_t_us))
 		//{
 		//	display = corrections[current_correction_idx] * 300;
 		//}
@@ -324,7 +324,7 @@ void cycle_respiration()
 		//}
 		//if(current_respiration_state() == Insufflation)
 		//{
-		//	int current_average_idx = (float) 200 * (((float) (get_setting_T_ms() - respi_start_ms)) /1000.0f);
+		//	int current_average_idx = (float) COUNT_OF(average_Q_Lps) * (((float) (get_setting_T_ms() - respi_start_ms)) /1000.0f);
 		//	if(current_average_idx < COUNT_OF(average_Q_Lps))
 		//	{
 		//		display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
