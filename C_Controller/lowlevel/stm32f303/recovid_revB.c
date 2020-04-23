@@ -1,17 +1,19 @@
 #include "recovid_revB.h"
+#include "stm32f3xx_hal_gpio.h"
 
 #include <stdbool.h>
 
 
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 DMA_HandleTypeDef hdma_tim2_up;
 DMA_HandleTypeDef hdma_tim3_ch4_up;
 
-UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart4;
 
 
 
@@ -19,7 +21,7 @@ UART_HandleTypeDef huart2;
 bool SystemClock_Config(void);
 bool MX_GPIO_Init(void);
 bool MX_DMA_Init(void);
-bool MX_USART2_UART_Init(void);
+bool MX_UART4_UART_Init(void);
 bool MX_I2C1_Init(void);
 bool MX_TIM2_Init(void);
 bool MX_TIM3_Init(void);
@@ -32,7 +34,7 @@ int init_hardware()
 
     if(!MX_GPIO_Init()) return false;
     if(!MX_DMA_Init()) return false;
-    if(!MX_USART2_UART_Init()) return false;
+    if(!MX_UART4_UART_Init()) return false;
     if(!MX_I2C1_Init()) return false;
     if(!MX_TIM2_Init()) return false;
     if(!MX_TIM3_Init()) return false;
@@ -260,42 +262,26 @@ bool MX_TIM3_Init(void)
 
 }
 
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-bool MX_USART2_UART_Init(void)
+bool MX_UART4_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
+  huart4.Instance = UART4;
+  huart4.Init.BaudRate = 115200;
+  huart4.Init.WordLength = UART_WORDLENGTH_8B;
+  huart4.Init.StopBits = UART_STOPBITS_1;
+  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Mode = UART_MODE_TX_RX;
+  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart4.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart4) != HAL_OK)
   {
     return false;
   }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
     return true;
 
 }
-
 /** 
   * Enable DMA controller clock
   */
@@ -307,7 +293,7 @@ bool MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 5);
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
@@ -315,7 +301,7 @@ bool MX_DMA_Init(void)
   /* DMA1_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
-    return true;
+  return true;
 
 }
 
@@ -368,7 +354,7 @@ bool MX_GPIO_Init(void)
   /*Configure GPIO pins : TAMPON_FULL_Pin FS_Enabled_Pin */
   GPIO_InitStruct.Pin = TAMPON_FULL_Pin|FS_Enabled_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PEP_HOME_Pin */
@@ -398,7 +384,7 @@ bool MX_GPIO_Init(void)
   /*Configure GPIO pins : PEP_nFAULT_Pin TAMPON_FAIL_Pin BATT_FAULT_Pin */
   GPIO_InitStruct.Pin = PEP_nFAULT_Pin|TAMPON_FAIL_Pin|BATT_FAULT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOTOR_INDEXPULSE_Pin */

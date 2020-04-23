@@ -297,12 +297,11 @@ float BAVU_Q_Lpm()
 
 static float saved_VTi_mL;
 
-bool init_Pdiff   () { return true; }
-bool init_Paw     () { return true; }
-bool init_Patmo   () { return true; }
+bool init_sensors()  { return true; }
 bool sensors_start() { return true; }
 
-float read_Pdiff_Lpm()
+#ifndef NTESTS
+float get_sensed_VolM_Lpm()
 {
     if (valve_state == Inhale) {
 //#ifdef NTESTS
@@ -324,6 +323,7 @@ float read_Pdiff_Lpm()
         return 0.;
     }
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 
@@ -331,22 +331,26 @@ static float Paw_cmH2O = 10; // to handle exponential decrease during plateau an
 static float last_Paw_change = 0.f;
 static uint32_t decrease_Paw_ms = 0;
 
-float read_Paw_cmH2O()
+#ifndef NTESTS
+float get_sensed_P_cmH2O()
 {
     const float Paw_cmH2O =
         get_setting_PEP_cmH2O() // TODO loop back with get_sensed_PEP_cmH2O()
         + (valve_state==Exhale ? 0.f : (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE)
-        + fabsf(read_Pdiff_Lpm()) * AIRWAYS_RESISTANCE;
+        + fabsf(get_sensed_VolM_Lpm()) * AIRWAYS_RESISTANCE;
     assert(Paw_cmH2O >= 0);
     return Paw_cmH2O;
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 
-float read_Patmo_mbar()
+#ifndef NTESTS
+float get_sensed_Patmo_mbar()
 {
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 }
+#endif
 
 // ------------------------------------------------------------------------------------------------
 
@@ -364,6 +368,7 @@ static float    samples_Q_t_ms  = 0.f;
 static uint16_t samples_Q_index = 0;
 static bool     sampling_Q      = false;
 
+#ifndef NTESTS
 bool sensors_start_sampling_flow()
 {
     samples_Q_t_ms = 0.f;
@@ -378,25 +383,14 @@ bool sensors_stop_sampling_flow()
     return !sampling_Q;
 }
 
-bool sensors_sample_flow(uint32_t dt_us)
+bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 {
+	UNUSED(read); //TODO read values
     if (!sampling_Q) return false;
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_us;
-        samples_Q_index ++;
-    }
-    return true;
-}
-
-bool sensors_sample_flow_low_C()
-{
-    if (!sampling_Q) return false;
-
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
-        samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_t_ms  += dt_ms;
         samples_Q_index ++;
     }
     return true;
@@ -410,6 +404,19 @@ float sensors_samples_time_s()
 uint16_t get_samples_Q_index_size()
 {
     return samples_Q_index;
+}
+#endif
+
+bool sensors_sample_flow_low_C()
+{
+    if (!sampling_Q) return false;
+
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
+        samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
+        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_index ++;
+    }
+    return true;
 }
 
 // ================================================================================================
@@ -439,8 +446,8 @@ bool PRINT(test_insufflate)
             for (uint32_t t_ms=0; t_ms<=100; t_ms+=poll_ms) {
                 TEST_ASSUME(motor_press_speed(start));
                 wait_ms(poll_ms);
-                const float VMt = read_Pdiff_Lpm();
-                const float Paw = read_Paw_cmH2O();
+                const float VMt = get_sensed_VolM_Lpm();
+                const float Paw = get_sensed_P_cmH2O();
                 const float PEP = get_sensed_PEP_cmH2O();
                 const float VTi = (BAVU_V_ML_MAX-BAVU_V_mL());
                 if (!(TEST_FLT_EQUALS(start, VMt))) return false; // unexpected VM
@@ -459,8 +466,8 @@ bool PRINT(test_plateau)
         TEST_ASSUME(valve_inhale());
         for (int t=0; t<=3 ; t++) {
             wait_ms(LUNG_EXHALE_MS/2);
-            const float VMt = read_Pdiff_Lpm();
-            const float Paw = read_Paw_cmH2O();
+            const float VMt = get_sensed_VolM_Lpm();
+            const float Paw = get_sensed_P_cmH2O();
             const float PEP = get_sensed_PEP_cmH2O();
             const float VTi = (BAVU_V_ML_MAX-BAVU_V_mL());
             if (!(TEST_FLT_EQUALS(0.f, VMt))) return false; // unexpected flow
@@ -479,10 +486,10 @@ bool PRINT(test_exhale)
             TEST_ASSUME(valve_exhale());
             float VTe_mL = 0;
             for (uint32_t t_ms=0; t_ms<LUNG_EXHALE_MS_MAX; t_ms+=poll_ms) { // VTe takes less than 0.6s
-                const float VM0 = read_Pdiff_Lpm();
+                const float VM0 = get_sensed_VolM_Lpm();
                 wait_ms(poll_ms);
-                const float VMt = read_Pdiff_Lpm();
-                const float Paw = read_Paw_cmH2O();
+                const float VMt = get_sensed_VolM_Lpm();
+                const float Paw = get_sensed_P_cmH2O();
                 const float PEP = get_sensed_PEP_cmH2O();
                 if (!(TEST_RANGE(PEP, Paw,
                                  PEP+ fabsf(VMt)*AIRWAYS_RESISTANCE_MAX))) {
@@ -491,7 +498,7 @@ bool PRINT(test_exhale)
                 const float VM = (VMt+VM0)/2.f;
                 VTe_mL += VM/60.f/*Lps*/ * poll_ms;
             }
-            float last_VM = read_Pdiff_Lpm();
+            float last_VM = get_sensed_VolM_Lpm();
             if (!(TEST_FLT_EQUALS(0.f, last_VM) &&
                   TEST_FLT_EQUALS(-saved_VTi_mL, VTe_mL))) {
                 return false;
@@ -504,8 +511,8 @@ bool PRINT(test_exhale)
 bool PRINT(test_Patmo_over_time)
     float last_Patmo = 0.f;
     for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
-        if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, read_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
-              TEST(last_Patmo != read_Patmo_mbar())))
+        if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, get_sensed_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
+              TEST(last_Patmo != get_sensed_Patmo_mbar())))
             return false;
     }
     return true;
@@ -514,7 +521,7 @@ bool PRINT(test_Patmo_over_time)
 bool flow_samples()
 {
     TEST_ASSUME(sensors_start_sampling_flow());
-    TEST_ASSUME(sensors_sample_flow(SAMPLES_T_US));
+    TEST_ASSUME(sensors_sample_flow(0, SAMPLES_T_US));
     TEST_ASSUME(sensors_stop_sampling_flow());
     return true;
 }

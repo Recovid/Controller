@@ -144,12 +144,12 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
 {
     strncpy(DATA_frame, DATA_pattern, sizeof(DATA_frame));
 
-    if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
+    /*if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
         && CHECK_RANGE(-1000, VolM_Lpm,  1000)
         && CHECK_RANGE(-1000, P_cmH2O ,  1000)))
     {
         return false;
-    }
+    }*/
 
     replace_int_with_padding(DATA_frame, get_time_ms() % 1000000l, 6, 10);
     replace_int_with_padding(DATA_frame, Vol_mL, 4, 10);
@@ -306,7 +306,7 @@ bool send_INIT(const char* information)
         && send_SET(VTMAX, VTMAX_FMT, setting_VTmax_mL      )
         && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
         && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
-        && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
+       // && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
         && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
@@ -388,6 +388,7 @@ const char* payload(const char* frame, const char* prefix)
     return strncmp(frame, prefix, prefix_length)!=0 ? NULL : frame+prefix_length;
 }
 
+static char buf[200];
 void send_and_recv()
 {
     static bool initSent = true; // even if not received
@@ -408,6 +409,7 @@ void send_and_recv()
                 *pf = c;
             }
         }
+		
         if ((frame+MAX_FRAME)<=pf) continue;
         *(pf++)='\n';
         *(pf++)='\0';

@@ -14,13 +14,11 @@ bool is_valve_ok() {
 //! Positions electrovalve to connect patient with PEP to allow him to exhale
 bool valve_exhale() {
   HAL_GPIO_WritePin(PEP_VALVE_GPIO_Port, PEP_VALVE_Pin, PEP_VALVE_EXHALE);
-  light_yellow(Off);
   return true;
 }
 
 //! Positions electrovalve to connect patient with BAVU to insufflate him or keep its airway pressure higher than PEP
 bool valve_inhale() {
   HAL_GPIO_WritePin(PEP_VALVE_GPIO_Port, PEP_VALVE_Pin, PEP_VALVE_INHALE);
-  light_yellow(On);
   return true;
 }

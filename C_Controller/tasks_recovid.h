@@ -26,5 +26,6 @@ void Serialprintf( const char * format, ... );
 
 void TaskMessageManagement(void* param);
 void TaskRespirationCycle(void* param);
+void TaskSensing(void* param);
 
 #endif //TASK_RECOVID_H

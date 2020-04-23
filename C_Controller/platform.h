@@ -22,14 +22,14 @@
 #define SIGN(_a)   ((_a)<  0  ?  -1  :   1 )
 
 // Assumes -DNDEBUG is passed to release builds like CMake does
-#ifndef NDEBUG
-#define DEBUG
-#define DEBUG_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
-#define DEBUG_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
-#else
+//#ifndef NDEBUG
+//#define DEBUG
+//#define DEBUG_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
+//#define DEBUG_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
+//#else
 #define DEBUG_PRINTF(_fmt, ...) ((void)0)
 #define DEBUG_PRINT( _msg     ) ((void)0)
-#endif
+//#endif
 
 #define STDERR_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
 #define STDERR_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))

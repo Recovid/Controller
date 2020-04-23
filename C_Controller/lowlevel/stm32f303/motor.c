@@ -16,11 +16,9 @@ static volatile bool _active;
 
 static void check_home() ;
 static void motor_enable(bool ena);
-
 bool motor_release() {
   if( !_home) {
 	  motor_stop();
-
 	  HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
 	  _moving=true;
 	  _homing=true;
@@ -30,9 +28,15 @@ bool motor_release() {
   return true;
 }
 
+static char buf[200];
 bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 {
     motor_stop();
+	//for(int i =0; i < nb_steps;i+=100)
+	//{
+	//	sprintf(buf, "step [ %d]  : %d\n", i, steps_profile_us[i]);
+	//	hardware_serial_write_data(buf, strlen(buf)); 
+	//}
     if (nb_steps > 0) {
         HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
         _moving=true;
@@ -97,7 +101,7 @@ static void period_elapsed_callback(TIM_HandleTypeDef *tim)
 void motor_limit_sw_A_irq() {
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
-  if(time-last_time>50) {
+  if(time-last_time>100) {
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
 //	  _limit_sw_A ? light_yellow(On) : light_yellow(Off);
     check_home();
@@ -108,7 +112,7 @@ void motor_limit_sw_A_irq() {
 void motor_limit_sw_B_irq() {  
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
-  if(time-last_time>50) {
+  if(time-last_time>100) {
     _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
 //  	_limit_sw_B ? light_green(On) : light_green(Off);
     check_home();
