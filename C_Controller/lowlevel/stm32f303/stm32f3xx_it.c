@@ -58,17 +58,6 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_i2c1_rx;
-extern I2C_HandleTypeDef hi2c1;
-extern DMA_HandleTypeDef hdma_tim2_up;
-extern DMA_HandleTypeDef hdma_tim3_ch4_up;
-extern TIM_HandleTypeDef htim2;
-extern TIM_HandleTypeDef htim3;
-extern TIM_HandleTypeDef htim7;
-extern TIM_HandleTypeDef htim15;
-extern UART_HandleTypeDef huart2;
-extern TIM_HandleTypeDef htim16;
-
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -362,11 +351,45 @@ void EXTI15_10_IRQHandler(void)
 }
 
 
-void TIM1_UP_TIM16_IRQHandler(void)
+/**
+  * @brief This function handles UART4 global interrupt / UART4 wake-up interrupt through EXTI line 34.
+  */
+void UART4_IRQHandler(void)
 {
-	  HAL_TIM_IRQHandler(&htim16);
-}
-/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN UART4_IRQn 0 */
 
-/* USER CODE END 1 */
+  /* USER CODE END UART4_IRQn 0 */
+  HAL_UART_IRQHandler(&huart4);
+  /* USER CODE BEGIN UART4_IRQn 1 */
+
+  /* USER CODE END UART4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 channel3 global interrupt.
+  */
+void DMA2_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel3_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_rx);
+  /* USER CODE BEGIN DMA2_Channel3_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 channel5 global interrupt.
+  */
+void DMA2_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_uart4_tx);
+  /* USER CODE BEGIN DMA2_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel5_IRQn 1 */
+}
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

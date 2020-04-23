@@ -148,10 +148,18 @@ uint16_t get_samples_Q_index_size()
 }
 
 bool sensors_start() {
-    // Start sensor state machine.
+    // Start the sensor state machine.
     // This state machine is managed in the I2C interupt routine.
 	_sensor_state= REQ_SDP_MEASUREMENT;
 	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+	return true;
+}
+
+bool sensors_stop() {
+    // Stop the sensor state machine.
+	__disable_irq();
+	_sensor_state= STOPPED;
+	__enable_irq();
 	return true;
 }
 

@@ -31,17 +31,20 @@ extern "C"
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
 
-  extern I2C_HandleTypeDef hi2c1;           // Sensors I2C
-  extern DMA_HandleTypeDef hdma_i2c1_rx;    // Sensors DMA RX
+extern I2C_HandleTypeDef hi2c1;           // Sensors I2C
+extern DMA_HandleTypeDef hdma_i2c1_rx;    // Sensors DMA RX
 
-  extern TIM_HandleTypeDef htim2;           // BAVU Motor steps timer
-  extern DMA_HandleTypeDef hdma_tim2_up;    // BAVU Motor DMA UP
+extern TIM_HandleTypeDef htim2;           // BAVU Motor steps timer
+extern DMA_HandleTypeDef hdma_tim2_up;    // BAVU Motor DMA UP
 
-  extern TIM_HandleTypeDef htim3;           // PEP Motor steps timer
-  extern DMA_HandleTypeDef hdma_tim3_ch4_up;// PEP Motor DMA UP
+extern TIM_HandleTypeDef htim3;           // PEP Motor steps timer
+extern DMA_HandleTypeDef hdma_tim3_ch4_up;// PEP Motor DMA UP
 
-  extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart4;         // HMI uart
+extern DMA_HandleTypeDef  hdma_uart4_rx;   // HMI uart DMA rx
+extern DMA_HandleTypeDef  hdma_uart4_tx;   // HMI uart DMA tx
 
+extern UART_HandleTypeDef huart2;         // Dbg uart
 
 
 // I2C Sensors
@@ -59,7 +62,7 @@ extern "C"
 
 
 // BAVU Motor
-#define motor_tim     htim2
+#define motor_tim             htim2
 #define MOTOR_TIM_CHANNEL     TIM_CHANNEL_1
 
 #define MOTOR_PULSE_WIDTH_US 10
@@ -99,9 +102,9 @@ void motor_active_irq();
 
 
 // PEP Motor
-#define pep_tim        htim3
+#define pep_tim             htim3
 #define PEP_TIM_CHANNEL     TIM_CHANNEL_4
-#define PEP_PULSE_WIDTH_US 10
+#define PEP_PULSE_WIDTH_US  10
 
 #define PEP_HOME_Pin GPIO_PIN_3
 #define PEP_HOME_GPIO_Port GPIOC
@@ -210,12 +213,36 @@ void fs_enabled_irq();
 #define NUCLEO_LED_Pin GPIO_PIN_5
 #define NUCLEO_LED_GPIO_Port GPIOA
 
+// HMI uart DMA rx
+#define hmi_uart                      huart4
+#define hmi_dma_rx                    hdma_uart4_rx
+#define hmi_dma_tx                    hdma_uart4_tx
+#define HMI_TX_Pin                    GPIO_PIN_10
+#define HMI_TX_GPIO_Port              GPIOC
+#define HMI_RX_Pin                    GPIO_PIN_11
+#define HMI_RX_GPIO_Port              GPIOC
+#define HMI_UART_IRQn                 UART4_IRQn
+#define HMI_DMA_CHANNEL_TX            DMA2_Channel5
+#define HMI_DMA_CHANNEL_TX_IRQn       DMA2_Channel5_IRQn
+#define HMI_DMA_CHANNEL_RX            DMA2_Channel3
+#define HMI_DMA_CHANNEL_RX_IRQn       DMA2_Channel3_IRQn
+
+#define HMI_TX_BUFFER_SIZE            (4096)
+#define HMI_TX_DMA_BUFFER_SIZE        (512)
+#define HMI_TX_SYNC_TIMEOUT_MS        (2000)
+#define HMI_RX_BUFFER_SIZE            (1024)
+#define HMI_RX_DMA_BUFFER_SIZE        (512)
+#define HMI_RX_LINE_TIMEOUT           (30)
+
+
 
 // Debug serial
+#define dbg_uart                      huart2
 #define DBG_TX_Pin GPIO_PIN_2
 #define DBG_TX_GPIO_Port GPIOA
 #define DBG_RX_Pin GPIO_PIN_3
 #define DBG_RX_GPIO_Port GPIOA
+#define DBG_UART_IRQn                 USART2_IRQn
 
 
 // Programmer

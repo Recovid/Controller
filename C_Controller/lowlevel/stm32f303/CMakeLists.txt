@@ -2,20 +2,17 @@ add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
 add_library(lowlevel STATIC
+    recovid_revB.c
     stm32f3xx_hal_msp_tick.c
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
-
-    recovid_revB.c
-    hardware_serial.c
-    ihm.c
+    time.c
+    hmi_uart.c
     motor.c
     motor_pep.c
     sensors.c
-    buzzer.c
-    lights.c
+    indicators.c
     pep_valve.c
-    flash.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})

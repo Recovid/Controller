@@ -7,39 +7,52 @@ I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
 
 TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
 DMA_HandleTypeDef hdma_tim2_up;
+
+TIM_HandleTypeDef htim3;
 DMA_HandleTypeDef hdma_tim3_ch4_up;
 
 UART_HandleTypeDef huart2;
 
+UART_HandleTypeDef huart4;
+DMA_HandleTypeDef hdma_uart4_rx;
+DMA_HandleTypeDef hdma_uart4_tx;
 
 
 
-bool SystemClock_Config(void);
-bool MX_GPIO_Init(void);
-bool MX_DMA_Init(void);
-bool MX_USART2_UART_Init(void);
-bool MX_I2C1_Init(void);
-bool MX_TIM2_Init(void);
-bool MX_TIM3_Init(void);
+
+static bool SystemClock_Config(void);
+static bool MX_GPIO_Init(void);
+static bool MX_DMA_Init(void);
+static bool MX_USART2_UART_Init(void);
+static bool MX_UART4_Init(void);
+static bool MX_I2C1_Init(void);
+static bool MX_TIM2_Init(void);
+static bool MX_TIM3_Init(void);
+
+
+#ifdef __GNUC__
+/* With GCC, small printf (option LD Linker->Libraries->Small printf
+ set to 'Yes') calls __io_putchar() */
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+
+
 
 
 int init_hardware()
 {
     HAL_Init();
     if(!SystemClock_Config()) return false;
-
     if(!MX_GPIO_Init()) return false;
     if(!MX_DMA_Init()) return false;
     if(!MX_USART2_UART_Init()) return false;
+    if(!MX_UART4_Init()) return false;
     if(!MX_I2C1_Init()) return false;
     if(!MX_TIM2_Init()) return false;
     if(!MX_TIM3_Init()) return false;
-
-
-
-
 
 	return true;
 }
@@ -48,7 +61,7 @@ int init_hardware()
   * @brief System Clock Configuration
   * @retval None
   */
-bool SystemClock_Config(void)
+static bool SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -99,7 +112,7 @@ bool SystemClock_Config(void)
   * @param None
   * @retval None
   */
-bool MX_I2C1_Init(void)
+static bool MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
@@ -145,7 +158,7 @@ bool MX_I2C1_Init(void)
   * @param None
   * @retval None
   */
-bool MX_TIM2_Init(void)
+static bool MX_TIM2_Init(void)
 {
 
   /* USER CODE BEGIN TIM2_Init 0 */
@@ -205,7 +218,7 @@ bool MX_TIM2_Init(void)
   * @param None
   * @retval None
   */
-bool MX_TIM3_Init(void)
+static bool MX_TIM3_Init(void)
 {
 
   /* USER CODE BEGIN TIM3_Init 0 */
@@ -265,7 +278,7 @@ bool MX_TIM3_Init(void)
   * @param None
   * @retval None
   */
-bool MX_USART2_UART_Init(void)
+static bool MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART2_Init 0 */
@@ -296,10 +309,43 @@ bool MX_USART2_UART_Init(void)
 
 }
 
+
+/**
+  * @brief UART4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static bool MX_UART4_Init(void)
+{
+
+  /* USER CODE BEGIN UART4_Init 0 */
+
+  /* USER CODE END UART4_Init 0 */
+
+  /* USER CODE BEGIN UART4_Init 1 */
+
+  /* USER CODE END UART4_Init 1 */
+  huart4.Instance = UART4;
+  huart4.Init.BaudRate = 115200;
+  huart4.Init.WordLength = UART_WORDLENGTH_8B;
+  huart4.Init.StopBits = UART_STOPBITS_1;
+  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Mode = UART_MODE_TX_RX;
+  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart4.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart4) != HAL_OK)
+  {
+    return false;
+  }
+ return true;
+}
+
 /** 
   * Enable DMA controller clock
   */
-bool MX_DMA_Init(void) 
+static bool MX_DMA_Init(void) 
 {
 
   /* DMA controller clock enable */
@@ -315,6 +361,13 @@ bool MX_DMA_Init(void)
   /* DMA1_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+  /* DMA2_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
+  /* DMA2_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
+
     return true;
 
 }
@@ -324,7 +377,7 @@ bool MX_DMA_Init(void)
   * @param None
   * @retval None
   */
-bool MX_GPIO_Init(void)
+static bool MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -453,27 +506,6 @@ bool MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 
- /**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM16 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM16) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
-
 
 __weak void motor_limit_sw_A_irq() {
 }
@@ -509,7 +541,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
   }
 }
 
-
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
@@ -521,6 +552,21 @@ void Error_Handler(void)
 
   /* USER CODE END Error_Handler_Debug */
 }
+
+
+/**
+ * @brief  Retargets the C library printf function to the USART.
+ * @param  None
+ * @retval None
+ */
+PUTCHAR_PROTOTYPE {
+	/* Place your implementation of fputc here */
+	/* e.g. write a character to the huart2 and Loop until the end of transmission */
+	HAL_UART_Transmit(&huart2, (uint8_t*) &ch, 1, 0xFFFF);
+//	ITM_SendChar(ch);
+	return ch;
+}
+
 
 #ifdef  USE_FULL_ASSERT
 /**

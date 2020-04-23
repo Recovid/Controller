@@ -3,85 +3,81 @@
 #include <stdio.h>
 #include <string.h>
 
-//High-level include
-#include "sensing.h"
-#include "alarms.h"
-#include "controller.h"
-#include "ihm_communication.h"
 
 //Low-level include
 #include "lowlevel/include/lowlevel.h"
-#include "lowlevel/include/hardware_real.h"
-#ifndef WIN32
-    // FreeRTOS Include
-#   include <FreeRTOS.h>
-#   include <task.h>
-#   include <queue.h>
-#   include "tasks_recovid.h"
-#endif
+// FreeRTOS Include
+#include <FreeRTOS.h>
+#include <task.h>
 
-int main(int argc, const char** argv)
+
+
+#define PRIORITY_LOW            8
+#define PRIORITY_BELOW_NORMAL   16
+#define PRIORITY_NORMAL         24
+#define PRIORITY_ABOVE_NORMAL   32
+#define PRIORITY_HIGH           40
+
+
+
+
+void controllerTask(void *argument);
+void breathingTask(void *argument);
+void monitoringTask(void *argument);
+
+
+
+int main()
 {
-#ifdef native
-    if (argc == 1) {
-        init_ihm(0, 0, NULL);
-    }
-    else if(argc == 4 && strstr(argv[1], "-f")) {
-        init_ihm(IHM_MODE_FILE, argv[2], argv[3]);
-    }
-    else if(argc == 3 && strstr(argv[1], "-s")) {
-        init_ihm(IHM_MODE_SERIAL, argv[2], NULL);
-    }
-    else {
-        printf("Usage: %s Default file mode\n", argv[0]);
-        printf("Usage : -f [inputFile outputFile] for ihm in file mode\n");
-        printf("Usage : -s [serialPort] for ihm in serial mode\n");
 
-        return 1;
-    }
-#else
-    UNUSED(argc)
-    UNUSED(argv)
+  if(!init_hardware()) {
+      // Unable to initialize hardware.
+      // There is nothing we can do
+      while(true);
+  }
 
-    init_hardware();
-    init_ihm(IHM_MODE_SERIAL, 0, 0);
-#endif
+  controller_init();
+  breathing_init();
+  monitoring_init();
 
-    int self_tests_result = self_tests();
-    // TODO TEST(self_tests_result & 0b111111)
-    //     return -1;
 
-#ifndef WIN32
-    for (size_t task_idx = 0; task_idx < size_task_array; task_idx++)
-    {
-        // Now set up two tasks to run independently.
-        if(xTaskCreate(
-                task_array[task_idx].task,
-                task_array[task_idx].name,   // A name just for humans
-                256, // This stack size can be checked & adjusted by reading the Stack Highwater
-                &task_array[task_idx],
-                task_array[task_idx].priority,  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-                NULL ) != pdPASS)
-        {
-            return -1;
-        }
-    }
+  TaskHandle_t breathingTaskHandle;
+  TaskHandle_t monitoringTaskHandle;
+  TaskHandle_t controllerTaskHandle;
 
-    // start scheduler
-    DEBUG_PRINT("Start tasks");
-    vTaskStartScheduler();
-#else
-    // Deterministic simulation for test purposes
-    for (uint32_t t_ms=0; true; t_ms=wait_ms(1)) { // 1kHz
-        sense_and_compute(current_respiration_state());
-        cycle_respiration();
-        if (t_ms % 25) { // 40Hz
-            update_alarms();
-            send_and_recv();
-            if (is_soft_reset_asked() && soft_reset()) { // FIXME Let cycle_respiration handle that
-                return 0;
-            }
-        }
-    }
-#endif
+  if(xTaskCreate(breathingTask, "Breathing" , 256, NULL, PRIORITY_HIGH, &breathingTaskHandle) != pdPASS) {
+    return -1;
+  }
+  if(xTaskCreate(monitoringTask, "Monitoring", 256, NULL, PRIORITY_ABOVE_NORMAL, &monitoringTaskHandle) != pdPASS) {
+    return -1;
+  }
+  if(xTaskCreate(controllerTask, "Controller", 256, NULL, PRIORITY_NORMAL, &controllerTaskHandle) != pdPASS) {
+    return -1;
+  }
+
+  vTaskSuspend(breathingTaskHandle);
+  vTaskSuspend(monitoringTaskHandle);
+
+  // start scheduler
+  vTaskStartScheduler();
+    
+  // We should never get here
+  while(true);
 }
+
+void startControllerTask(void *argument) {
+  controller_run();
+  // We should never get here
+  while(true);
+}
+void startBreathingTask(void *argument) {
+  breathing_run();
+  // We should never get here
+  while(true);
+}
+void startMonitoringTask(void *argument) {
+  monitoring_run();
+  // We should never get here
+  while(true);
+}
+

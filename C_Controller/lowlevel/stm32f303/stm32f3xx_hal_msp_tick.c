@@ -28,6 +28,7 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef        htim16; 
 /* Private function prototypes -----------------------------------------------*/
+void hal_tick_period_ellapsed_callback(TIM_HandleTypeDef* htim);
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -77,14 +78,14 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   htim16.Init.Prescaler = uwPrescalerValue;
   htim16.Init.ClockDivision = 0;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  if(HAL_TIM_Base_Init(&htim16) == HAL_OK)
-  {
-    /* Start the TIM time Base generation in interrupt mode */
-    return HAL_TIM_Base_Start_IT(&htim16);
+  if(HAL_TIM_Base_Init(&htim16) != HAL_OK ||
+    HAL_TIM_RegisterCallback(&htim16, HAL_TIM_PERIOD_ELAPSED_CB_ID, hal_tick_period_ellapsed_callback))
+  {    
+    return HAL_ERROR;  
   }
   
-  /* Return function status */
-  return HAL_ERROR;
+  /* Start the TIM time Base generation in interrupt mode */
+  return HAL_TIM_Base_Start_IT(&htim16);
 }
 
 /**
@@ -110,5 +111,16 @@ void HAL_ResumeTick(void)
   /* Enable TIM16 Update interrupt */
   __HAL_TIM_ENABLE_IT(&htim16, TIM_IT_UPDATE);
 }
+
+void hal_tick_period_ellapsed_callback(TIM_HandleTypeDef* htim) {
+  HAL_IncTick();
+}
+
+
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+	  HAL_TIM_IRQHandler(&htim16);
+}
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
