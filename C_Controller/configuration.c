@@ -2,7 +2,7 @@
 
 #include "lowlevel/include/lowlevel.h"
 
-const float MOTOR_STEP_TIME_US_MIN = 200.f; // V1 was 110 with some risks to lose steps, 150 is more on the safe side
+const float MOTOR_STEP_TIME_US_MIN = 100.f; // V1 was 110 with some risks to lose steps, 150 is more on the safe side
 
 const float SAMPLES_T_US = 10000; //!< Between sensors interrupts
 
