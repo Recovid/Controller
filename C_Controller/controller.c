@@ -221,9 +221,9 @@ void enter_state(RespirationState new)
     default             : current = "<unknown>"      ; break;
     }
     switch (new) {
-    case Insufflation   : hardware_serial_write_data("Insufflation \n", 15);/*DEBUG_PRINTF(" %s -> Insufflation"   , current);*/ break;
-    case Plateau        : hardware_serial_write_data("Plateau      \n", 15);/*DEBUG_PRINTF(" %s -> Plateau"        , current);*/ break;
-    case Exhalation     : hardware_serial_write_data("Exhalation   \n", 15);/*DEBUG_PRINTF(" %s -> Exhalation"     , current);*/ break;
+    case Insufflation   : /*hardware_serial_write_data("Insufflation \n", 15);*//*DEBUG_PRINTF(" %s -> Insufflation"   , current);*/ break;
+    case Plateau        : /*hardware_serial_write_data("Plateau      \n", 15);*//*DEBUG_PRINTF(" %s -> Plateau"        , current);*/ break;
+    case Exhalation     : /*hardware_serial_write_data("Exhalation   \n", 15);*//*DEBUG_PRINTF(" %s -> Exhalation"     , current);*/ break;
     case ExhalationPause: /*DEBUG_PRINTF(" %s -> ExhalationPause", current);*/ break;
     default             : /*DEBUG_PRINTF(" %s -> <unknown>"      , current);*/ break;
     }
