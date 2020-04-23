@@ -42,7 +42,7 @@ jobs:
         mkdir -p _build_${target}
         cd _build_${target}
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
-        make -j$(nproc)
+        make -j$(nproc) C_Controller.${target}.elf
 
     - name: Upload stm32 binaries
       uses: actions/upload-artifact@v2-preview
