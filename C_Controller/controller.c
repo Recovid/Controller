@@ -202,8 +202,9 @@ static float VTi_mL       = 0.f;
 static float VTe_mL       = 0.f;
 
 static float Pcrete_cmH2O = 0.f;
-static float Pplat_cmH2O  = 0.f;
-static float PEP_cmH2O    = 0.f;
+float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O;}
+static float Pplat_cmH2O  = 100.f;
+static float PEP_cmH2O    = 100.f;
 
 static float VMe_Lpm      = 0.f;
 
@@ -259,6 +260,7 @@ void enter_state(RespirationState new)
         valve_exhale();
         motor_release();
 		VTe_mL = 0.f;
+		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;
 		last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
 	}
@@ -333,6 +335,8 @@ void cycle_respiration()
     }
     else if (Exhalation == state ) {
         VTe_mL    = get_sensed_Vol_mL();
+        VMe_Lpm   = get_sensed_VolM_Lpm();
+
         PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
         if (Tpexp_ms > 0) {
 			enter_state(ExhalationPause);
@@ -344,12 +348,13 @@ void cycle_respiration()
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
 
             // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
+            send_RESP(EoI_ratio, FR_pm, -VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
 	}
     else if (ExhalationPause == state) {
         VTe_mL    = get_sensed_Vol_mL();
+        VMe_Lpm   = get_sensed_VolM_Lpm();
         PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
         if ((respi_start_ms + Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
             uint32_t t_ms = get_time_ms();
@@ -358,7 +363,7 @@ void cycle_respiration()
             FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
 
             // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, -get_sensed_VTe_mL(), get_sensed_VMe_Lpm(), get_sensed_Pcrete_cmH2O(), get_sensed_Pplat_cmH2O(), get_sensed_PEP_cmH2O());
+            send_RESP(EoI_ratio, FR_pm, -VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
             enter_state(Insufflation);
         }
 	}

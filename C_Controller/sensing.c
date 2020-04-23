@@ -16,12 +16,6 @@
 static float VTi_mL       = 0.f;
 static float VTe_mL       = 0.f;
 
-static float Pcrete_cmH2O = 0.f;
-static float Pplat_cmH2O  = 0.f;
-static float PEP_cmH2O    = 0.f;
-
-static float VMe_Lpm      = 0.f;
-
 static uint32_t last_sense_ms = 0;
 
 uint16_t steps_t_us[MOTOR_MAX];
@@ -85,12 +79,6 @@ float get_sensed_P_cmH2O()
     return Paw_cmH2O;
 #endif
 }
-
-float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O; }
-float get_sensed_Pplat_cmH2O () { return Pplat_cmH2O ; }
-float get_sensed_PEP_cmH2O   () { return PEP_cmH2O   ; }
-
-float get_sensed_VMe_Lpm() { return 0; } // TODO
 
 float get_last_sensed_ms() { return last_sense_ms; }
 
