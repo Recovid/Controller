@@ -7,6 +7,7 @@
 #include "alarms.h"
 #include "configuration.h"
 #include "ihm_communication.h"
+#include "platform.h"
 #include "sensing.h"
 #include "lowlevel.h"
 #include "simple_indicators.h"
@@ -275,7 +276,7 @@ void enter_state(RespirationState new)
         motor_release();
 		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;
-		last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+		//last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
 	}
 	else if(state==ExhalationPause) {
         valve_inhale();
@@ -295,6 +296,8 @@ void enter_state(RespirationState new)
 //static uint32_t Tplat;
 //#endif
 
+extern float corrections[MOTOR_MAX];
+extern float average_Q_Lps[200];
 
 void cycle_respiration()
 {
@@ -310,7 +313,24 @@ void cycle_respiration()
 
 	if(last_sensed_ms + 25 <= get_time_ms())
 	{
-		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), get_sensed_Vol_mL());
+		float display = get_sensed_Vol_mL();
+		//int current_correction_idx = MOTOR_MAX*( get_setting_T_ms() - respi_start_ms) / 1000;
+		//if(current_correction_idx < MOTOR_MAX)
+		//{
+		//	display = corrections[current_correction_idx] * 300;
+		//}
+		//else {
+		//	display = 0;
+		//}
+		//if(current_respiration_state() == Insufflation)
+		//{
+		//	int current_average_idx = (float) 200 * (((float) (get_setting_T_ms() - respi_start_ms)) /1000.0f);
+		//	if(current_average_idx < COUNT_OF(average_Q_Lps))
+		//	{
+		//		display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
+		//	}
+		//}
+		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display);
 		last_sensed_ms = get_time_ms();
 	}
 	
@@ -322,9 +342,9 @@ void cycle_respiration()
         //if (Pmax <= get_sensed_P_cmH2O()) {
         //    enter_state(Exhalation);
         //}
-        //if (VT <= get_sensed_VTi_mL()) {
-        //    enter_state(Plateau);
-        //}
+        /*if (VT <= get_sensed_VTi_mL()) {
+            enter_state(Plateau);
+        }*/
         VTi_mL = get_sensed_Vol_mL();
         Pcrete_cmH2O = MAX(Pcrete_cmH2O, get_sensed_P_cmH2O()); // TODO check specs
 

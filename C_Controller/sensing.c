@@ -118,7 +118,7 @@ void compute_corrected_flow_volume()
     const float P = get_sensed_Pcrete_cmH2O();
 
     const float delta_flow = current_flow_uncorrected - previous_flow_uncorrected;
-    float temp_Debit_calcul;
+    /*float temp_Debit_calcul;
     float fact_erreur;
     if(delta_flow > 0){ // expression polynomiale de l'erreur
         fact_erreur       = 0.0037f * P*P - 0.5124f * P + 16.376f;  // V2 Calibration
@@ -127,7 +127,7 @@ void compute_corrected_flow_volume()
     else { // expression lineaire de l'erreur
         fact_erreur = -0.0143 * P + 1.696;                          // V2 Calibration
         temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
-    }
+    }*/
 
 //    current_VolM_Lpm = temp_Debit_calcul + delta_flow * raw_dt_ms * fact_erreur;
     current_VolM_Lpm = current_flow_uncorrected;
@@ -238,9 +238,6 @@ uint32_t compute_samples_average_and_latency_us()
 uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
 {
     const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    float MOTOR_STEP_TIME_INIT = 400;
-    int ACC_STEPS = 50;
-    float A = MOTOR_STEP_TIME_INIT/ ACC_STEPS;
     for(int i = 0; i < MOTOR_MAX; i++)
     {
         if(i < nb_steps) {
@@ -262,8 +259,9 @@ uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
     return max_steps;
 }
 
+float corrections[MOTOR_MAX];
 //! \returns last steps_t_us motion to reach vol_mL
-uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
+uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 {
     uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
 //	sprintf(buf, "latency : %d\n", latency_us);
@@ -280,32 +278,38 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL)
 //			sprintf(buf, "Q_Index : %d\n", Q_index);
 //			hardware_serial_write_data(buf, strlen(buf)); 
 //		}
-        const float actual_vs_desired = average_Q_Lps[average_Q_index];
+        const float actual_Lps = average_Q_Lps[average_Q_index];
         float correction;
-		if(CHECK_FLT_EQUALS(0.0f, actual_vs_desired) || CHECK_FLT_EQUALS(0.0f, flow_Lps))
+		if(CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps))
 		{
 			light_red(On);
 			correction = 1;
 		}
 		else {
-			correction = (flow_Lps / actual_vs_desired) ;
+			correction = MAX(0.5, MIN(2.0f, desired_flow_Lps / actual_Lps));
 			light_red(Off);
 		}
+		corrections[i] = correction;
+
         const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)steps_t_us[i]) / correction);
-        const float vol = Tinsu_us/1000/*ms*/ * flow_Lps;
-        if (vol > 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10% 
-            steps_t_us[i] = UINT16_MAX; // slowest motion
-        }
-        else {
-            Tinsu_us += new_step_t_us;
-            steps_t_us[i] = new_step_t_us;
-#ifndef NTESTS
-            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
-#endif
-            last_step = i;
-        }
+        const float vol = Tinsu_us/1000/*ms*/ * desired_flow_Lps;
+		Tinsu_us += new_step_t_us;
+		if(new_step_t_us < MOTOR_STEP_TIME_INIT - (A*i)) {
+			steps_t_us[i] = MOTOR_STEP_TIME_INIT - (A*i);
+			last_step = i;
+		}
+		else if (vol < 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10%
+			steps_t_us[i] = new_step_t_us;
+			last_step = i;
+		}
+		else {
+			steps_t_us[i] = MIN(UINT16_MAX, new_step_t_us + (A)*(i-last_step));
+		}
+//#ifndef NTESTS
+//            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
+//#endif
     }
-    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
+//    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
     return last_step;
 }
 

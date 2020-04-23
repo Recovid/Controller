@@ -11,6 +11,8 @@ const float   CALIB_PDIFF_LPS_RATIO    = 105.0f; //! To convert raw readings to 
 const float   CALIB_UNUSABLE_PDIFF_LPS =   0.1f; //!< Part of Pdiff readings that cannot be used to adjust flow
 const uint8_t CALIB_PDIFF_SAMPLES_MIN  =  11   ; //!< For sliding average
 
+
+
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
 
