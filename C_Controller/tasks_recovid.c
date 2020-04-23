@@ -71,7 +71,7 @@ int initTask(struct periodic_task* task)
 
 
 struct periodic_task task_array[] = {
-//  { TaskMessageManagement,         1,  "Message Management",  0, 0, 0},
+  { TaskMessageManagement,         1,  "Message Management",  configMAX_PRIORITIES-1, 0, 0},
   { TaskRespirationCycle,          1,  "Respiration Cycle",   configMAX_PRIORITIES-1, 0, 0},
   //{ TaskSensing,          		   25,  "Sensing Cycle",      configMAX_PRIORITIES-5, 0, 0},
 

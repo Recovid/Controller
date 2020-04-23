@@ -306,7 +306,7 @@ bool send_INIT(const char* information)
         && send_SET(VTMAX, VTMAX_FMT, setting_VTmax_mL      )
         && send_SET(PMAX_, PMAX__FMT, setting_Pmax_cmH2O    )
         && send_SET(PMIN_, PMIN__FMT, setting_Pmin_cmH2O    )
-        && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
+       // && send_SET(FRMIN, FRMIN_FMT, setting_FRmin_pm      )
         && send_SET(VMMIN, VMMIN_FMT, setting_VMmin_Lpm     );
 }
 
@@ -388,6 +388,7 @@ const char* payload(const char* frame, const char* prefix)
     return strncmp(frame, prefix, prefix_length)!=0 ? NULL : frame+prefix_length;
 }
 
+static char buf[200];
 void send_and_recv()
 {
     static bool initSent = true; // even if not received
@@ -408,6 +409,7 @@ void send_and_recv()
                 *pf = c;
             }
         }
+		
         if ((frame+MAX_FRAME)<=pf) continue;
         *(pf++)='\n';
         *(pf++)='\0';
