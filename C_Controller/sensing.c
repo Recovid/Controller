@@ -53,7 +53,7 @@ float get_sensed_VolM_Lpm()
     }
     else if (get_valve_state() == Exhale) {
         return get_valve_exhale_ms()+LUNG_EXHALE_MS>get_time_ms() ?
-          -(60.f*VTi_mL/LUNG_EXHALE_MS)*(get_valve_exhale_ms()+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
+          -(60.f*get_sensed_VTi_mL()/LUNG_EXHALE_MS)*(get_valve_exhale_ms()+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
             0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
     }
     else {
@@ -321,7 +321,6 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
 
 bool PRINT(test_non_negative_sensing)
-    VTi_mL   = -1.f;
     current_P_cmH2O  = -1.f;
     return
         TEST_FLT_EQUALS(0.f, get_sensed_VTi_mL ()) &&

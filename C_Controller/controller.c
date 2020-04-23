@@ -210,7 +210,9 @@ uint32_t respi_start_ms = 0;
 uint32_t state_start_ms = 0;
 
 static float VTi_mL       = 0.f;
+float get_sensed_VTi_mL() { return VTi_mL;}
 static float VTe_mL       = 0.f;
+float get_sensed_VTe_mL() { return VTe_mL;}
 static float VTe_start_mL       = 0.f;
 static float VTe_end_mL       = 0.f;
 
@@ -218,6 +220,7 @@ static float Pcrete_cmH2O = 0.f;
 float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O;}
 static float Pplat_cmH2O  = 100.f;
 static float PEP_cmH2O    = 100.f;
+float get_sensed_PEP_cmH2O() { return PEP_cmH2O;}
 
 static float VMe_Lpm      = 0.f;
 
