@@ -1,7 +1,10 @@
 #include "recovid_revB.h"
 #include "lowlevel.h"
-
-
+#include "sensing.h"
+#include "ihm_communication.h"
+#include "hardware_serial.h"
+#include <string.h>
+#include <stdlib.h>
 
 static TIM_HandleTypeDef* _motor_tim = NULL;
 
@@ -144,4 +147,44 @@ static void check_home() {
 
 static void motor_enable(bool ena) {
 	HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, ena?GPIO_PIN_SET:GPIO_PIN_RESET);
+}
+
+
+
+void test_motor() 
+{
+	static char msg[200];
+	for(int i = 1; i < 4; i++) 
+	{
+		valve_inhale();
+		sensors_start_sampling_flow();
+		motor_press_constant(MOTOR_STEP_TIME_US_MIN*i, 3800);
+		sensors_start_sampling_flow();
+		wait_ms(2000);
+		motor_stop();
+		valve_exhale();
+		wait_ms(100);
+		sensors_stop_sampling_flow();
+		motor_release();
+		strcpy(msg, "\nSample");
+		hardware_serial_write_data(msg, strlen(msg)); 
+		msg[0] = '\n';
+		for(unsigned int j=0; j < COUNT_OF(samples_Q_Lps); j++)
+		{
+			itoa( (int) (samples_Q_Lps[j] * 1000.0f), msg+1, 10);
+			hardware_serial_write_data(msg, strlen(msg)); 
+			wait_ms(1);
+		}
+
+		strcpy(msg, "\nSteps");
+		hardware_serial_write_data(msg, strlen(msg)); 
+		msg[0] = '\n';
+		for(unsigned int j=0; j < COUNT_OF(steps_t_us); j++)
+		{
+			itoa((int) steps_t_us[j], msg+1, 10);
+			hardware_serial_write_data(msg, strlen(msg)); 
+			wait_ms(1);
+		}
+		wait_ms(2000);
+	}
 }
