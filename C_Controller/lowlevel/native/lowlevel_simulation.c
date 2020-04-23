@@ -16,7 +16,6 @@
 #include "sensing.h"
 #include "configuration.h"
 #include "ihm_communication.h"
-#include "flow_samples.h"
 
 //Low-level include
 #ifndef WIN32
@@ -257,7 +256,8 @@ bool motor_pep_home()
 
 bool init_valve() { return true; }
 
-static enum Valve { Inhale, Exhale } valve_state = Exhale;
+static Valve valve_state = Exhale;
+
 static uint32_t valve_exhale_ms = 0;
 
 bool valve_exhale()
@@ -275,6 +275,18 @@ bool valve_inhale()
     valve_exhale_ms = -1;
     return true;
 }
+
+#ifndef NTESTS
+Valve get_valve_state()
+{
+    return valve_state;
+}
+
+uint32_t get_valve_exhale_ms()
+{
+    return valve_exhale_ms;
+}
+#endif
 
 // ------------------------------------------------------------------------------------------------
 
@@ -300,123 +312,17 @@ static float saved_VTi_mL;
 bool init_sensors()  { return true; }
 bool sensors_start() { return true; }
 
-#ifndef NTESTS
-float get_sensed_VolM_Lpm()
-{
-    if (valve_state == Inhale) {
-//#ifdef NTESTS
-        saved_VTi_mL = 0;
-//#endif
-        return BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
-    }
-    else if (valve_state == Exhale) {
-//#ifdef NTESTS
-        if (!saved_VTi_mL) {
-            saved_VTi_mL = get_sensed_VTi_mL();
-        }
-//#endif
-        return valve_exhale_ms+LUNG_EXHALE_MS>get_time_ms() ?
-            -(60.f*saved_VTi_mL/LUNG_EXHALE_MS)*(valve_exhale_ms+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
-            0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
-    }
-    else {
-        return 0.;
-    }
-}
-#endif
-
 // ------------------------------------------------------------------------------------------------
 
 static float Paw_cmH2O = 10; // to handle exponential decrease during plateau and exhalation
 static float last_Paw_change = 0.f;
 static uint32_t decrease_Paw_ms = 0;
 
-#ifndef NTESTS
-float get_sensed_P_cmH2O()
-{
-    const float Paw_cmH2O =
-        get_setting_PEP_cmH2O() // TODO loop back with get_sensed_PEP_cmH2O()
-        + (valve_state==Exhale ? 0.f : (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE)
-        + fabsf(get_sensed_VolM_Lpm()) * AIRWAYS_RESISTANCE;
-    assert(Paw_cmH2O >= 0);
-    return Paw_cmH2O;
-}
-#endif
-
-// ------------------------------------------------------------------------------------------------
-
-#ifndef NTESTS
-float get_sensed_Patmo_mbar()
-{
-    return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
-}
-#endif
-
 // ------------------------------------------------------------------------------------------------
 
 int read_Battery_level()
 {
     return 2; // TODO simulate lower battery levels
-}
-
-// ------------------------------------------------------------------------------------------------
-
-float    samples_Q_Lps[2000];
-float    average_Q_Lps[2000];
-
-static float    samples_Q_t_ms  = 0.f;
-static uint16_t samples_Q_index = 0;
-static bool     sampling_Q      = false;
-
-#ifndef NTESTS
-bool sensors_start_sampling_flow()
-{
-    samples_Q_t_ms = 0.f;
-    samples_Q_index = 0;
-    sampling_Q = true;
-    return sampling_Q;
-}
-
-bool sensors_stop_sampling_flow()
-{
-    sampling_Q = false;
-    return !sampling_Q;
-}
-
-bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
-{
-	UNUSED(read); //TODO read values
-    if (!sampling_Q) return false;
-
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
-        samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_ms;
-        samples_Q_index ++;
-    }
-    return true;
-}
-
-float sensors_samples_time_s()
-{
-    return get_setting_Tinsu_ms();
-}
-
-uint16_t get_samples_Q_index_size()
-{
-    return samples_Q_index;
-}
-#endif
-
-bool sensors_sample_flow_low_C()
-{
-    if (!sampling_Q) return false;
-
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
-        samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
-        samples_Q_index ++;
-    }
-    return true;
 }
 
 // ================================================================================================
@@ -508,46 +414,11 @@ bool PRINT(test_exhale)
     return true;
 }
 
-bool PRINT(test_Patmo_over_time)
-    float last_Patmo = 0.f;
-    for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
-        if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, get_sensed_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
-              TEST(last_Patmo != get_sensed_Patmo_mbar())))
-            return false;
-    }
-    return true;
-}
-
-bool flow_samples()
-{
-    TEST_ASSUME(sensors_start_sampling_flow());
-    TEST_ASSUME(sensors_sample_flow(0, SAMPLES_T_US));
-    TEST_ASSUME(sensors_stop_sampling_flow());
-    return true;
-}
-
-bool PRINT(test_compute_samples_average_and_latency_us)
-    TEST_ASSUME(flow_samples());
-    uint32_t latency_us = compute_samples_average_and_latency_us();
-    return TEST_EQUALS(10*SAMPLES_T_US, latency_us)
-        && TEST_FLT_EQUALS(2.7f, samples_Q_Lps[171]);
-}
-
-bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
-    TEST_ASSUME(flow_samples());
-    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
-    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
-    return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
-}
-
 bool PRINT(TEST_LOWLEVEL_SIMULATION)
     return
-        test_compute_samples_average_and_latency_us() &&
-        test_compute_motor_steps_and_Tinsu_ms() &&
         test_insufflate() &&
         test_plateau() &&
         test_exhale() &&
-        test_Patmo_over_time() &&
         true;
 }
 

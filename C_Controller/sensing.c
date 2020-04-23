@@ -4,11 +4,12 @@
 #include <math.h>
 
 #include "configuration.h"
-#include "controller.h" // TODO isolate current_respiration_state()
 #include "ihm_communication.h"
-
 #include "lowlevel/include/lowlevel.h"
-#include "platform.h"
+
+#ifndef NTESTS
+#include "flow_samples.h"
+#endif
 
 // DATA
 
@@ -47,16 +48,43 @@ float average_Q_Lps[200]; // > max Tinsu_ms
 float get_sensed_VTi_mL      () { return MAX(0.f, VTi_mL); }
 float get_sensed_VTe_mL      () { return MIN(0.f, VTe_mL); }
 
-#ifdef NTESTS
 //! \returns the volume (corresponding to corrected integration of pressure differences) in mLiters
 float get_sensed_Vol_mL      () { return current_Vol_mL; }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
-float get_sensed_VolM_Lpm    () { return current_VolM_Lpm; }
+float get_sensed_VolM_Lpm()
+{
+#ifdef NTESTS
+    return current_VolM_Lpm;
+#else
+    if (get_valve_state() == Inhale) {
+        return BAVU_Q_Lpm() * EXHAL_VALVE_RATIO;
+    }
+    else if (get_valve_state() == Exhale) {
+        return get_valve_exhale_ms()+LUNG_EXHALE_MS>get_time_ms() ?
+          -(60.f*VTi_mL/LUNG_EXHALE_MS)*(get_valve_exhale_ms()+LUNG_EXHALE_MS-get_time_ms())/LUNG_EXHALE_MS*2 :
+            0.f; // 0 after LUNG_EXHALE_MS and VTe=-VTi
+    }
+    else {
+        return 0.f;
+    }
 #endif
+}
 
 //! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float get_sensed_P_cmH2O     () { return MAX(0.f, current_P_cmH2O); }
+float get_sensed_P_cmH2O()
+{
+#ifdef NTESTS
+    return MAX(0.f, current_P_cmH2O);
+#else
+    const float Paw_cmH2O =
+        get_setting_PEP_cmH2O() // TODO loop back with get_sensed_PEP_cmH2O()
+        + (get_valve_state()==Exhale ? 0.f : (BAVU_V_ML_MAX - BAVU_V_mL()) / LUNG_COMPLIANCE)
+        + fabsf(get_sensed_VolM_Lpm()) * AIRWAYS_RESISTANCE;
+    assert(Paw_cmH2O >= 0);
+    return Paw_cmH2O;
+#endif
+}
 
 float get_sensed_Pcrete_cmH2O() { return Pcrete_cmH2O; }
 float get_sensed_Pplat_cmH2O () { return Pplat_cmH2O ; }
@@ -66,14 +94,18 @@ float get_sensed_VMe_Lpm() { return 0; } // TODO
 
 float get_last_sensed_ms() { return last_sense_ms; }
 
+uint16_t get_samples_Q_index_size() { return samples_Q_index; }
 
-#ifdef NTESTS
 //! \returns the atmospheric pressure in mbar
 //! \warning NOT IMPLEMENTED
-float get_sensed_Patmo_mbar() { return 0; } // TODO
-
-uint16_t get_samples_Q_index_size() { return samples_Q_index; }
+float get_sensed_Patmo_mbar()
+{
+#ifndef NTESTS
+    return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
+#else
+    return 1013.; // TODO
 #endif
+}
 
 // ------------------------------------------------------------------------------------------------
 
@@ -117,8 +149,8 @@ void compute_corrected_flow_volume()
     current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_ms;
 }
 
-#ifdef NTESTS
 static char buf[200];
+
 bool sensors_start_sampling_flow()
 {
     samples_Q_t_ms = 0.f;
@@ -129,6 +161,7 @@ bool sensors_start_sampling_flow()
     return sampling_Q;
 }
 
+#ifdef NTESTS
 bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 {
 	raw_VolM = read;
@@ -143,8 +176,32 @@ bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 
     return true;
 }
+#else
+bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
+{
+    UNUSED(read); //TODO read values
+    if (!sampling_Q) return false;
 
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
+        samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
+        samples_Q_t_ms  += dt_ms;
+        samples_Q_index ++;
+    }
+    return true;
+}
 
+bool sensors_sample_flow_low_C()
+{
+    if (!sampling_Q) return false;
+
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
+        samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
+        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_index ++;
+    }
+    return true;
+}
+#endif
 
 bool sensors_stop_sampling_flow()
 {
@@ -152,10 +209,6 @@ bool sensors_stop_sampling_flow()
 	light_green(Off);
     return !sampling_Q;
 }
-
-
-
-#endif
 
 //! \returns estimated latency (µs) between motor motion and Pdiff readings
 uint32_t compute_samples_average_and_latency_us()
@@ -275,9 +328,44 @@ bool PRINT(test_non_negative_sensing)
         true;
 }
 
+bool PRINT(test_Patmo_over_time)
+    float last_Patmo = 0.f;
+for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
+    if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, get_sensed_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
+          TEST(last_Patmo != get_sensed_Patmo_mbar())))
+        return false;
+}
+return true;
+}
+
+bool flow_samples()
+{
+    TEST_ASSUME(sensors_start_sampling_flow());
+    TEST_ASSUME(sensors_sample_flow(0, SAMPLES_T_US));
+    TEST_ASSUME(sensors_stop_sampling_flow());
+    return true;
+}
+
+bool PRINT(test_compute_samples_average_and_latency_us)
+    TEST_ASSUME(flow_samples());
+    uint32_t latency_us = compute_samples_average_and_latency_us();
+    return TEST_EQUALS(10*SAMPLES_T_US, latency_us)
+       && TEST_FLT_EQUALS(2.7f, samples_Q_Lps[171]);
+}
+
+bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
+    TEST_ASSUME(flow_samples());
+    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
+    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
+    return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
+}
+
 bool PRINT(TEST_SENSING)
     return
         test_non_negative_sensing() &&
+        test_compute_samples_average_and_latency_us() &&
+        test_compute_motor_steps_and_Tinsu_ms() &&
+        test_Patmo_over_time() &&
         true;
 }
 
