@@ -10,6 +10,7 @@ float get_sensed_P_cmH2O   ();
 float get_sensed_VolM_Lpm  ();
 
 float get_sensed_Vol_mL    ();
+void reset_sensed_Vol_mL  ();
 
 float get_sensed_VTi_mL    ();
 float get_sensed_VTe_mL    ();
