@@ -109,29 +109,26 @@ void compute_corrected_pressure()
 //! \warning compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
 void compute_corrected_flow_volume()
 {
-    static float previous_flow_uncorrected = 0.f;
     static float  current_flow_uncorrected = 0.f;
 
-    previous_flow_uncorrected = current_flow_uncorrected;
     current_flow_uncorrected  = - raw_VolM / 105.f; // V1 Calibration
 
     const float P = get_sensed_Pcrete_cmH2O();
 
-    const float delta_flow = current_flow_uncorrected - previous_flow_uncorrected;
-    /*float temp_Debit_calcul;
+    float temp_Debit_calcul;
     float fact_erreur;
-    if(delta_flow > 0){ // expression polynomiale de l'erreur
+    if(current_flow_uncorrected < 0){ // expression polynomiale de l'erreur
         fact_erreur       = 0.0037f * P*P - 0.5124f * P + 16.376f;  // V2 Calibration
         temp_Debit_calcul = current_flow_uncorrected * 0.88f;       // V2 Calibration
     }
     else { // expression lineaire de l'erreur
-        fact_erreur = -0.0143 * P + 1.696;                          // V2 Calibration
+        fact_erreur = -0.0143f * P + 1.696f;                          // V2 Calibration
         temp_Debit_calcul = current_flow_uncorrected * 0.87f;       // V2 Calibration
-    }*/
+    }
 
-//    current_VolM_Lpm = temp_Debit_calcul + delta_flow * raw_dt_ms * fact_erreur;
+    //    current_VolM_Lpm = temp_Debit_calcul + current_flow_uncorrected * raw_dt_ms / 1000.0f * fact_erreur;
     current_VolM_Lpm = current_flow_uncorrected;
-    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_ms;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/mLpms/) * raw_dt_ms;
 }
 
 static char buf[200];
