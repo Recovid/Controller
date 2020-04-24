@@ -244,8 +244,7 @@ __attribute__((used)) void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    __asm("BKPT #0\n") ;
-    printf("[UART_COM_IHM] UART Error: %ld \r\n", HAL_UART_GetError(huart));
+	//Ignore input error
 }
 
 
