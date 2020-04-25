@@ -5,6 +5,7 @@
 
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim2_up;
@@ -350,22 +351,23 @@ static bool MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 5);
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 5);         // TIM2 Motor
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);         // TIM3 Motor PEP
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 1);         // I2C1 RX Sensors
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
   /* DMA2_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 0);         // UART HMI RX
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
   /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 0);         // UART HMI TX
   HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
 
     return true;
@@ -397,8 +399,11 @@ static bool MX_GPIO_Init(void)
                           |MOTOR_PWM_Pin|FAN_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PEP_CONFIG_Pin|Enable_P5V_Rpi_Pin|PEP_nENBL_Pin|PEP_DIR_Pin 
+  HAL_GPIO_WritePin(GPIOB, PEP_CONFIG_Pin|PEP_nENBL_Pin|PEP_DIR_Pin 
                           |PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_RESET);
@@ -420,8 +425,8 @@ static bool MX_GPIO_Init(void)
 
   /*Configure GPIO pins : TAMPON_FULL_Pin FS_Enabled_Pin */
   GPIO_InitStruct.Pin = TAMPON_FULL_Pin|FS_Enabled_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PEP_HOME_Pin */
@@ -448,9 +453,21 @@ static bool MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PEP_nFAULT_Pin TAMPON_FAIL_Pin BATT_FAULT_Pin */
-  GPIO_InitStruct.Pin = PEP_nFAULT_Pin|TAMPON_FAIL_Pin|BATT_FAULT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pins : PEP_nFAULT_Pin*/
+  GPIO_InitStruct.Pin = PEP_nFAULT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TAMPON_FAIL_Pin */
+  GPIO_InitStruct.Pin = TAMPON_FAIL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BATT_FAULT_Pin */
+  GPIO_InitStruct.Pin = BATT_FAULT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -460,7 +477,7 @@ static bool MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MOTOR_INDEXPULSE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MOTOR_ACTIVE_Pin MOTOR_LIMIT_SW_A_Pin MOTOR_LIMIT_SW_B_Pin */
+  /*Configure GPIO pins : MOTOR_LIMIT_SW_A_Pin MOTOR_LIMIT_SW_B_Pin */
   GPIO_InitStruct.Pin = MOTOR_LIMIT_SW_A_Pin|MOTOR_LIMIT_SW_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -486,7 +503,7 @@ static bool MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 2);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
@@ -495,7 +512,7 @@ static bool MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 2);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
     return true;
 

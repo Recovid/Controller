@@ -1,6 +1,6 @@
 #include "recovid_revB.h"
 #include "lowlevel.h"
-
+#include "recovid.h"
 
 typedef enum {
 	STOPPED,
@@ -45,27 +45,36 @@ static bool     sampling_Q      = false;
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
 
-static bool sensors_init(I2C_HandleTypeDef* hi2c) {
+bool init_sensors() {
   if(_i2c!=NULL) return true;
 
+for (int t = 1; t < 127; ++t) {
+		if(HAL_I2C_IsDeviceReady(&sensors_i2c, (uint16_t)(t<<1), 2, 2) == HAL_OK) {
+			dbg_printf("Found device at address: %02X\n", t);
+		}
+
+	}
+
+
+
 	// First try to complete pending sdp rad request if any !!!
-	if(HAL_I2C_Master_Receive(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000)!= HAL_I2C_ERROR_NONE) {
-		printf("Tried to finished pending sdp read request... but nothing came...\n");
+	if(HAL_I2C_Master_Receive(&sensors_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000)!= HAL_I2C_ERROR_NONE) {
+		// No pending read :-). keep going
 	}
 
 	// Reset SDP
-	if(HAL_I2C_Master_Transmit(hi2c, ADDR_SPD610 , (uint8_t*) _sdp_reset_req, sizeof(_sdp_reset_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+	if(HAL_I2C_Master_Transmit(&sensors_i2c, ADDR_SPD610 , (uint8_t*) _sdp_reset_req, sizeof(_sdp_reset_req), 1000 )!= HAL_I2C_ERROR_NONE) {
 		return false;
 	}
 
 
 	HAL_Delay(100);
 	// Now read sdp advanced user register
-	if(HAL_I2C_Master_Transmit(hi2c, ADDR_SPD610 , (uint8_t*) _sdp_readAUR_req, sizeof(_sdp_readAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+	if(HAL_I2C_Master_Transmit(&sensors_i2c, ADDR_SPD610 , (uint8_t*) _sdp_readAUR_req, sizeof(_sdp_readAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
 		return false;
 	}
 	HAL_Delay(100);
-	if(HAL_I2C_Master_Receive(hi2c, ADDR_SPD610 , (uint8_t*) _sdp_AUR_buffer, sizeof(_sdp_AUR_buffer), 1000 )!= HAL_I2C_ERROR_NONE) {
+	if(HAL_I2C_Master_Receive(&sensors_i2c, ADDR_SPD610 , (uint8_t*) _sdp_AUR_buffer, sizeof(_sdp_AUR_buffer), 1000 )!= HAL_I2C_ERROR_NONE) {
 		return false;
 	}
 	// print AUR (Advances User Register)
@@ -75,13 +84,14 @@ static bool sensors_init(I2C_HandleTypeDef* hi2c) {
 	_sdp_writeAUR_req[1] = (uint16_t)(sdp_aur_no_i2c_hold >> 8);
 	_sdp_writeAUR_req[2] = (uint16_t)(sdp_aur_no_i2c_hold & 0xFF);
 	// Now disable i2c hold master mode
-	if(HAL_I2C_Master_Transmit(hi2c, ADDR_SPD610 , (uint8_t*) _sdp_writeAUR_req, sizeof(_sdp_writeAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
+	if(HAL_I2C_Master_Transmit(&sensors_i2c, ADDR_SPD610 , (uint8_t*) _sdp_writeAUR_req, sizeof(_sdp_writeAUR_req), 1000 )!= HAL_I2C_ERROR_NONE) {
 		return false;
 	}
 	// Sensors settle time
 	HAL_Delay(100);
 
-	_i2c= hi2c;
+	_i2c = &sensors_i2c;
+
 
 	_i2c->MasterTxCpltCallback=process_i2c_callback;
 	_i2c->MasterRxCpltCallback=process_i2c_callback;
@@ -90,17 +100,6 @@ static bool sensors_init(I2C_HandleTypeDef* hi2c) {
 	return true;
 }
 
-
-bool init_Pdiff() {
-  return sensors_init(&sensors_i2c);
-}
-bool init_Paw() {
-  return sensors_init(&sensors_i2c);
-}
-
-bool init_Patmo() {
-  return sensors_init(&sensors_i2c);
-}
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok() {
@@ -114,17 +113,17 @@ bool is_Patmo_ok() {
 }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
-float get_Pdiff_Lpm() {
+float read_Pdiff_Lpm() {
   return _current_flow;
 }
 
 //! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float get_Paw_cmH2O() {
+float read_Paw_cmH2O() {
   return _current_pressure;
 }
 
 //! \returns the atmospheric pressure in mbar
-float get_Patmo_mbar() {
+float read_Patmo_mbar() {
   return 0;
 }
 
@@ -172,6 +171,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		_sensor_state=STOPPED;
 		return;
 	case STOPPED:
+	light_yellow(On);
 		return;
 	case READ_NPA_MEASUREMENT:
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {

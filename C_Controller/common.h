@@ -8,10 +8,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <FreeRTOS.h>
-#include <task.h>
-#include <event_groups.h>
-
 
 #define COUNT_OF(_array) (sizeof(_array)/sizeof(_array[0]))
 
@@ -26,7 +22,12 @@
 #define MIN(_a,_b) ((_a)<(_b) ? (_a) : (_b))
 #define SIGN(_a)   ((_a)<  0  ?  -1  :   1 )
 
+
+
+
+
 // Assumes -DNDEBUG is passed to release builds like CMake does
+
 #ifndef NDEBUG
 #define DEBUG
 #define DEBUG_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))

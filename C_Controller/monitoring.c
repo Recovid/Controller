@@ -1,31 +1,26 @@
 #include "recovid.h"
-#include "configuration.h"
+#include "monitoring.h"
 #include "controller.h"
 #include "breathing.h"
-#include "monitoring.h"
-#include "lowlevel.h"
 
 
-
-bool monitoring_init() {
-  return true;
-};
 
 void monitoring_run(void *args) {
   UNUSED(args)
   EventBits_t events;
 
-  printf("monitoring started\n");
-
   while(true) {
+    mntr_printf("Monitoring waiting for RUN signal\n");
+    events= xEventGroupWaitBits(eventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    mntr_printf("Monitoring started\n");
 
-    events= xEventGroupWaitBits(controlFlags, RUN_MONITORING_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
-
-    while ( ( events & RUN_MONITORING_FLAG ) != 0 ) {
-      printf(".\n");
+    do {
       wait_ms(500);
+      mntr_printf("monitoring...\n");
 
-      events= xEventGroupWaitBits(controlFlags, RUN_MONITORING_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
-    }
+
+
+      events= xEventGroupWaitBits(eventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    } while ( ( events & MONITORING_RUN_FLAG ) != 0 );
   }
 }

@@ -1,19 +1,31 @@
 #include "recovid.h"
-#include "configuration.h"
 #include "controller.h"
 #include "breathing.h"
-#include "lowlevel.h"
 
 
-
-bool breathing_init() {
-  return true;
-};
 
 void breathing_run(void *args) {
   UNUSED(args);
-  printf("breathing started\n");
+  EventBits_t events;
+
+
   while(true) {
+    brth_printf("Breathing waiting for RUN signal\n");
+    events= xEventGroupWaitBits(eventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    brth_printf("Monitoring started\n");
+
+    do  {
+      wait_ms(1000);
+      brth_printf("breathing\n");
+
+
+
+
+      events= xEventGroupWaitBits(eventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    } while ( ( events & MONITORING_RUN_FLAG ) != 0 );
+
+
+
     wait_ms(200);
-    printf(".\n");
-  }}
+  }
+}

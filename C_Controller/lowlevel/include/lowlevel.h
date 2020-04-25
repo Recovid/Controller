@@ -2,8 +2,7 @@
 #define __LOWLEVEL_H__
 
 #include "common.h"
-
-#include "configuration.h"
+#include "config.h"
 
 
 // Public interface to the lowlevel hardware and/or simulated hardware
@@ -27,15 +26,15 @@ bool soft_reset();
 //! Called during initialisation only
 //! \returns false only if communication will never be possible for some reason
 //! \warning since IHM may not be started yet, do not expect any answer yet
-bool init_ihm();
+bool init_uart();
 
 //! \returns true if frame sent
 //! \sa fputs()
-bool ihm_send(const char* frame);
+bool uart_send(const char* frame);
 
 //! \returns EOF if nothing received or an ASCII unsigned char
 //! \sa fgetc()
-int ihm_recv();
+int uart_recv();
 
 
 // ------------------------------------------------------------------------------------------------
@@ -61,6 +60,9 @@ bool motor_release();
 bool is_motor_moving();
 
 //!
+bool is_motor_home();
+
+//!
 bool motor_stop();
 
 // ------------------------------------------------------------------------------------------------
@@ -78,12 +80,17 @@ bool is_motor_pep_ok();
 //! \remark any relative_move_cmH2O > +.1 should be checked during following cycles
 bool motor_pep_move(int relative_mm);
 
+//!
 bool is_motor_pep_moving();
 
+//!
 bool motor_pep_stop();
 
 //! \warning only use during initialisation as moving to 0 is prohibited during cycle_respiration and the water level may have varied
 bool motor_pep_home();
+
+//!
+bool is_motor_pep_home();
 
 // ------------------------------------------------------------------------------------------------
 
@@ -104,9 +111,7 @@ bool valve_inhale();
 //! HW sensors
 
 //! Called during initialisation only
-bool init_Pdiff();
-bool init_Paw();
-bool init_Patmo();
+bool init_sensors();
 
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 bool sensors_stop(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
@@ -117,13 +122,13 @@ bool is_Paw_ok();
 bool is_Patmo_ok();
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
-float get_Pdiff_Lpm();
+float read_Pdiff_Lpm();
 
 //! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float get_Paw_cmH2O();
+float read_Paw_cmH2O();
 
 //! \returns the atmospheric pressure in mbar
-float get_Patmo_mbar();
+float read_Patmo_mbar();
 
 
 // ------------------------------------------------------------------------------------------------
@@ -137,6 +142,15 @@ bool is_DC_on();
 
 //! \returns true if battery autonomy is > 30min
 bool is_Battery_charged();
+
+// ------------------------------------------------------------------------------------------------
+//! FailSafe
+bool is_Failsafe_Enabled();
+
+// ------------------------------------------------------------------------------------------------
+//! FailSafe
+void enable_Rpi(bool ena);
+
 
 
 // ------------------------------------------------------------------------------------------------

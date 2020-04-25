@@ -2,6 +2,8 @@
 #include "lowlevel.h"
 #include "recovid_revB.h"
 
+#include <FreeRTOS.h>
+#include <task.h>
 
 uint32_t get_time_ms()
 {

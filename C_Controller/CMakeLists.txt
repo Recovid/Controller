@@ -81,6 +81,7 @@ set(SHARED_SOURCES
    monitoring.c
    breathing.c
    controller.c
+   hmi.c
    protocol.c
 )
 

@@ -1,10 +1,9 @@
 #include "recovid.h"
-#include "configuration.h"
 #include "controller.h"
 #include "breathing.h"
 #include "monitoring.h"
-#include "protocol.h"
-#include "lowlevel.h"
+
+#include <math.h>
 
 
 // ------------------------------------------------------------------------------------------------
@@ -30,63 +29,218 @@ static uint16_t setting_VMmin_Lpm;
 const int setting_PEPmax_cmH2O = DEFAULT_setting_PEPmax_cmH2O;
 const int setting_PEPmin_cmH2O = DEFAULT_setting_PEPmin_cmH2O;
 
-uint16_t checked_FR_pm(uint16_t desired);
-uint16_t checked_VT_mL(uint16_t desired);
-uint16_t checked_Vmax_Lpm (uint16_t desired);
-uint16_t checked_EoI_ratio_x10(uint16_t desired_x10);
+static uint32_t command_Tpins_timestamp = 0;
+static uint16_t command_Tpins_ms = 0;
+static uint32_t command_Tpexp_timestamp = 0;
+static uint16_t command_Tpexp_ms = 0;
+static uint32_t command_Tpbip_timestamp = 0;
+static uint16_t command_Tpbip_ms = 0;
+
+static bool command_soft_reset = false;
 
 
 
 static void reset_settings();
 static bool load_settings();
 
+static int self_tests();
+
+
 void controller_init() {
-    reset_settings();
 }
 
 
 void controller_run(void* args) {
-  static uint32_t idx=0;
   UNUSED(args);
+  
+  EventBits_t events;
+
+#ifdef DEBUG        
+   uint32_t dbg_idx=0;
+#endif
 
   while(true) {
 
-    // TODO: Define startup process
-    // For now just start breathing and monitoring based on default/stored values
+    // TODO: Implemente the actual startup process
 
+    ctrl_printf("Waiting for failsafe signal\n");
+    while(is_Failsafe_Enabled()) wait_ms(200);
+    
+    
+    ctrl_printf("Initializing system\n");
+  
+    reset_settings();
     load_settings();
-    printf("Settings loaded\n");
+    ctrl_printf("Settings loaded\n");
 
-    // Start breathing and monitoring
-    xEventGroupSetBits(controlFlags, ((RUN_BREATHING_FLAG | RUN_MONITORING_FLAG)));
-    printf("Breathing and monitoring started\n");
+    // Enable RPi  : Could be done in hmi.c when requested to start. 
+    // However, since the RPi takes some time to boot, we start it here.
+    enable_Rpi(On);
+    ctrl_printf("Starting RPi\n");
 
-    uint32_t last_report_time= get_time_ms();
-    while(true) {
+
+    ctrl_printf("Self tests\n");
+    self_tests();
+
+
+    // Start breathing and monitoring and hmi
+    ctrl_printf("Starting breathing, monitoring and hmi tasks\n");
+    xEventGroupSetBits(eventFlags, ((BREATHING_RUN_FLAG | MONITORING_RUN_FLAG | HMI_RUN_FLAG)));
+    
+    while(!is_Failsafe_Enabled()) {
       // TODO Implement controller logic
       // check monitoring process
       // check breathing process
       
-      
-      //send_and_recv(); // TODO rework implem for a more deterministic execution time
-
-      if(25 <= (get_time_ms()-last_report_time)) {
-//        if(++idx==40) { idx=0; printf("updating hmi\n"); }
-        //send_DATA(get_Paw_cmH2O(), get_Pdiff_Lpm(), 0);
-        last_report_time= get_time_ms();
-      }
-
       wait_ms(5);
-
     }
 
-    // TODO: Shutdown and standby process
+    ctrl_printf("Stopping breathing, monitoring and hmi tasks\n");
+    xEventGroupClearBits(eventFlags, (BREATHING_RUN_FLAG | MONITORING_RUN_FLAG | HMI_RUN_FLAG));
 
+    EventBits_t sync;
+    do {
+      // TODO implement retry logic and eventually kill tasks !!
+      ctrl_printf("Waiting for breathing, monitoring and hmi tasks to stop\n");
+      sync = xEventGroupWaitBits(eventFlags, (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG), pdTRUE, pdTRUE, 200/portTICK_PERIOD_MS);
+    } while( (sync & (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG)) != (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG));
 
+    ctrl_printf("breathing, monitoring and hmi tasks stopped\n");
+    ctrl_printf("proceed to system shutdown\n");
+    
+    enable_Rpi(Off);
 
+    // TODO implement system shutdown (lowpower)
+
+    ctrl_printf("System in low power mode\n");
   }
 
 }
+
+void check(int* bits, int bit, bool success)
+{
+    if ((*bits &   (1 << bit)) && !success) {
+         *bits &= ~(1 << bit);
+    }
+}
+
+bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
+{
+    // Sample sensor
+    float value[10], stddev = 0., sumX=0., sumX2=0., sumY=0., sumXY=0.;
+    const int samples = COUNT_OF(value);
+    for (int i=0; i<samples; i++) {
+        value[i] = (*sensor)();
+        if (value[i] < min || max < value[i]) {
+            return false;
+        }
+        sumX  += i;   //  45 for 10 samples
+        sumX2 += i*i; // 285 for 10 samples
+        sumY  += value[i];
+        sumXY += value[i]*i;
+        wait_ms(1);
+    }
+    // Fit a line to account for rapidly changing data such as Pdiff at start of Exhale
+    float b = (samples*sumXY-sumX*sumY)/(samples*sumX2-sumX*sumX);
+    float a = (sumY-b*sumX)/samples;
+
+    // Compute standard deviation to line fit
+    for (int i=0; i<samples; i++) {
+        float fit = a+b*i;
+        stddev += pow(value[i] - fit, 2);
+    }
+    stddev = sqrtf(stddev / samples);
+
+    return maxstddev < stddev;
+}
+
+int self_tests()
+{
+    DEBUG_PRINT("Start self tests");
+    int test_bits = 0xFFFFFFFF;
+
+    // TODO test 'Arret imminent' ?
+
+    // ctrl_printf("Buzzer low\n");
+    // check(&test_bits, 1, buzzer_low      (On )); wait_ms(1000);
+    // check(&test_bits, 1, buzzer_low      (Off)); // start pos
+
+    // ctrl_printf("Buzzer medium\n");
+    // check(&test_bits, 1, buzzer_medium      (On )); wait_ms(1000);
+    // check(&test_bits, 1, buzzer_medium      (Off)); // start pos
+
+    // ctrl_printf("Buzzer high\n");
+    // check(&test_bits, 1, buzzer_high      (On )); wait_ms(1000);
+    // check(&test_bits, 1, buzzer_high      (Off)); // start pos
+
+    ctrl_printf("Red light\n");
+    check(&test_bits, 2, light_red   (On )); wait_ms(1000);
+    check(&test_bits, 2, light_red   (Off)); // start pos
+
+    ctrl_printf("Yellow light\n");
+    check(&test_bits,  9, light_yellow(On )); wait_ms(1000);
+    check(&test_bits, 10, light_yellow(Off)); // start pos
+
+    ctrl_printf("Green light\n");
+    check(&test_bits,  9, light_green(On )); wait_ms(1000);
+    check(&test_bits, 10, light_green(Off)); // start pos
+
+    check(&test_bits, 5, init_sensors());
+    check(&test_bits, 11, sensors_start());
+
+
+//    while(true) wait_ms(500);
+
+// TODO: Tests not working !!!
+//    check(&test_bits, 5, sensor_test(get_sensed_VolM_Lpm  , -100,  100, 2)); ctrl_printf("Rest    Pdiff  Lpm:%+.1g\n", read_VolM_Lpm  ());
+//   check(&test_bits, 6, sensor_test(read_Paw_cmH2O   ,  -20,  100, 2)); ctrl_printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O   ());
+//    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); ctrl_printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
+
+
+    check(&test_bits, 3, init_valve());
+    check(&test_bits, 3, valve_exhale());
+
+    check(&test_bits, 4, init_motor());
+//    ctrl_printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    // check(&test_bits, 4, motor_release());
+    // while(is_motor_moving()) wait_ms(10);
+
+    // check(&test_bits, 4, motor_stop());
+//    ctrl_printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    check(&test_bits, 3, valve_inhale());
+//    ctrl_printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+
+    // motor_press_constant(400, 1000);
+    // wait_ms(1000);
+    // motor_stop();
+
+    // motor_release();
+    // wait_ms(3000);
+
+
+    //printf("Press   Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+    //check(&test_bits, 4, motor_stop());
+    //check(&test_bits, 3, valve_exhale()); // start pos
+    //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
+
+    // check(&test_bits, 8, init_motor_pep());
+    // motor_pep_home();
+    // while(!is_motor_pep_home()) wait_ms(10);
+    // motor_pep_move(10);
+    // while(is_motor_pep_moving()) wait_ms(10);
+    // // TODO check(&test_bits, 8, motor_pep_...
+
+    return test_bits;
+}
+
+
+
+
+
+
+
+
+
 
 static void reset_settings() {
     setting_FR_pm   = DEFAULT_setting_FR_pm;
@@ -214,13 +368,6 @@ float get_setting_PEPmin_cmH2O() { return setting_PEPmin_cmH2O    ; }
 
 //! Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
 
-static uint32_t command_Tpins_timestamp = 0;
-static uint16_t command_Tpins_ms = 0;
-static uint32_t command_Tpexp_timestamp = 0;
-static uint16_t command_Tpexp_ms = 0;
-static uint32_t command_Tpbip_timestamp = 0;
-static uint16_t command_Tpbip_ms = 0;
-
 uint16_t get_command_Tpins_ms() { return command_Tpins_ms; }
 uint16_t get_command_Tpexp_ms() { return command_Tpexp_ms; }
 uint16_t get_command_Tpbip_ms() { return command_Tpbip_ms; }
@@ -233,8 +380,6 @@ bool is_command_Tpins_expired() { return command_Tpins_ms < get_time_ms()-comman
 bool is_command_Tpexp_expired() { return command_Tpexp_ms < get_time_ms()-command_Tpexp_timestamp; }
 bool is_command_Tpbip_expired() { return command_Tpbip_ms < get_time_ms()-command_Tpbip_timestamp; }
 
-
-static bool command_soft_reset = false;
 void set_command_soft_reset() { command_soft_reset= true; }
 
 

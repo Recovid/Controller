@@ -59,10 +59,12 @@ set(REDEFINED_SYMBOLS
 	DebugMon_Handler
 	PendSV_Handler
 	SysTick_Handler
-	DMA1_Channel1_IRQHandler
 	EXTI9_5_IRQHandler
-	DMA1_Stream5_IRQHandler
+	EXTI15_10_IRQHandler
 	USART2_IRQHandler
+	DMA2_Channel3_IRQHandler
+	DMA2_Channel5_IRQHandler	
+	UART4_IRQHandler
 	HAL_MspInit
 	HAL_I2C_MspInit
 	HAL_I2C_MspDeInit

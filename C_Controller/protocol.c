@@ -1,6 +1,6 @@
+#include "recovid.h"
 #include "protocol.h"
 #include "controller.h"
-#include "lowlevel.h"
 
 #include <string.h>
 #include <math.h>
@@ -9,13 +9,13 @@
 
 #define ALARM_COUNT 18
 
+#define MAX_FRAME 100
+
+// TODO Not sure what this string is
 #define INIT_STR_SIZE 80
 char init_str[INIT_STR_SIZE+1] = ""; // leaving space for off by 1 errors in code
 
 const char *get_init_str() { return init_str; }
-
-
-#define MAX_FRAME 100
 
 char sign(int i) { return i<0 ? '-' : '+'; }
 
@@ -35,7 +35,7 @@ unsigned char checksum8(const char* s)
 
 bool send(const char* frame)
 {
-    return ihm_send(frame) > 0;
+    return uart_send(frame) > 0;
 }
 
 void replace_int_with_padding(char* frame, int value, int size, int base)
@@ -323,7 +323,7 @@ void send_and_recv()
     char frame[MAX_FRAME+1] = "";
     while (true) {
         char *pf = frame;
-        for (int c = EOF; (c = ihm_recv()) != '\n'; pf++) { // read until \n to make sure frame starts at a new line
+        for (int c = EOF; (c = uart_recv()) != '\n'; pf++) { // read until \n to make sure frame starts at a new line
             if (c == EOF) {
                 return;
             }
@@ -395,7 +395,7 @@ void send_and_recv()
 
 //! \warning send_DATA fails at clock_ms > 0
 bool PRINT(test_send)
-    TEST_ASSUME(init_ihm(IHM_MODE_FILE, NULL, NULL));
+    TEST_ASSUME(init_uart(IHM_MODE_FILE, NULL, NULL));
     TEST_ASSUME(send_INIT(""));
     TEST_ASSUME(strcmp(INIT_frame, "INIT \tCS8:65\n")==0);
     TEST_ASSUME(send_SET(VT___, VT____FMT, 300));

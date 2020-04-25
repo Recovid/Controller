@@ -86,6 +86,16 @@ bool motor_pep_stop() {
   return true;
 }
 
+bool is_motor_pep_moving() {
+  return _moving;
+}
+
+//!
+bool is_motor_pep_home() {
+  return _home;
+}
+
+
 
 
 void pep_home_irq() {

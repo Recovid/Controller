@@ -50,6 +50,14 @@ bool motor_stop() {
   return true;
 }
 
+bool is_motor_moving() {
+  return _moving;
+}
+
+bool is_motor_home() {
+  return _home;
+}
+
 bool is_motor_ok() {
   return _motor_tim!=NULL;
 }
@@ -59,8 +67,6 @@ bool init_motor()
   if(_motor_tim==NULL) {
     _motor_tim= &motor_tim;
     // register IT callbacks
-    _motor_tim->PeriodElapsedCallback = period_elapsed_callback;
-
     HAL_TIM_RegisterCallback(_motor_tim, HAL_TIM_PERIOD_ELAPSED_CB_ID, period_elapsed_callback);
 
     _active= HAL_GPIO_ReadPin(MOTOR_ACTIVE_GPIO_Port, MOTOR_ACTIVE_Pin);
@@ -80,6 +86,7 @@ bool init_motor()
       while(_home);
       HAL_Delay(200);
       motor_stop();
+      HAL_Delay(500);
     }
     _homing=true;
     _moving=true;
@@ -99,7 +106,7 @@ static void period_elapsed_callback(TIM_HandleTypeDef *tim)
 void motor_limit_sw_A_irq() {
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
-  if(time-last_time>50) {
+  if(time-last_time>10) {
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
 //	  _limit_sw_A ? light_yellow(On) : light_yellow(Off);
     check_home();
@@ -110,7 +117,7 @@ void motor_limit_sw_A_irq() {
 void motor_limit_sw_B_irq() {  
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
-  if(time-last_time>50) {
+  if(time-last_time>10) {
     _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
 //  	_limit_sw_B ? light_green(On) : light_green(Off);
     check_home();
@@ -121,7 +128,7 @@ void motor_limit_sw_B_irq() {
 void motor_active_irq() {
   static uint32_t last_time=0;
   uint32_t time= HAL_GetTick();
-  if(time-last_time>50) {
+  if(time-last_time>10) {
     _active=HAL_GPIO_ReadPin(MOTOR_ACTIVE_GPIO_Port, MOTOR_ACTIVE_Pin);
   }
   last_time=time;

@@ -7,12 +7,13 @@ add_library(lowlevel STATIC
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
     time.c
-    hmi_uart.c
+    uart.c
     motor.c
     motor_pep.c
     sensors.c
     indicators.c
     pep_valve.c
+    gpio.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})

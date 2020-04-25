@@ -4,7 +4,6 @@
 #include "recovid.h"
 
 
-bool monitoring_init();
-void monitoring_run(void *argument);
+void monitoring_run(void *);
 
 #endif

@@ -123,9 +123,13 @@ bool is_command_Tpbip_expired();
 
 void set_command_soft_reset();
 
+
+
+
+
+
 typedef enum { Initializing, Ready, Calibrating, Running, Stopping, Stopped } controller_state_t;
 
-void                controller_init();
 void                controller_run(void*);
 controller_state_t  get_controller_state();
 
