@@ -152,11 +152,11 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
     }*/
 
     replace_int_with_padding(DATA_frame, get_time_ms() % 1000000l, 6, 10);
-    replace_int_with_padding(DATA_frame, Vol_mL, 4, 10);
+    replace_int_with_padding(DATA_frame, roundf(Vol_mL), 4, 10);
     *strchr(DATA_frame, '.') = sign(VolM_Lpm);
-    replace_int_with_padding(DATA_frame, VolM_Lpm, 3, 10);
+    replace_int_with_padding(DATA_frame, roundf(VolM_Lpm), 3, 10);
     *strchr(DATA_frame, '.') = sign(P_cmH2O);
-    replace_int_with_padding(DATA_frame, P_cmH2O, 3, 10);
+    replace_int_with_padding(DATA_frame, roundf(P_cmH2O), 3, 10);
 
     replace_int_with_padding(DATA_frame, checksum8(DATA_frame), 2, 16);
 
@@ -179,13 +179,13 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
     }
 
     replace_int_with_padding(DATA_X_frame, get_time_ms() % 1000000l, 6, 10);
-    replace_int_with_padding(DATA_X_frame, Vol_mL     , 4, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(Vol_mL)     , 4, 10);
     *strchr(DATA_X_frame, '.') = sign(VolM_Lpm);
-    replace_int_with_padding(DATA_X_frame, VolM_Lpm   , 3, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(VolM_Lpm)   , 3, 10);
     *strchr(DATA_X_frame, '.') = sign(P_cmH2O);
-    replace_int_with_padding(DATA_X_frame, P_cmH2O    , 3, 10);
-    replace_int_with_padding(DATA_X_frame, Pplat_cmH2O, 2, 10);
-    replace_int_with_padding(DATA_X_frame, PEP_cmH2O  , 2, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(P_cmH2O)    , 3, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(Pplat_cmH2O), 2, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(PEP_cmH2O)  , 2, 10);
 
     replace_int_with_padding(DATA_X_frame, checksum8(DATA_X_frame), 2, 16);
 
@@ -208,14 +208,14 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
     {
         return false;
     }*/
-    replace_int_with_padding(RESP_frame, EoI_ratio*10    , 2, 10);
-    replace_int_with_padding(RESP_frame, FR_pm           , 2, 10);
-    replace_int_with_padding(RESP_frame, VTe_mL          , 3, 10);
-    replace_int_with_padding(RESP_frame, Pcrete_cmH2O    , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(EoI_ratio*10)    , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(FR_pm)           , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(VTe_mL)          , 3, 10);
+    replace_int_with_padding(RESP_frame, roundf(Pcrete_cmH2O)    , 2, 10);
     *strchr(RESP_frame, '.') = sign(VM_Lpm);
-    replace_int_with_padding(RESP_frame, VM_Lpm          , 2, 10);
-    replace_int_with_padding(RESP_frame, Pplat_cmH2O     , 2, 10);
-    replace_int_with_padding(RESP_frame, PEP_cmH2O       , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(VM_Lpm)          , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(Pplat_cmH2O)     , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(PEP_cmH2O)       , 2, 10);
     replace_int_with_padding(RESP_frame, checksum8(RESP_frame), 2, 16);
 
     return send(RESP_frame);
