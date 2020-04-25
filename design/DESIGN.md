@@ -6,11 +6,19 @@ Le RECOVID ne peut être utilisé que conjointement à un Oxymètre médical qui
 
 ![](UseCases.png)
 
+## Hardware
+
+![](Schema_general_17avril.png)
+
 ## Information flow
 
 ![](InformationFlow.png)
 
 ## State machines specifications
 
+![](ArretMarche.png)
+
 ![](CycleRespiration+RCM.png)
+
+![](RegulationPEP.png)
 
