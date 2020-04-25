@@ -15,7 +15,7 @@ Merge into master is based after verification on either the simulated environmen
 
 NB: C_Controller project allows to test part of the code in simulated environments more or less close to the target based on C99 GCC 7 compiler
 
-# Controller Specifications
+# Controller Specifications (partial)
 Sensors, electro-valves and controller
 
 ## Recovid-synoptique
