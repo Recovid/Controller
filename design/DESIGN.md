@@ -1,4 +1,4 @@
-# Overview of Controller v2 design
+# Overview of Controller v2 specifications
 
 ## Use cases
 
@@ -19,6 +19,10 @@ Le RECOVID ne peut être utilisé que conjointement à un Oxymètre médical qui
 ![](ArretMarche.png)
 
 ![](CycleRespiration+RCM.png)
+
+![](Schema_general_17avril_Insufflation.png)
+
+![](Schema_general_17avril_Expiration.png)
 
 ![](RegulationPEP.png)
 
