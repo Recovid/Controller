@@ -18,7 +18,6 @@ add_library(lowlevel STATIC
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
 target_link_libraries(lowlevel PUBLIC hal freertos)
 
-
 ###############################################################################
 # Setup OpenOCD
 

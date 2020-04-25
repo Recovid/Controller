@@ -12,6 +12,7 @@
 #include "lowlevel.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "ifl_deque.h"
 #include "stm32f303xe.h"
@@ -192,7 +193,7 @@ void hmi_RxCpltCallback()
 
 void hmi_ErrorCallback()
 {
-    __asm("BKPT #0\n") ;
+//    __asm("BKPT #0\n") ;
 //    printf("[IHM] UART Error: %d\n", HAL_UART_GetError(&hmi_uart));
 }
 
@@ -227,7 +228,9 @@ bool hmi_write_data(const char * data, uint16_t data_size)
         IFL_DEQUE_PUSH_BACK(&_uart_tx_buffer, &data[i]);
         if(IFL_DEQUE_FULL(&_uart_tx_buffer))
         {
-            __asm("BKPT #0\n") ;
+            // TODO Check implem
+            __enable_irq();
+            return false;
         }
     }
 
@@ -247,7 +250,7 @@ bool hmi_write_data(const char * data, uint16_t data_size)
 }
 
 
-bool hmi_uart_init()
+bool hmi_init()
 {
     IFL_DEQUE_INIT(&_uart_tx_buffer);
     IFL_DEQUE_INIT(&_uart_rx_buffer);
@@ -274,4 +277,23 @@ bool hmi_uart_init()
     HAL_NVIC_EnableIRQ(HMI_UART_IRQn);
 
     return true;
+}
+
+bool ihm_send(const char* frame)
+{
+
+    return hmi_write_data(frame, strlen(frame));
+}
+
+int ihm_recv()
+{
+    char blocking_read = 0;
+
+    int t_s = hmi_read_data(&blocking_read, sizeof(char));;
+
+    if (t_s > 0) {
+
+        return blocking_read;
+    }
+    return EOF;
 }

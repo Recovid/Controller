@@ -61,6 +61,8 @@ bool init_motor()
     // register IT callbacks
     _motor_tim->PeriodElapsedCallback = period_elapsed_callback;
 
+    HAL_TIM_RegisterCallback(_motor_tim, HAL_TIM_PERIOD_ELAPSED_CB_ID, period_elapsed_callback);
+
     _active= HAL_GPIO_ReadPin(MOTOR_ACTIVE_GPIO_Port, MOTOR_ACTIVE_Pin);
 
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);

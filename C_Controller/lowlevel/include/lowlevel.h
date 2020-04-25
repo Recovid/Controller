@@ -1,13 +1,14 @@
 #ifndef __LOWLEVEL_H__
 #define __LOWLEVEL_H__
 
-#include "platform.h"
-#include <stdint.h>
+#include "common.h"
 
 #include "configuration.h"
 
 
 // Public interface to the lowlevel hardware and/or simulated hardware
+bool init_hardware();
+
 
 uint32_t get_time_ms();
 
@@ -30,11 +31,11 @@ bool init_ihm();
 
 //! \returns true if frame sent
 //! \sa fputs()
-bool send_ihm(const char* frame);
+bool ihm_send(const char* frame);
 
 //! \returns EOF if nothing received or an ASCII unsigned char
 //! \sa fgetc()
-int recv_ihm();
+int ihm_recv();
 
 
 // ------------------------------------------------------------------------------------------------

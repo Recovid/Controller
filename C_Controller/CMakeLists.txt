@@ -77,22 +77,19 @@ set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 # high-level
 set(SHARED_SOURCES
-    sensing.c
-    controller.c
-    configuration.c
-    alarms.c
-    ihm_communication.c
+   controller.c
+   monitoring.c
+   breathing.c
+   controller.c
+   protocol.c
 )
 
 
 # low-level
 if(NOT native_win32) # !POSIX for high-level deterministic tests only
     set(SHARED_SOURCES ${SHARED_SOURCES}
-        tasks_recovid.c
-        TaskMessageManagement.c
-        TaskRespirationCycle.c
-        # Sensing is performed by interrupts once init_sensors is called
-        # Alarms are monitored and triggered in TaskRespirationCycle
+        lowlevel/stm32f303/syscalls.c
+        lowlevel/stm32f303/sysmem.c
     )
 endif()
 

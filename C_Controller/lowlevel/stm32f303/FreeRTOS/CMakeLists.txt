@@ -7,6 +7,7 @@ add_library(freertos STATIC
     ${FREERTOS_SRC_DIR_STM32}/timers.c
     ${FREERTOS_SRC_DIR_STM32}/queue.c
     ${FREERTOS_SRC_DIR_STM32}/tasks.c
+    ${FREERTOS_SRC_DIR_STM32}/event_groups.c
     ${FREERTOS_SRC_DIR_STM32}/croutine.c
     ${FREERTOS_SRC_DIR_STM32}/list.c
     ${FREERTOS_SRC_DIR_STM32}/portable/MemMang/heap_4.c

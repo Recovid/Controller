@@ -443,6 +443,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     /* USART2 interrupt Init */
     HAL_NVIC_SetPriority(DBG_UART_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DBG_UART_IRQn);
   }
 
 }

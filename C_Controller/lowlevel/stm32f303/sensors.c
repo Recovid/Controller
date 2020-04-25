@@ -114,17 +114,17 @@ bool is_Patmo_ok() {
 }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
-float read_Pdiff_Lpm() {
+float get_Pdiff_Lpm() {
   return _current_flow;
 }
 
 //! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
-float read_Paw_cmH2O() {
+float get_Paw_cmH2O() {
   return _current_pressure;
 }
 
 //! \returns the atmospheric pressure in mbar
-float read_Patmo_mbar() {
+float get_Patmo_mbar() {
   return 0;
 }
 

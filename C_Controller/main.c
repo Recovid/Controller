@@ -1,14 +1,10 @@
-#include "platform.h"
+#include "recovid.h"
+#include "configuration.h"
+#include "controller.h"
+#include "breathing.h"
+#include "monitoring.h"
+#include "lowlevel.h"
 
-#include <stdio.h>
-#include <string.h>
-
-
-//Low-level include
-#include "lowlevel/include/lowlevel.h"
-// FreeRTOS Include
-#include <FreeRTOS.h>
-#include <task.h>
 
 
 
@@ -19,12 +15,11 @@
 #define PRIORITY_HIGH           40
 
 
+TaskHandle_t breathingTaskHandle;
+TaskHandle_t monitoringTaskHandle;
+TaskHandle_t controllerTaskHandle;
 
-
-void controllerTask(void *argument);
-void breathingTask(void *argument);
-void monitoringTask(void *argument);
-
+EventGroupHandle_t controlFlags;
 
 
 int main()
@@ -36,27 +31,17 @@ int main()
       while(true);
   }
 
+  printf("Starting Recovid\n");
+
   controller_init();
   breathing_init();
   monitoring_init();
 
-
-  TaskHandle_t breathingTaskHandle;
-  TaskHandle_t monitoringTaskHandle;
-  TaskHandle_t controllerTaskHandle;
-
-  if(xTaskCreate(breathingTask, "Breathing" , 256, NULL, PRIORITY_HIGH, &breathingTaskHandle) != pdPASS) {
-    return -1;
-  }
-  if(xTaskCreate(monitoringTask, "Monitoring", 256, NULL, PRIORITY_ABOVE_NORMAL, &monitoringTaskHandle) != pdPASS) {
-    return -1;
-  }
-  if(xTaskCreate(controllerTask, "Controller", 256, NULL, PRIORITY_NORMAL, &controllerTaskHandle) != pdPASS) {
-    return -1;
-  }
-
-  vTaskSuspend(breathingTaskHandle);
-  vTaskSuspend(monitoringTaskHandle);
+  controlFlags = xEventGroupCreate();
+  
+  xTaskCreate(breathing_run , "Breathing" , BREATHING_TASK_STACK_SIZE , NULL, BREATHING_TASK_PRIORITY , &breathingTaskHandle);
+  xTaskCreate(monitoring_run, "Monitoring", MONITORING_TASK_STACK_SIZE, NULL, MONITORING_TASK_PRIORITY, &monitoringTaskHandle);
+  xTaskCreate(controller_run, "Controller", CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &controllerTaskHandle);
 
   // start scheduler
   vTaskStartScheduler();
@@ -65,19 +50,4 @@ int main()
   while(true);
 }
 
-void startControllerTask(void *argument) {
-  controller_run();
-  // We should never get here
-  while(true);
-}
-void startBreathingTask(void *argument) {
-  breathing_run();
-  // We should never get here
-  while(true);
-}
-void startMonitoringTask(void *argument) {
-  monitoring_run();
-  // We should never get here
-  while(true);
-}
 

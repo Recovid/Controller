@@ -1,7 +1,36 @@
 #ifndef __CONTROLLER_H__
 #define __CONTROLLER_H__
 
-#include "platform.h"
+#include "recovid.h"
+
+//! set the desired setting value.
+//! \returns a value within the range defined by physical constraints and VT, Vmax, EoI
+float set_setting_FR_pm(float desired);
+
+//! set the desired setting value.
+//! \returns a value within the range defined by physical constraints and FR, Vmax, EoI
+float set_setting_VT_mL(float desired);
+
+//! \returns a value within the range defined by physical constraints and FR, VT, EoI
+float set_setting_Vmax_Lpm (float desired);
+
+//! \returns a value within the range defined by physical constraints and FR, VT, Vmax
+float set_setting_EoI_ratio_x10(float desired_x10);
+
+float set_setting_PEP_cmH2O(float desired);
+
+float set_setting_Pmax_cmH2O(float desired);
+
+float set_setting_Pmin_cmH2O(float desired);
+
+float set_setting_VTmin_mL(float desired);
+
+float set_setting_VTmax_mL(float desired);
+
+float set_setting_FRmin_pm(float desired);
+
+float set_setting_VMmin_Lpm(float desired);
+
 
 
 //! \returns respiration frequency per minute
@@ -80,15 +109,24 @@ float    get_setting_PEPmax_cmH2O();
 float    get_setting_PEPmin_cmH2O();
 
 
-uint32_t get_Tpins_ms();
-uint32_t get_Tpexp_ms();
-uint32_t get_Tpbip_ms();
+uint16_t get_Tpins_ms();
+uint16_t get_Tpexp_ms();
+uint16_t get_Tpbip_ms();
 
+uint16_t set_command_Tpins_ms(uint16_t ms);
+uint16_t set_command_Tpexp_ms(uint16_t ms);
+uint16_t set_command_Tpbip_ms(uint16_t ms);
 
-typedef enum { Starting, Ready, Calibrating, Running, Stopping, Stopped } controller_state_t;
+bool is_command_Tpins_expired();
+bool is_command_Tpexp_expired();
+bool is_command_Tpbip_expired();
+
+void set_command_soft_reset();
+
+typedef enum { Initializing, Ready, Calibrating, Running, Stopping, Stopped } controller_state_t;
 
 void                controller_init();
-void                controller_run();
+void                controller_run(void*);
 controller_state_t  get_controller_state();
 
 

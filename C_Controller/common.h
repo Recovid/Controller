@@ -1,5 +1,5 @@
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#ifndef __COMMON_H__
+#define __COMMON_H__
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -7,6 +7,11 @@
 #include <float.h>
 #include <stdio.h>
 #include <assert.h>
+
+#include <FreeRTOS.h>
+#include <task.h>
+#include <event_groups.h>
+
 
 #define COUNT_OF(_array) (sizeof(_array)/sizeof(_array[0]))
 
@@ -71,4 +76,4 @@
 
 #define TEST_ASSUME(_predicate) if (!TEST(_predicate)) return false
 
-#endif // PLATFORM_H
+#endif // __COMMON_H__

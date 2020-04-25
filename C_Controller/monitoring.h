@@ -1,6 +1,10 @@
-#ifndef __TASKMONITORING_H__
-#define __TASKMONITORING_H__
+#ifndef __MONITORING_H__
+#define __MONITORING_H__
 
-void startMonitoringTask(void *argument);
+#include "recovid.h"
+
+
+bool monitoring_init();
+void monitoring_run(void *argument);
 
 #endif

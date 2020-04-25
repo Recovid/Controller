@@ -1,7 +1,4 @@
 add_library(hal STATIC
-#    stm32f3xx_nucleo.c
-    syscalls.c
-    sysmem.c
     system_stm32f3xx.c
     Drivers/startup_stm32f303retx.s
     Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c

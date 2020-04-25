@@ -82,7 +82,7 @@ set(COMMON_TOOLCHAIN_LFLAGS "\
     ${REDEFINED_SYMBOLS_FLAGS_STR} \
     ${COMMON_TOOLCHAIN_CFLAGS} \
     -Wl,--gc-sections \
-    --specs=nosys.specs \
+    --specs=nano.specs \
 ")
 
 SET(CMAKE_C_FLAGS_DEBUG          "-Os -g" CACHE INTERNAL "c compiler flags debug")
