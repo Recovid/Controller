@@ -388,8 +388,6 @@ const char* payload(const char* frame, const char* prefix)
     return strncmp(frame, prefix, prefix_length)!=0 ? NULL : frame+prefix_length;
 }
 
-static char buf[200];
-
 /* Receiving state */
 enum receiveState {
     FRAME_BAD,         /* bad frame, incorrect character detected                 */
@@ -445,7 +443,7 @@ void send_and_recv()
     {
         uint16_t ignored_Tplat_ms;
         /* get a pointer in frame to get fields*/
-        char *pl;
+        char const *pl;
         if ((pl = payload(frame, INIT)) || !initSent) { //TODO: update initSent
             initSent = send_INIT(get_init_str());
         }
