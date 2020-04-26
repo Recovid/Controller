@@ -56,7 +56,7 @@ static bool sensors_init(I2C_HandleTypeDef *hi2c) {
     }
     // print AUR (Advances User Register)
     uint16_t sdp_aur = (uint16_t)((_sdp_AUR_buffer[0] << 8) | _sdp_AUR_buffer[1]);
-//	printf("sdp AUR = %d\n", (uint16_t)(sdp_aur));
+	//	printf("sdp AUR = %d\n", (uint16_t)(sdp_aur));
     uint16_t sdp_aur_no_i2c_hold = sdp_aur & 0xFFFD;
     _sdp_writeAUR_req[1] = (uint16_t)(sdp_aur_no_i2c_hold >> 8);
     _sdp_writeAUR_req[2] = (uint16_t)(sdp_aur_no_i2c_hold & 0xFF);
