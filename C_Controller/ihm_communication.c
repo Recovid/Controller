@@ -392,67 +392,59 @@ static char buf[200];
 
 /* Receiving state */
 enum receiveState {
-	FRAME_BAD,		   /* bad frame, incorrect character detected */
-	FRAME_IN_PROGRESS, /* a part of frame is received. Part is in 'frame' */
-	FRAME_COMPLETE     /* the end of frame has been received. Should be processed */
+    FRAME_BAD,         /* bad frame, incorrect character detected                 */
+    FRAME_IN_PROGRESS, /* a part of frame is received. Part is in 'frame'         */
+    FRAME_COMPLETE     /* the end of frame has been received. Should be processed */
 };
 
 void send_and_recv()
 {
     static enum receiveState state = FRAME_IN_PROGRESS;
-	static char frame[MAX_FRAME+1] = {'\0'};
-	static int  frameIdx = 0;
+    static char frame[MAX_FRAME+1] = {'\0'};
+    static int  frameIdx = 0;
 
     static bool initSent = true; //TODO: used to send init only once. pb with hotplug.
 
-	int c = ~EOF; /* init with value != EOF */
+    int c = ~EOF; /* init with value != EOF */
 
-	/* read from uart fifo until frame is complete or rx buffer empty */
-	while(state == FRAME_IN_PROGRESS && c!=EOF)
-	{
-		/* read from uart (and remove from rx fifo) */
-		c = recv_ihm();
-		if(c=='\n') state = FRAME_COMPLETE;
-		/* non printable ascii chars */ 
-        if ((c<' ' && c!='\t') || 126<c ) state = FRAME_BAD;
-		/* store char locally */
-		if(frameIdx > MAX_FRAME) state = FRAME_BAD;
-		else {
-			frame[frameIdx] = c;
-			frameIdx++;
-		}
-	}
+    /* read from uart fifo until frame is complete or rx buffer empty */
+    while((state == FRAME_IN_PROGRESS && (c=recv_ihm())!=EOF))
+    {
+        if(c=='\n') state = FRAME_COMPLETE;
+        /* non printable ascii chars */ 
+        else if ((c<' ' && c!='\t') || 126<c ) state = FRAME_BAD;
+        /* store char locally, check for overflow */
+        if(frameIdx > MAX_FRAME) state = FRAME_BAD;
+        else {
+            frame[frameIdx] = c;
+            frameIdx++;
+        }
+    }
+    /* don't need to close the char string, as all frame is always reinit to \0
+     * and verification is done that there is no overflow during read.
+     */
 
-	/* close the char string */
-	if(state == FRAME_COMPLETE) { // normal behavior at end of frame
-		if(frameIdx > MAX_FRAME) state = FRAME_BAD;
-		else {
-			frame[frameIdx] = '\0';
-			frameIdx++;
-		}
-	}
+    /* verify checksum */
+    if(state == FRAME_COMPLETE) { 
+        char* pcs8 = strstr(frame, CS8);
+        if(pcs8 == NULL) state = FRAME_BAD;
+        else {
+            const unsigned int  cs8 = strtol(pcs8 + sizeof(CS8) - 1, 0, 16);
+            const unsigned char cs8computed = checksum8(frame);
+            if(cs8 != cs8computed) state = FRAME_BAD;
+            *(pcs8 + strlen(CS8) - 1) = '\0'; /* updates frame! */
+        }
+    }
 
-	/* verify checksum */
-	if(state == FRAME_COMPLETE) { 
-		char* pcs8 = strstr(frame, CS8);
-		if(pcs8 == NULL) state = FRAME_BAD;
-		else {
-			const unsigned int  cs8 = strtol(pcs8 + sizeof(CS8) - 1, 0, 16);
-			const unsigned char cs8computed = checksum8(frame);
-			if(cs8 != cs8computed) state = FRAME_BAD;
-			*(pcs8 + strlen(CS8) - 1) = '\0'; /* updates frame! */
-		}
-	}
-
-	if(state == FRAME_BAD) //sth bad happened. reinit
-	{
-		state = FRAME_IN_PROGRESS;
-		for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
-		frameIdx = 0;
-	} else if(state == FRAME_COMPLETE)
-	{
+    if(state == FRAME_BAD) //sth bad happened. reinit
+    {
+        state = FRAME_IN_PROGRESS;
+        for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
+        frameIdx = 0;
+    } else if(state == FRAME_COMPLETE)
+    {
         uint16_t ignored_Tplat_ms;
-		/* get a pointer in frame to get fields*/
+        /* get a pointer in frame to get fields*/
         char *pl;
         if ((pl = payload(frame, INIT)) || !initSent) { //TODO: update initSent
             initSent = send_INIT(get_init_str());
@@ -494,11 +486,11 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-		// ok. done. Reinit frame.
-		state = FRAME_IN_PROGRESS;
-		for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
-		frameIdx = 0;
-	} //else state = FRAME_IN_PROGRESS => do nothing this time.
+        // ok. done. Reinit frame.
+        state = FRAME_IN_PROGRESS;
+        for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
+        frameIdx = 0;
+    } //else state = FRAME_IN_PROGRESS => do nothing this time.
 #ifndef WIN32
         // vPortYield();
 #endif
