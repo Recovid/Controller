@@ -12,7 +12,6 @@ const float   CALIB_UNUSABLE_PDIFF_LPS =   0.1f; //!< Part of Pdiff readings tha
 const uint8_t CALIB_PDIFF_SAMPLES_MIN  =  11   ; //!< For sliding average
 
 
-
 // ------------------------------------------------------------------------------------------------
 //! Environment simulation
 
@@ -34,3 +33,96 @@ float    EXHAL_VALVE_RATIO      =    1.; // no leak, no obstruction
 float    EXHAL_VALVE_P_RATIO    =    2.; // TODO /!\ motor_pep_steps/cmH2O taking into account motor_pep + valve surface ratio
 
 float    PATMO_VARIATION_MBAR   =   50.;
+
+// ------------------------------------------------------------------------------------------------
+//! HW model
+
+const float VTINSU_RATIO_MAX = .8f;
+
+uint16_t VTinsu_for_step[52][2] = {
+    { 1316,	78	},
+    { 1365,	98	},
+    { 1414,	103	},
+    { 1463,	108	},
+    { 1512,	114	},
+    { 1561,	120	},
+    { 1610,	125	},
+    { 1659,	131	},
+    { 1708,	137	},
+    { 1757,	143	},
+    { 1806,	149	},
+    { 1855,	156	},
+    { 1904,	163	},
+    { 1953,	169	},
+    { 2002,	177	},
+    { 2051,	184	},
+    { 2100,	192	},
+    { 2149,	200	},
+    { 2198,	208	},
+    { 2247,	216	},
+    { 2296,	225	},
+    { 2345,	235	},
+    { 2394,	244	},
+    { 2443,	253	},
+    { 2492,	263	},
+    { 2541,	278	},
+    { 2590,	295	},
+    { 2639,	315	},
+    { 2688,	332	},
+    { 2737,	347	},
+    { 2786,	359	},
+    { 2835,	372	},
+    { 2884,	385	},
+    { 2933,	398	},
+    { 2982,	411	},
+    { 3031,	424	},
+    { 3080,	438	},
+    { 3129,	452	},
+    { 3178,	466	},
+    { 3227,	481	},
+    { 3276,	496	},
+    { 3325,	512	},
+    { 3374,	527	},
+    { 3423,	542	},
+    { 3472,	558	},
+    { 3521,	574	},
+    { 3570,	590	},
+    { 3619,	606	},
+    { 3668,	623	},
+    { 3717,	640	},
+    { 3766,	656	},
+    { 3789,	670	}
+};
+
+uint16_t get_max_steps_for_Vol_mL(float Vol_mL)
+{
+    for (int s=0 ; s<COUNT_OF(VTinsu_for_step) ; s++) {
+        if (VTinsu_for_step[s][1] >= VTINSU_RATIO_MAX*Vol_mL) {
+            return s>0 ?
+                VTinsu_for_step[s-1][0] :
+                VTinsu_for_step[s  ][0] ; // TODO interpolate
+        }
+    }
+    return MOTOR_MAX;
+}
+
+// ================================================================================================
+#ifndef NTESTS
+#define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
+
+bool PRINT(test_max_steps_for_Vol_mL)
+    return TEST_EQUALS(1316     , get_max_steps_for_Vol_mL(100.f))
+        && TEST_EQUALS(2149     , get_max_steps_for_Vol_mL(250.f))
+        && TEST_EQUALS(3178     , get_max_steps_for_Vol_mL(600.f))
+        && TEST_EQUALS(3717     , get_max_steps_for_Vol_mL(810.f))
+        && TEST_EQUALS(MOTOR_MAX, get_max_steps_for_Vol_mL(999.f));
+}
+
+bool PRINT(TEST_CONFIGURATION)
+    return
+        test_max_steps_for_Vol_mL() &&
+        true;
+}
+
+#endif
+

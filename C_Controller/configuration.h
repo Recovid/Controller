@@ -42,4 +42,11 @@ extern float    EXHAL_VALVE_RATIO     ;
 
 extern float    PATMO_VARIATION_MBAR  ; // TODO Estimate required range to maintain precise measures and reliable alarms
 
+// ------------------------------------------------------------------------------------------------
+//! HW model
+
+const float VTINSU_RATIO_MAX;
+
+uint16_t get_max_steps_for_Vol_mL(float Vol_mL);
+
 #endif // CONFIGURATION_H

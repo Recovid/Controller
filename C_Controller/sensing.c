@@ -314,8 +314,6 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
     return last_step;
 }
 
-// ------------------------------------------------------------------------------------------------
-
 // ================================================================================================
 #ifndef NTESTS
 #define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
