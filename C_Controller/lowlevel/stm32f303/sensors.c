@@ -28,6 +28,9 @@ static uint8_t       _npa_measurement_buffer[2]	= { 0 };
 volatile sensors_state_t _sensor_state;
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
+static void readSDP();
+static void reqSDP();
+static void readNPA();
 
 
 static bool sensors_init(I2C_HandleTypeDef* hi2c) {
@@ -88,9 +91,23 @@ bool is_sensors_ok() {
 bool sensors_start() {
     // Start sensor state machine.
     // This state machine is managed in the I2C interupt routine.
-    _sensor_state = REQ_SDP_MEASUREMENT;
-	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+    reqSDP();
 	return true;
+}
+
+static void readSDP(){
+    _sensor_state= READ_SDP_MEASUREMENT;
+    HAL_I2C_Master_Receive_DMA(_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
+}
+
+static void reqSDP(){
+    _sensor_state= REQ_SDP_MEASUREMENT;
+    HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
+}
+
+static void readNPA(){
+    _sensor_state= READ_NPA_MEASUREMENT;
+    HAL_I2C_Master_Receive_DMA(_i2c, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
 }
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
@@ -127,13 +144,12 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				// TODO: Manage error status !!
 			}
 		}
-		_sensor_state= READ_SDP_MEASUREMENT;
-		HAL_I2C_Master_Receive_DMA(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
+		readSDP();
 
 		break;
 
-	case REQ_SDP_MEASUREMENT:
-		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
+	case REQ_SDP_MEASUREMENT:{
+	    if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
 			// retry
 			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
 			break;
@@ -143,10 +159,9 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			_sensor_state= STOPPED;
 			break;
 		}
-		_sensor_state= READ_SDP_MEASUREMENT;
-		HAL_I2C_Master_Receive_DMA(hi2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer) );
-		break;
-
+        readSDP();
+        break;
+	}
 	case READ_SDP_MEASUREMENT:
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
 			_sensor_state= READ_NPA_MEASUREMENT;
@@ -170,13 +185,11 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 
 				sensors_sample_flow(uncorrected_flow, dt_ms); // Flow (Pdiff) sensor is assumed to provide responses @ 200Hz
 			}
-			_sensor_state= REQ_SDP_MEASUREMENT;
-			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
-        }
-        else {
-			_sensor_state= READ_NPA_MEASUREMENT;
-			HAL_I2C_Master_Receive_DMA(hi2c, ADDR_NPA700B , (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer) );
+			readSDP();
 		}
+        else {
+            readNPA();
+   		}
 		break;
 	}
 }
