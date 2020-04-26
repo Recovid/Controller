@@ -392,7 +392,14 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-    }
+		// ok. done. Reinit frame.
+		state = FRAME_IN_PROGRESS;
+		for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
+		frameIdx = 0;
+	} //else state = FRAME_IN_PROGRESS => do nothing this time.
+#ifndef WIN32
+        // vPortYield();
+#endif
 }
 
 // ================================================================================================
