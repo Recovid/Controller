@@ -1,0 +1,33 @@
+#include "recovid.h"
+#include "monitoring.h"
+#include "controller.h"
+#include "breathing.h"
+
+
+
+void monitoring_run(void *args) {
+  UNUSED(args)
+  EventBits_t events;
+
+  while(true) {
+    mntr_printf("MNTR: Standby\n");
+    events= xEventGroupWaitBits(eventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    mntr_printf("MNTR: Started\n");
+
+    do {
+      wait_ms(500);
+      mntr_printf("MNTR: ...\n");
+
+
+
+      events= xEventGroupGetBits(eventFlags);
+    } while ( ( events & MONITORING_RUN_FLAG ) != 0 );
+
+    mntr_printf("MNTR: stopping\n");      
+
+    wait_ms(200);
+    xEventGroupSetBits(eventFlags, MONITORING_STOPPED_FLAG);
+
+
+  }
+}

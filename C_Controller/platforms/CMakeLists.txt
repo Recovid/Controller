@@ -1,0 +1,3 @@
+set(PLATFORM_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/${TARGET})
+
+add_subdirectory(${PLATFORM_SRC_DIR})
