@@ -323,42 +323,55 @@ enum receiveState {
 
 void send_and_recv()
 {
-    static bool initSent = true; // even if not received
+    static enum receiveState state = FRAME_IN_PROGRESS;
+    static char frame[MAX_FRAME+1] = {'\0'};
+    static int  frameIdx = 0;
 
-    // TODO Asynchronous send ??
+    static bool initSent = true; //TODO: used to send init only once. pb with hotplug.
 
-    char frame[MAX_FRAME+1] = "";
-    while (true) {
-        char *pf = frame;
-        for (int c = EOF; (c = uart_recv()) != '\n'; pf++) { // read until \n to make sure frame starts at a new line
-            if (c == EOF) {
-                return;
-            }
-            else if ((c<' ' && c!='\t') || 126<c ) { // filter out frames with C0, C1 characters but \t
-                pf = frame+MAX_FRAME;
-            }
-            else if (pf<(frame+MAX_FRAME)) {
-                *pf = c;
-            }
+    int c = ~EOF; /* init with value != EOF */
+
+    /* read from uart fifo until frame is complete or rx buffer empty */
+    while((state == FRAME_IN_PROGRESS && (c=uart_recv())!=EOF))
+    {
+        if(c=='\n') state = FRAME_COMPLETE;
+        /* non printable ascii chars */ 
+        else if ((c<' ' && c!='\t') || 126<c ) state = FRAME_BAD;
+        /* store char locally, check for overflow */
+        if(frameIdx > MAX_FRAME) state = FRAME_BAD;
+        else {
+            frame[frameIdx] = c;
+            frameIdx++;
             dbg_printf("%2X ",c);
         }
-        if ((frame+MAX_FRAME)<=pf) continue;
-        *(pf++)='\n';
-        *(pf++)='\0';
-        dbg_printf(frame);
+    }
+    /* don't need to close the char string, as all frame is always reinit to \0
+     * and verification is done that there is no overflow during read.
+     */
+
+    /* verify checksum */
+    if(state == FRAME_COMPLETE) { 
         char* pcs8 = strstr(frame, CS8);
-        if (!pcs8) continue;
+        if(pcs8 == NULL) state = FRAME_BAD;
+        else {
+            const unsigned int  cs8 = strtol(pcs8 + sizeof(CS8) - 1, 0, 16);
+            const unsigned char cs8computed = checksum8(frame);
+            if(cs8 != cs8computed) state = FRAME_BAD;
+            *(pcs8 + strlen(CS8) - 1) = '\0'; /* updates frame! */
+        }
+    }
 
-        unsigned int cs8 = 0;
-        cs8 = strtol(pcs8 + sizeof(CS8) - 1, 0, 16);
-
-        unsigned char cs8computed = checksum8(frame);
-        if (cs8!=cs8computed) continue;
-        *(pcs8 + strlen(CS8) - 1) = '\0';
-
+    if(state == FRAME_BAD) //sth bad happened. reinit
+    {
+        state = FRAME_IN_PROGRESS;
+        for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
+        frameIdx = 0;
+    } else if(state == FRAME_COMPLETE)
+    {
         uint16_t ignored_Tplat_ms;
-        const char *pl = NULL;
-        if ((pl = payload(frame, INIT)) || !initSent) {
+        /* get a pointer in frame to get fields*/
+        char *pl;
+        if ((pl = payload(frame, INIT)) || !initSent) { //TODO: update initSent
             initSent = send_INIT(get_init_str());
         }
         else if ((pl = payload(frame, SET_))) {
@@ -392,11 +405,11 @@ void send_and_recv()
         else {
             DEBUG_PRINTF("%s", frame); // Unknown
         }
-		// ok. done. Reinit frame.
-		state = FRAME_IN_PROGRESS;
-		for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
-		frameIdx = 0;
-	} //else state = FRAME_IN_PROGRESS => do nothing this time.
+        // ok. done. Reinit frame.
+        state = FRAME_IN_PROGRESS;
+        for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
+        frameIdx = 0;
+    } //else state = FRAME_IN_PROGRESS => do nothing this time.
 #ifndef WIN32
         // vPortYield();
 #endif
