@@ -141,8 +141,9 @@ bool sensors_start_sampling_flow()
     samples_Q_t_ms = 0.f;
     samples_Q_index = 0;
     sampling_Q = true;
-	light_green(On);
-
+#ifndef NDEBUG
+    light_green(On);
+#endif
     return sampling_Q;
 }
 
@@ -165,13 +166,18 @@ bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 #else
 bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
 {
-    UNUSED(read); //TODO read values
+    UNUSED(read);
     if (!sampling_Q) return false;
 
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
-        samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_ms;
-        samples_Q_index ++;
+    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps); i++) {
+        if (i<COUNT_OF(test_samples_Q_Lps)) {
+            samples_Q_Lps[i] = test_samples_Q_Lps[i];
+            samples_Q_t_ms  += dt_ms;
+            samples_Q_index ++;
+        }
+        else {
+            samples_Q_Lps[i] = -9999.f;
+        }
     }
     return true;
 }
@@ -192,48 +198,56 @@ bool sensors_sample_flow_low_C()
 bool sensors_stop_sampling_flow()
 {
     sampling_Q = false;
-	light_green(Off);
+#ifndef NDEBUG
+    light_green(Off);
+#endif
     return !sampling_Q;
 }
 
 //! \returns estimated latency (µs) between motor motion and Pdiff readings
 uint32_t compute_samples_average_and_latency_us()
 {
+    assert(COUNT_OF(samples_Q_Lps) == COUNT_OF(average_Q_Lps));
+
     bool unusable_samples = true;
-    uint32_t latency_us = 0;
+    float latency_us = 0;
     float sum = 0.f;
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i < COUNT_OF(average_Q_Lps); ++i) {
+    for (uint16_t i=0 ; i<COUNT_OF(average_Q_Lps)+CALIB_PDIFF_SAMPLES_MIN/2; ++i) {
         if (unusable_samples) {
             if (samples_Q_Lps[i] > CALIB_UNUSABLE_PDIFF_LPS) {
                 unusable_samples = false;
             }
             else {
-                latency_us += SAMPLES_T_US;
+                latency_us += PDIFF_DT_US;
             }
         }
         // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
-        sum += samples_Q_Lps[i];
+        if (i < get_samples_Q_index_size()) {
+            sum += samples_Q_Lps[i];
+        }
         if (i >= CALIB_PDIFF_SAMPLES_MIN) {
             sum -= samples_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN];
         }
 
-
-
-
-        if (i >= get_samples_Q_index_size() && (i >= 1 + CALIB_PDIFF_SAMPLES_MIN/2) ) {
-            average_Q_Lps[ (i-CALIB_PDIFF_SAMPLES_MIN/2) ] = average_Q_Lps[(i-CALIB_PDIFF_SAMPLES_MIN/2)- 1];
+        if (i < CALIB_PDIFF_SAMPLES_MIN/2) {
+            ; // do nothing for now
         }
-        else if ((CALIB_PDIFF_SAMPLES_MIN/2 ) <= i && (i<= get_samples_Q_index_size() - (CALIB_PDIFF_SAMPLES_MIN/2)) ) {
-            average_Q_Lps[(i-CALIB_PDIFF_SAMPLES_MIN/2)] = sum / CALIB_PDIFF_SAMPLES_MIN;
+        else if (CALIB_PDIFF_SAMPLES_MIN/2 <= i &&
+                 i < CALIB_PDIFF_SAMPLES_MIN-1) { // extrapolate initial average_Q_Lps at 0
+            average_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN/2] = 0.f;
+        }
+        else if (CALIB_PDIFF_SAMPLES_MIN-1 <= i &&
+                 (i+1+CALIB_PDIFF_SAMPLES_MIN/2) <= (get_samples_Q_index_size()+CALIB_PDIFF_SAMPLES_MIN/2)) { // CALIB_PDIFF_SAMPLES_MIN available
+            average_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN/2] = sum / CALIB_PDIFF_SAMPLES_MIN;
+        }
+        else if ((get_samples_Q_index_size()+CALIB_PDIFF_SAMPLES_MIN/2) < (i+1+CALIB_PDIFF_SAMPLES_MIN/2)) { // extrapolate average_Q_Lps using previous sample
+            average_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN/2] = average_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN/2-1];
         }
         else {
-			//if (i >= 1 + CALIB_PDIFF_SAMPLES_MIN/2) {
-			//	light_green(On);
-			//}
-            average_Q_Lps[i] = 0.f;
+            assert(false);
         }
     }
-    return latency_us;
+    return (uint32_t)latency_us;
 }
 
 uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
@@ -281,14 +295,11 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 //		}
         const float actual_Lps = average_Q_Lps[average_Q_index];
         float correction;
-		if(CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps))
-		{
-			light_red(On);
+        if (CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps)) {
 			correction = 1;
 		}
 		else {
 			correction = MAX(0.5, MIN(2.0f, desired_flow_Lps / actual_Lps));
-			light_red(Off);
 		}
 		corrections[i] = correction;
 
@@ -328,18 +339,18 @@ bool PRINT(test_non_negative_sensing)
 
 bool PRINT(test_Patmo_over_time)
     float last_Patmo = 0.f;
-for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
-    if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, get_sensed_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
-          TEST(last_Patmo != get_sensed_Patmo_mbar())))
-        return false;
-}
-return true;
+    for (uint32_t t_s=0; t_s < 60*60 ; t_s=wait_ms(60*1000/8)/1000) {
+        if (!(TEST_RANGE(1013-PATMO_VARIATION_MBAR, get_sensed_Patmo_mbar(), 1013+PATMO_VARIATION_MBAR) &&
+              TEST(last_Patmo != get_sensed_Patmo_mbar())))
+            return false;
+    }
+    return true;
 }
 
 bool flow_samples()
 {
     TEST_ASSUME(sensors_start_sampling_flow());
-    TEST_ASSUME(sensors_sample_flow(0, SAMPLES_T_US));
+    TEST_ASSUME(sensors_sample_flow(0, PDIFF_DT_US));
     TEST_ASSUME(sensors_stop_sampling_flow());
     return true;
 }
@@ -347,8 +358,19 @@ bool flow_samples()
 bool PRINT(test_compute_samples_average_and_latency_us)
     TEST_ASSUME(flow_samples());
     uint32_t latency_us = compute_samples_average_and_latency_us();
-    return TEST_EQUALS(10*SAMPLES_T_US, latency_us)
-       && TEST_FLT_EQUALS(2.7f, samples_Q_Lps[171]);
+    return TEST_EQUALS((uint32_t)(8.f*PDIFF_DT_US), latency_us)
+        && TEST_FLT_EQUALS(0.00f, average_Q_Lps[ 0])
+        && TEST_FLT_EQUALS(0.00f, average_Q_Lps[ 4])
+        && TEST_FLT_EQUALS(0.04f, average_Q_Lps[ 8]) // 1st usable sample
+        && TEST_FLT_EQUALS(0.50f, average_Q_Lps[19]) // 1st noisy sample
+        && TEST_FLT_EQUALS(0.79f, average_Q_Lps[29]) // 1st "plateau" sample
+        && TEST_FLT_EQUALS(1.29f, average_Q_Lps[37]) // 2nd noisy sample
+        && TEST_FLT_EQUALS(2.71f, average_Q_Lps[62]) // bump
+        && TEST_FLT_EQUALS(3.21f, average_Q_Lps[82]) // last averaged sample
+        && TEST_FLT_EQUALS(3.21f, average_Q_Lps[87]) // last actual sample
+        && TEST_FLT_EQUALS(3.21f, average_Q_Lps[88]) // 1st extrapolated sample
+        && TEST_FLT_EQUALS(3.21f, average_Q_Lps[COUNT_OF(average_Q_Lps)-1])
+        ;
 }
 
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
@@ -360,10 +382,10 @@ bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
 
 bool PRINT(TEST_SENSING)
     return
-        test_non_negative_sensing() &&
         test_compute_samples_average_and_latency_us() &&
         test_compute_motor_steps_and_Tinsu_ms() &&
         test_Patmo_over_time() &&
+        test_non_negative_sensing() &&
         true;
 }
 
