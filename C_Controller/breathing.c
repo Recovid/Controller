@@ -10,7 +10,7 @@ void breathing_run(void *args) {
 
 
   while(true) {
-    brth_printf("Breathing waiting for RUN signal\n");
+    brth_printf("Breathing - STANDBY\n");
     events= xEventGroupWaitBits(eventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
     brth_printf("Monitoring started\n");
 

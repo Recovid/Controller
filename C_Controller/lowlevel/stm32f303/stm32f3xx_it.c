@@ -115,7 +115,6 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-HAL_GPIO_WritePin(MAT_LED_RED_GPIO_Port, MAT_LED_RED_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
@@ -131,7 +130,6 @@ HAL_GPIO_WritePin(MAT_LED_RED_GPIO_Port, MAT_LED_RED_Pin, GPIO_PIN_RESET);
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-HAL_GPIO_WritePin(MAT_LED_RED_GPIO_Port, MAT_LED_RED_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)

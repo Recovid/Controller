@@ -27,8 +27,8 @@
 
 #define BREATHING_TASK_STACK_SIZE   (256)
 #define MONITORING_TASK_STACK_SIZE  (256)
-#define CONTROLLER_TASK_STACK_SIZE  (512)
-#define HMI_TASK_STACK_SIZE         (1024)
+#define CONTROLLER_TASK_STACK_SIZE  (256)
+#define HMI_TASK_STACK_SIZE         (1280)
 
 extern TaskHandle_t breathingTaskHandle;
 extern TaskHandle_t monitoringTaskHandle;

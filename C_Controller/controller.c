@@ -46,10 +46,6 @@ static bool load_settings();
 static int self_tests();
 
 
-void controller_init() {
-}
-
-
 void controller_run(void* args) {
   UNUSED(args);
   
@@ -78,6 +74,7 @@ void controller_run(void* args) {
     enable_Rpi(On);
     ctrl_printf("Starting RPi\n");
 
+    // TODO: Enable fan and all required startup actions
 
     ctrl_printf("Self tests\n");
     self_tests();

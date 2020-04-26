@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+const char* get_init_str();
+
 bool send_DATA(float P, float VolM, float Vol);
 bool send_DATA_X(float P, float VolM, float Vol, float Pplat, float PEP);
 bool send_RESP(float IE, float FR, float VTe, float VM, float Pcrete, float Pplat, float PEP);

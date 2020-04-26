@@ -278,7 +278,18 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
   /* USER CODE BEGIN TIM3_MspInit 1 */
 
   /* USER CODE END TIM3_MspInit 1 */
+  } else if(htim_base->Instance==TIM7)
+  {
+  /* USER CODE BEGIN TIM7_MspInit 0 */
+
+  /* USER CODE END TIM7_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM7_CLK_ENABLE();
+  /* USER CODE BEGIN TIM7_MspInit 1 */
+
+  /* USER CODE END TIM7_MspInit 1 */
   }
+
 
 }
 
@@ -437,8 +448,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     __HAL_LINKDMA(huart,hdmatx,hdma_uart4_tx);
 
     /* UART4 interrupt Init */
-    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_RX_IRQn, 5, 0);    // TODO Define priority in BSP (recovid_RevB.h)
-    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_TX_IRQn, 5, 0);    // TODO Define priority in BSP (recovid_RevB.h)
+    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_RX_IRQn, 5, 1);    // TODO Define priority in BSP (recovid_RevB.h)
+    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_TX_IRQn, 5, 1);    // TODO Define priority in BSP (recovid_RevB.h)
     HAL_NVIC_SetPriority(HMI_UART_IRQn, 5, 0);              // TODO Define priority in BSP (recovid_RevB.h)
   }
   else if(huart->Instance==USART2)

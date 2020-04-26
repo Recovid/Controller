@@ -10,7 +10,7 @@ void monitoring_run(void *args) {
   EventBits_t events;
 
   while(true) {
-    mntr_printf("Monitoring waiting for RUN signal\n");
+    mntr_printf("Monitoring - STANDBY\n");
     events= xEventGroupWaitBits(eventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
     mntr_printf("Monitoring started\n");
 

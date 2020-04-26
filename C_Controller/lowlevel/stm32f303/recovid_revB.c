@@ -6,6 +6,9 @@
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
 DMA_HandleTypeDef hdma_i2c1_tx;
+TIM_HandleTypeDef htim7;
+
+
 
 TIM_HandleTypeDef htim2;
 DMA_HandleTypeDef hdma_tim2_up;
@@ -30,6 +33,7 @@ static bool MX_UART4_Init(void);
 static bool MX_I2C1_Init(void);
 static bool MX_TIM2_Init(void);
 static bool MX_TIM3_Init(void);
+static bool MX_TIM7_Init(void);
 
 
 #ifdef __GNUC__
@@ -54,6 +58,7 @@ int init_hardware()
     if(!MX_I2C1_Init()) return false;
     if(!MX_TIM2_Init()) return false;
     if(!MX_TIM3_Init()) return false;
+    if(!MX_TIM7_Init()) return false;
 
 	return true;
 }
@@ -275,6 +280,44 @@ static bool MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static bool MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = (SystemCoreClock / 1000000) -1;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 0xFFFF;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    return false;
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    return false;
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+  return true;
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -355,19 +398,22 @@ static bool MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 5);         // TIM2 Motor
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 1);         // TIM2 Motor
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);         // TIM3 Motor PEP
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 1);         // TIM3 Motor PEP
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 1);         // I2C1 TX Sensors
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 1);         // I2C1 RX Sensors
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
   /* DMA2_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 0);         // UART HMI RX
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 1);         // UART HMI RX
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
   /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 0);         // UART HMI TX
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 1);         // UART HMI TX
   HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
 
     return true;

@@ -45,7 +45,7 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 
 bool motor_stop() {
   HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
-  HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
+  //HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
   _moving=false;
   return true;
 }

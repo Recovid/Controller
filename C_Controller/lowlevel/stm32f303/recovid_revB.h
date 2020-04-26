@@ -33,6 +33,9 @@ extern "C"
 
 extern I2C_HandleTypeDef hi2c1;           // Sensors I2C
 extern DMA_HandleTypeDef hdma_i2c1_rx;    // Sensors DMA RX
+extern DMA_HandleTypeDef hdma_i2c1_rt;    // Sensors DMA RX
+extern TIM_HandleTypeDef htim7;           // Timer us for volume integration
+
 
 extern TIM_HandleTypeDef htim2;           // BAVU Motor steps timer
 extern DMA_HandleTypeDef hdma_tim2_up;    // BAVU Motor DMA UP
@@ -58,6 +61,8 @@ extern UART_HandleTypeDef huart2;         // Dbg uart
 #define SENSOR_SCL_GPIO_Port GPIOB
 #define SENSOR_SDA_Pin GPIO_PIN_9
 #define SENSOR_SDA_GPIO_Port GPIOB
+
+#define timer_us      htim7
 
 
 
@@ -232,7 +237,7 @@ void fs_enabled_irq();
 #define HMI_TX_SYNC_TIMEOUT_MS        (2000)
 #define HMI_RX_BUFFER_SIZE            (1024)
 #define HMI_RX_DMA_BUFFER_SIZE        (512)
-#define HMI_RX_LINE_TIMEOUT           (30)
+#define HMI_RX_LINE_TIMEOUT           (512*8*1000)
 
 
 
