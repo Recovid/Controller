@@ -314,6 +314,13 @@ const char* payload(const char* frame, const char* prefix)
     return strncmp(frame, prefix, prefix_length)!=0 ? NULL : frame+prefix_length;
 }
 
+/* Receiving state */
+enum receiveState {
+    FRAME_BAD,         /* bad frame, incorrect character detected                 */
+    FRAME_IN_PROGRESS, /* a part of frame is received. Part is in 'frame'         */
+    FRAME_COMPLETE     /* the end of frame has been received. Should be processed */
+};
+
 void send_and_recv()
 {
     static bool initSent = true; // even if not received
