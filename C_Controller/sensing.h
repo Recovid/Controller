@@ -22,8 +22,6 @@ float get_sensed_Patmo_mbar  ();
 
 float get_sensed_VMe_Lpm();
 
-float get_last_sensed_ms();
-
 void sensors_sample_VolM( int16_t read, uint32_t dt_ms);
 void sensors_sample_P   (uint16_t read);
 
@@ -36,16 +34,12 @@ uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
 uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL);
 
 //! \returns the actual count of steps planned due to MOTOR_MAX
-uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps);
-
-//! \returns the actual count of steps planned due to MOTOR_MAX
 uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps);
 
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others
 void sense_and_compute(RespirationState state);
 
-extern  uint16_t steps_t_us[MOTOR_MAX];
-extern  uint16_t last_step;
+extern uint16_t steps_t_us[MOTOR_MAX];
 
 #define SAMPLING_SIZE	(300)
 

@@ -6,7 +6,8 @@ const float MOTOR_STEP_TIME_US_MIN = 100.f; // V1 was 110 with some risks to los
 
 const float SAMPLES_T_US = 10000.f;
 
-const float PDIFF_DT_US = 4763.71f;
+const float FLOW_DT_US = 4763.71f;
+const float FLOW_CORRECTION_MIN = 0.8f;
 
 // Calibration
 const float   CALIB_PDIFF_LPS_RATIO    = 105.00f; //! To convert raw readings to Lps

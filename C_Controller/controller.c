@@ -224,10 +224,14 @@ float get_sensed_PEP_cmH2O() { return PEP_cmH2O;}
 
 static float VMe_Lpm      = 0.f;
 
-static uint32_t last_sensed_ms =0;
+static uint32_t last_sensed_ms = 0;
+
+float get_last_sensed_ms() { return last_sensed_ms; }
 
 void enter_state(RespirationState new)
 {
+    static uint16_t last_step = 0;
+
 #ifndef NDEBUG
     const char* current = NULL;
     switch (state) {
@@ -259,7 +263,7 @@ void enter_state(RespirationState new)
         sensors_start_sampling_flow();
 
         valve_inhale();
-		if(last_step != 0) {
+        if (last_step != 0) {
             motor_press(steps_t_us, last_step);
 		}
 		else {
@@ -279,16 +283,13 @@ void enter_state(RespirationState new)
         motor_release();
 		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;
-		//last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+        // TODO last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
 	}
 	else if(state==ExhalationPause) {
         valve_inhale();
         motor_release();
 	}
 }
-
-
-
 
 // TODO
 //#ifndef NTESTS
@@ -314,30 +315,29 @@ void cycle_respiration()
     const uint32_t Tpexp_ms = get_command_Tpexp_ms  ();
 //#endif
 
-	if(last_sensed_ms + 25 <= get_time_ms())
-	{
-		float display = get_sensed_Vol_mL();
-		//int current_correction_idx = COUNT_OF(steps_t_us)*( get_setting_T_ms() - respi_start_ms) / 1000;
-		//if(current_correction_idx < COUNT_OF(steps_t_us))
-		//{
-		//	display = corrections[current_correction_idx] * 300;
-		//}
-		//else {
-		//	display = 0;
-		//}
-		//if(current_respiration_state() == Insufflation)
-		//{
-		//	int current_average_idx = (float) COUNT_OF(average_Q_Lps) * (((float) (get_setting_T_ms() - respi_start_ms)) /1000.0f);
-		//	if(current_average_idx < COUNT_OF(average_Q_Lps))
-		//	{
-		//		display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
-		//	}
-		//}
-		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display);
-		last_sensed_ms = get_time_ms();
-	}
-	
-	if (Unknown == state) {
+    if (last_sensed_ms + 25 <= get_time_ms())
+    {
+        float display = get_sensed_Vol_mL();
+#ifndef NDEBUG
+//		int current_correction_idx = COUNT_OF(steps_t_us)*(get_setting_T_ms() - respi_start_ms)/1000;
+//		if (current_correction_idx < COUNT_OF(steps_t_us)) {
+//			display = corrections[current_correction_idx] * 300;
+//		}
+//		else {
+//			display = 0;
+//		}
+//		if (current_respiration_state() == Insufflation) {
+//			int current_average_idx = (float) COUNT_OF(average_Q_Lps) * (((float) (get_setting_T_ms() - respi_start_ms))/1000.0f);
+//			if (current_average_idx < COUNT_OF(average_Q_Lps)) {
+//				display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
+//			}
+//		}
+        send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display);
+#endif
+        last_sensed_ms = get_time_ms();
+    }
+
+    if (Unknown == state) {
         send_INIT(get_init_str());
         enter_state(Insufflation);
     }

@@ -14,10 +14,8 @@
 
 // DATA
 
-static uint32_t last_sense_ms = 0;
-
 uint16_t steps_t_us[MOTOR_MAX];
-uint16_t last_step = 0;
+
 // Updated by sensors.c
 
 static float current_VolM_Lpm = 0.f;
@@ -76,8 +74,6 @@ float get_sensed_P_cmH2O()
     return Paw_cmH2O;
 #endif
 }
-
-float get_last_sensed_ms() { return last_sense_ms; }
 
 uint16_t get_samples_Q_index_size() { return samples_Q_index; }
 
@@ -188,7 +184,7 @@ bool sensors_sample_flow_low_C()
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_t_ms  += FLOW_DT_US;
         samples_Q_index ++;
     }
     return true;
@@ -218,7 +214,7 @@ uint32_t compute_samples_average_and_latency_us()
                 unusable_samples = false;
             }
             else {
-                latency_us += PDIFF_DT_US;
+                latency_us += FLOW_DT_US;
             }
         }
         // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
@@ -250,79 +246,83 @@ uint32_t compute_samples_average_and_latency_us()
     return (uint32_t)latency_us;
 }
 
-uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
+//! \returns a step_t index bounded with COUNT_OF(steps_t_us)
+uint16_t bounded_step_t(uint16_t step)
 {
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int i = 0; i < COUNT_OF(steps_t_us); i++)
-    {
-        if(i < max_steps) {
-		steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-        }
-        else {
-		steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
-        }
+    return MIN(step, COUNT_OF(steps_t_us));
+}
+
+//! \returns a step_t_us bounded with required acceleration and deceleration
+//! \warning step and nb_steps must be bounded
+uint16_t bounded_step_t_us(uint16_t step_t_us, uint16_t step, uint16_t nb_steps)
+{
+    assert(nb_steps==bounded_step_t(nb_steps));
+
+    if (nb_steps < step) {
+        return UINT16_MAX;
     }
-    motor_press(steps_t_us, max_steps);
-    return max_steps;
+
+    const uint16_t ACCEL_MIN_US = (ACCEL_STEPS <= step) ? 0 :
+        (ACCEL_STEP_T_US - ACCEL_STEP_T_US/ACCEL_STEPS*step);
+
+    const uint16_t DECEL_MIN_US = (step <= nb_steps-DECEL_STEPS) ? 0 :
+        (DECEL_STEP_T_US - DECEL_STEP_T_US/DECEL_STEPS*(nb_steps-step));
+
+    return MAX(step_t_us, MAX(MOTOR_STEP_TIME_US_MIN, MAX(ACCEL_MIN_US, DECEL_MIN_US)));
 }
 
 uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
 {
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
-    motor_press(steps_t_us, nb_steps);
-    return max_steps;
+    const uint16_t NB_STEPS = bounded_step_t(nb_steps);
+    for (uint16_t i=0; i<COUNT_OF(steps_t_us); i++)
+    {
+        steps_t_us[i] = bounded_step_t_us(step_t_us, i, NB_STEPS);
+    }
+    return NB_STEPS;
 }
 
-float corrections[MOTOR_MAX];
-//! \returns last steps_t_us motion to reach vol_mL
+uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
+{
+    const uint16_t NB_STEPS = compute_constant_motor_steps(step_t_us, nb_steps);
+    return motor_press(steps_t_us, NB_STEPS);
+    return NB_STEPS;
+}
+
+//! \returns max_steps to reach vol_mL
+//! \param desired_flow_Lps must not be 0
 uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 {
-    uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
-//	sprintf(buf, "latency : %d\n", latency_us);
-//	hardware_serial_write_data(buf, strlen(buf)); 
-//	sprintf(buf, "get_samples_Q_index_size : %d\n", get_samples_Q_index_size());
-//	hardware_serial_write_data(buf, strlen(buf)); 
+    assert(!CHECK_FLT_EQUALS(0.0f, desired_flow_Lps));
 
-    uint32_t last_step = 0;
-    float Tinsu_us = 0.f;
+    uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
+    uint32_t max_steps  = get_max_steps_for_Vol_mL(vol_mL);
+
+    uint32_t Tinsu_us = 0; // uint32_t is enough to not wrap-around
+    bool flow_plateau = false;
     for (uint16_t i=0 ; i<COUNT_OF(steps_t_us) ; ++i) {
-        uint16_t Q_index = (Tinsu_us + latency_us) / SAMPLES_T_US;
+        uint16_t Q_index = (float)(Tinsu_us + latency_us) / FLOW_DT_US;
         const uint16_t average_Q_index = MIN(get_samples_Q_index_size()-(1+CALIB_PDIFF_SAMPLES_MIN/2),Q_index);
+#ifndef NDEBUG
 //		if(i % 100 == 0) {
 //			sprintf(buf, "Q_Index : %d\n", Q_index);
 //			hardware_serial_write_data(buf, strlen(buf)); 
 //		}
+#endif
         const float actual_Lps = average_Q_Lps[average_Q_index];
-        float correction;
-        if (CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps)) {
-			correction = 1;
-		}
-		else {
-			correction = MAX(0.5, MIN(2.0f, desired_flow_Lps / actual_Lps));
-		}
-		corrections[i] = correction;
-
-        const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)steps_t_us[i]) / correction);
-        const float vol = Tinsu_us/1000/*ms*/ * desired_flow_Lps;
-		Tinsu_us += new_step_t_us;
-		if(new_step_t_us < MOTOR_STEP_TIME_INIT - (A*i)) {
-			steps_t_us[i] = MOTOR_STEP_TIME_INIT - (A*i);
-			last_step = i;
-		}
-		else if (vol < 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10%
-			steps_t_us[i] = new_step_t_us;
-			last_step = i;
-		}
-		else {
-			steps_t_us[i] = MIN(UINT16_MAX, new_step_t_us + (A)*(i-last_step));
+        if (!CHECK_FLT_EQUALS(0.0f, actual_Lps)) {
+            float correction = desired_flow_Lps / actual_Lps;
+            if (flow_plateau || correction < 1.f/FLOW_CORRECTION_MIN) {
+                flow_plateau = true;
+                correction = MAX(FLOW_CORRECTION_MIN, MIN(1.f/FLOW_CORRECTION_MIN, correction));
+            }
+            steps_t_us[i] = bounded_step_t_us(((float)steps_t_us[i]) / correction, i, max_steps);
+            Tinsu_us -= steps_t_us[i];
 		}
 //#ifndef NTESTS
-//            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
+//        DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
 //#endif
     }
-//    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
-    return last_step;
+    return max_steps;
 }
 
 // ================================================================================================
@@ -350,7 +350,7 @@ bool PRINT(test_Patmo_over_time)
 bool flow_samples()
 {
     TEST_ASSUME(sensors_start_sampling_flow());
-    TEST_ASSUME(sensors_sample_flow(0, PDIFF_DT_US));
+    TEST_ASSUME(sensors_sample_flow(0, FLOW_DT_US));
     TEST_ASSUME(sensors_stop_sampling_flow());
     return true;
 }
@@ -358,7 +358,7 @@ bool flow_samples()
 bool PRINT(test_compute_samples_average_and_latency_us)
     TEST_ASSUME(flow_samples());
     uint32_t latency_us = compute_samples_average_and_latency_us();
-    return TEST_EQUALS((uint32_t)(8.f*PDIFF_DT_US), latency_us)
+    return TEST_EQUALS((uint32_t)(8.f*FLOW_DT_US), latency_us)
         && TEST_FLT_EQUALS(0.00f, average_Q_Lps[ 0])
         && TEST_FLT_EQUALS(0.00f, average_Q_Lps[ 4])
         && TEST_FLT_EQUALS(0.04f, average_Q_Lps[ 8]) // 1st usable sample
@@ -375,15 +375,47 @@ bool PRINT(test_compute_samples_average_and_latency_us)
 
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
     TEST_ASSUME(flow_samples());
-    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
-    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
-    return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
+    uint32_t max_steps = compute_motor_steps_and_Tinsu_ms(1.0f, 600.f);
+    return TEST_EQUALS(3178, max_steps); // TODO
+}
+
+bool PRINT(test_bounded_step_t)
+    const uint16_t UNBOUNDED_STEP_T_US = MAX(ACCEL_STEP_T_US, DECEL_STEP_T_US);
+    return TEST_EQUALS(MOTOR_MAX             , bounded_step_t(MOTOR_MAX  ))
+        && TEST_EQUALS(MOTOR_MAX             , bounded_step_t(MOTOR_MAX+1))
+        && TEST_EQUALS(UNBOUNDED_STEP_T_US   , bounded_step_t_us(UNBOUNDED_STEP_T_US, 0          , MOTOR_MAX))
+        && TEST_EQUALS(UNBOUNDED_STEP_T_US   , bounded_step_t_us(UNBOUNDED_STEP_T_US, ACCEL_STEPS, MOTOR_MAX))
+        && TEST_EQUALS(UNBOUNDED_STEP_T_US   , bounded_step_t_us(UNBOUNDED_STEP_T_US, DECEL_STEPS, MOTOR_MAX))
+        && TEST_EQUALS(UNBOUNDED_STEP_T_US   , bounded_step_t_us(UNBOUNDED_STEP_T_US, MOTOR_MAX  , MOTOR_MAX))
+        && TEST_EQUALS(UINT16_MAX            , bounded_step_t_us(UNBOUNDED_STEP_T_US, MOTOR_MAX+1, MOTOR_MAX))
+        && TEST_EQUALS(ACCEL_STEP_T_US       , bounded_step_t_us(0, 0                      , MOTOR_MAX))
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, bounded_step_t_us(0, ACCEL_STEPS            , MOTOR_MAX))
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, bounded_step_t_us(0, MOTOR_MAX-DECEL_STEPS  , MOTOR_MAX))
+        && TEST_EQUALS(DECEL_STEP_T_US       , bounded_step_t_us(0, MOTOR_MAX              , MOTOR_MAX))
+        && TEST_EQUALS(ACCEL_STEP_T_US       , bounded_step_t_us(0, 0                      , ACCEL_STEPS+DECEL_STEPS))
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, bounded_step_t_us(0, ACCEL_STEPS            , ACCEL_STEPS+DECEL_STEPS))
+        && TEST_EQUALS(DECEL_STEP_T_US       , bounded_step_t_us(0, ACCEL_STEPS+DECEL_STEPS, ACCEL_STEPS+DECEL_STEPS))
+        && TEST_EQUALS(UNBOUNDED_STEP_T_US   , bounded_step_t_us(0, 0, 0))
+        && TEST_EQUALS(UINT16_MAX            , bounded_step_t_us(0, 1, 0))
+        ;
+}
+
+bool PRINT(test_compute_constant_motor_steps)
+    uint32_t max_steps = compute_constant_motor_steps(50, MOTOR_MAX/2);
+    return TEST_EQUALS(ACCEL_STEP_T_US       , steps_t_us[0          ])
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, steps_t_us[ACCEL_STEPS])
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, steps_t_us[DECEL_STEPS])
+        && TEST_EQUALS(DECEL_STEP_T_US       , steps_t_us[max_steps  ])
+        && TEST_EQUALS(UINT16_MAX            , steps_t_us[max_steps+1])
+        ;
 }
 
 bool PRINT(TEST_SENSING)
     return
+        test_bounded_step_t() &&
         test_compute_samples_average_and_latency_us() &&
         test_compute_motor_steps_and_Tinsu_ms() &&
+        test_compute_constant_motor_steps() &&
         test_Patmo_over_time() &&
         test_non_negative_sensing() &&
         true;

@@ -20,6 +20,9 @@ typedef enum { Ajustement, Maintien } PEPState;
 
 void cycle_respiration();
 
+//! \returns last time sensed DATA was sent
+float get_last_sensed_ms();
+
 const char *get_init_str();
 
 #ifndef NTESTS

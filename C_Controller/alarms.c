@@ -2,7 +2,8 @@
 
 #include <string.h>
 
-#include "sensing.h" //  to use sensed values that depend on controller state
+#include "sensing.h" // to use sensed values
+#include "controller.h" // to use computed values that depend on controller state
 #include "ihm_communication.h" // to send alarms
 #include "lowlevel/include/lowlevel.h"
 
