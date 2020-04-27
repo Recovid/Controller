@@ -76,7 +76,7 @@ int main(int argc, const char** argv)
         cycle_respiration();
         if (t_ms % 25) { // 40Hz
             update_alarms();
-            send_and_recv();
+            ihm_recv();
             if (is_soft_reset_asked() && soft_reset()) { // FIXME Let cycle_respiration handle that
                 return 0;
             }

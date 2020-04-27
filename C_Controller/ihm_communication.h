@@ -109,7 +109,7 @@ bool send_ALRM(uint32_t alarms);
 //! - update controller settings and acknowledge modified value
 //! - answer to INIT
 //! \returns false if soft reset received
-void send_and_recv();
+void ihm_recv();
 
 #ifndef NTESTS
 bool TEST_IHM();

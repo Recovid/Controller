@@ -13,6 +13,6 @@ void TaskMessageManagement(void* task_param)  // This is a task.
   while (true) // A Task shall never return or exit.
   {
     sleepPeriodic(task);
-    send_and_recv();
+    ihm_recv();
   }
 }
