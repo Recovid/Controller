@@ -20,6 +20,7 @@ add_library(recovid_revB OBJECT
     indicators.c
     pep_valve.c
     gpio.c
+    bmp280.c
 )
 
 target_include_directories(recovid_revB PUBLIC 
