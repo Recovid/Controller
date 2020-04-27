@@ -309,7 +309,10 @@ uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
 //		}
 #endif
         const float actual_Lps = average_Q_Lps[average_Q_index];
-        if (!CHECK_FLT_EQUALS(0.0f, actual_Lps)) {
+        if (CHECK_FLT_EQUALS(0.0f, actual_Lps)) {
+            steps_t_us[i] = bounded_step_t_us(MOTOR_STEP_TIME_US_MIN, i, max_steps);
+        }
+        else {
             float correction = desired_flow_Lps / actual_Lps;
             if (flow_plateau || correction < 1.f/FLOW_CORRECTION_MIN) {
                 flow_plateau = true;
@@ -376,7 +379,12 @@ bool PRINT(test_compute_samples_average_and_latency_us)
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
     TEST_ASSUME(flow_samples());
     uint32_t max_steps = compute_motor_steps_and_Tinsu_ms(1.0f, 600.f);
-    return TEST_EQUALS(3178, max_steps); // TODO
+    return TEST_EQUALS(ACCEL_STEP_T_US       , steps_t_us[0          ])
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, steps_t_us[ACCEL_STEPS])
+        && TEST_EQUALS(MOTOR_STEP_TIME_US_MIN, steps_t_us[DECEL_STEPS])
+        && TEST_EQUALS(DECEL_STEP_T_US       , steps_t_us[max_steps  ])
+        && TEST_EQUALS(UINT16_MAX            , steps_t_us[max_steps+1])
+        && TEST_EQUALS(3178, max_steps); // TODO
 }
 
 bool PRINT(test_bounded_step_t)
