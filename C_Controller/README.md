@@ -36,8 +36,9 @@ C_Controller $ ./C_Controller -s /dev/pts/3 # Replace with output of socat
 # How to build real firmware
 
 Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
+If you previously run the `native` target, don't forget to remove the `CMakeFiles` directory before running cmake.
 
-Output will be on UART4 only (as it's incompatible with I2C)
+Output will be on UART4 only (as it's incompatible with I2C).
 
 ## Using windows
 
@@ -79,3 +80,4 @@ make -j16 C_Controller.stm32f303.elf
 make -j16 C_Controller.stm32f303.elf.flash
 
 ````
+
