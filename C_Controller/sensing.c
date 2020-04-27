@@ -7,6 +7,7 @@
 #include "configuration.h"
 #include "ihm_communication.h"
 #include "lowlevel/include/lowlevel.h"
+#include "platform.h"
 
 #ifndef NTESTS
 #include "flow_samples.h"
@@ -26,13 +27,14 @@ static float current_Vol_mL   = 0.f;
 
 static volatile uint16_t raw_P     = 0.f;
 static volatile int16_t raw_VolM  = 0.f;
-static volatile uint32_t raw_dt_ms = 0.f;
+static volatile uint32_t raw_dt_us = 0.f;
 
-static volatile float    samples_Q_t_ms  = 0.f;
+static volatile float    samples_Q_t_us  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
 float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE]; // > max Tinsu_ms
 float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 // ------------------------------------------------------------------------------------------------
@@ -94,8 +96,9 @@ float get_sensed_Patmo_mbar()
 
 // ------------------------------------------------------------------------------------------------
 
-void sensors_sample_P(uint16_t read)
+void sensors_sample_P(uint16_t read, uint16_t dt_us)
 {
+	UNUSED(dt_us);
     raw_P = read;
 	compute_corrected_pressure();
 }
@@ -124,15 +127,15 @@ void compute_corrected_flow_volume()
         temp_flow_Lpm = uncorrected_flow_Lpm * 0.87f;
     }
 
-    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * raw_dt_ms/1000.f/*s*/;
-    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_ms;
+    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * raw_dt_us/1000000.f/*s*/;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_us * 1000.f;
 }
 
 static char buf[200];
 
 bool sensors_start_sampling_flow()
 {
-    samples_Q_t_ms = 0.f;
+    samples_Q_t_us = 0.f;
     samples_Q_index = 0;
     sampling_Q = true;
 	light_green(On);
@@ -141,30 +144,32 @@ bool sensors_start_sampling_flow()
 }
 
 #ifdef NTESTS
-bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
+bool sensors_sample_flow(int16_t read, uint16_t dt_us)
 {
 	raw_VolM = read;
-	raw_dt_ms = dt_ms;
+	raw_dt_us = dt_us;
 	compute_corrected_flow_volume();
 
 	if (!sampling_Q) return false;
 
 	if(samples_Q_index < SAMPLING_SIZE) {
 		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
-		samples_Q_t_ms  += dt_ms;
+		samples_Q_Lps_dt_us[samples_Q_index]  = dt_us;
+		samples_Q_t_us  += dt_us;
 		samples_Q_index++ ;
 	}
     return true;
 }
 #else
-bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
+bool sensors_sample_flow(int16_t read, uint32_t dt_us)
 {
     UNUSED(read); //TODO read values
     if (!sampling_Q) return false;
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_ms;
+        samples_Q_Lps_dt_us[i] = dt_us;
+        samples_Q_t_us  += dt_us;
         samples_Q_index ++;
     }
     return true;
@@ -176,7 +181,7 @@ bool sensors_sample_flow_low_C()
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_t_us  += SAMPLES_T_US;
         samples_Q_index ++;
     }
     return true;
@@ -186,7 +191,7 @@ bool sensors_sample_flow_low_C()
 bool sensors_stop_sampling_flow()
 {
     sampling_Q = false;
-	light_green(Off);
+    sampling_P = false;
     return !sampling_Q;
 }
 
