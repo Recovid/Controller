@@ -18,6 +18,7 @@ add_library(platform OBJECT
     indicators.c
     pep_valve.c
     gpio.c
+    bmp280.c
 )
 
 target_include_directories(platform PUBLIC 
