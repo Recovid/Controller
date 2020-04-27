@@ -2,6 +2,8 @@
 #include "controller.h"
 #include "breathing.h"
 #include "monitoring.h"
+#include "defaults.h"
+
 
 #include <math.h>
 
@@ -83,24 +85,29 @@ void controller_run(void* args) {
 
     // Start breathing and monitoring and hmi
     ctrl_printf("CTRL: Starting breathing, monitoring and hmi tasks\n");
-    xEventGroupSetBits(eventFlags, ((BREATHING_RUN_FLAG | MONITORING_RUN_FLAG | HMI_RUN_FLAG)));
+    // xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
+    // wait_ms(100);
+    xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
+    wait_ms(100);
+    // xEventGroupSetBits(ctrlEventFlags, HMI_RUN_FLAG );
+    // wait_ms(100);
     
     while(!is_Failsafe_Enabled()) {
       // TODO Implement controller logic
       // check monitoring process
       // check breathing process
       
-      wait_ms(5);
+      wait_ms(20);
     }
 
     ctrl_printf("CTRL: Stopping breathing, monitoring and hmi tasks\n");
-    xEventGroupClearBits(eventFlags, (BREATHING_RUN_FLAG | MONITORING_RUN_FLAG | HMI_RUN_FLAG));
+    xEventGroupClearBits(ctrlEventFlags, (BREATHING_RUN_FLAG | MONITORING_RUN_FLAG | HMI_RUN_FLAG));
 
     EventBits_t sync;
     ctrl_printf("CTRL: Waiting for breathing, monitoring and hmi tasks to stop\n");
     do {
       // TODO implement retry logic and eventually kill tasks !!
-      sync = xEventGroupWaitBits(eventFlags, (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG), pdTRUE, pdTRUE, 200/portTICK_PERIOD_MS);
+      sync = xEventGroupWaitBits(ctrlEventFlags, (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG), pdTRUE, pdTRUE, 200/portTICK_PERIOD_MS);
     } while( (sync & (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG)) != (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG));
 
     ctrl_printf("CTRL: breathing, monitoring and hmi tasks stopped\n");
@@ -244,8 +251,8 @@ static void reset_settings() {
     setting_Vmax_Lpm= DEFAULT_setting_Vmax_Lpm;
     setting_EoI_ratio_x10 = DEFAULT_setting_EoI_ratio_x10;
     setting_PEP_cmH2O = DEFAULT_setting_PEP_cmH2O;
-    setting_Pmax_cmH2O= DEFAULT_setting_PEPmax_cmH2O;
-    setting_Pmin_cmH2O= DEFAULT_setting_PEPmin_cmH2O;
+    setting_Pmax_cmH2O= DEFAULT_setting_Pmax_cmH2O;
+    setting_Pmin_cmH2O= DEFAULT_setting_Pmin_cmH2O;
     setting_VTmin_mL  = DEFAULT_setting_VTmin_mL;
     setting_VTmax_mL  = DEFAULT_setting_VTmax_mL;
     setting_FRmin_pm  = DEFAULT_setting_FRmin_pm;

@@ -3,13 +3,31 @@
 
 
 #include "common.h"
-#include "settings.h"
 #include "platform.h"
 
 #include <FreeRTOS.h>
 #include <task.h>
 #include <semphr.h>
 #include <event_groups.h>
+
+
+#ifndef NDEBUG
+#define DEBUG
+#endif
+
+
+#ifdef DEBUG
+#define DEBUG_CONTROLLER
+#define DEBUG_BREATHING
+//#define DEBUG_MONITOR
+//#define DEBUG_HMI
+#endif
+
+
+
+
+
+
 
 
 
@@ -26,9 +44,9 @@
 #define HMI_TASK_PRIORITY           (TASK_PRIORITY_BELOW_NORMAL)
 
 #define BREATHING_TASK_STACK_SIZE   (768)
-#define MONITORING_TASK_STACK_SIZE  (768)
+#define MONITORING_TASK_STACK_SIZE  (512)
 #define CONTROLLER_TASK_STACK_SIZE  (768)
-#define HMI_TASK_STACK_SIZE         (1024)
+#define HMI_TASK_STACK_SIZE         (1152)
 
 extern TaskHandle_t breathingTaskHandle;
 extern TaskHandle_t monitoringTaskHandle;
@@ -43,22 +61,37 @@ extern TaskHandle_t hmiTaskHandle;
 #define MONITORING_STOPPED_FLAG   (1 << 5)
 #define HMI_STOPPED_FLAG          (1 << 6)
 
+extern EventGroupHandle_t ctrlEventFlags;
 
 
-extern EventGroupHandle_t eventFlags;
+
+#define BRTH_CYCLE_INSUFLATION    (1 << 0)
+#define BRTH_CYCLE_PLATEAU        (1 << 1)
+#define BRTH_CYCLE_EXHALATION     (1 << 2)
+#define BRTH_CYCLE_FINISHED       (1 << 3)
+#define BRTH_RESULT_UPDATED       (1 << 7)      // To infor HMI that the breathing info have been updated
+
+extern EventGroupHandle_t brthCycleState;
 
 
-#ifndef NDEBUG
-#define DEBUG
+
+
+
+
+void monitoring_run(void *);
+
+
+
+
+
+
+
+#ifdef DEBUG
 extern SemaphoreHandle_t dbgMutex;
 
-#define DEBUG_CONTROLLER
-#define DEBUG_BREATHING
-#define DEBUG_MONITOR
-#define DEBUG_HMI
 
 
-#define dbg_print(_fmt)       { xSemaphoreTake(dbgMutex,  portMAX_DELAY); write(_fmt); xSemaphoreGive(dbgMutex); }
+#define dbg_print(_fmt)       { xSemaphoreTake(dbgMutex,  portMAX_DELAY); printf(_fmt); xSemaphoreGive(dbgMutex); }
 #define dbg_printf(_fmt,...)  { xSemaphoreTake(dbgMutex,  portMAX_DELAY); printf(_fmt, ##__VA_ARGS__); xSemaphoreGive(dbgMutex); }
 
 #ifdef DEBUG_HMI

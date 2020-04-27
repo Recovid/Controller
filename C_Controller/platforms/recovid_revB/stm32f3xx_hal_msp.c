@@ -423,7 +423,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     hdma_uart4_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_uart4_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_uart4_rx.Init.Mode = DMA_CIRCULAR;
-    hdma_uart4_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_uart4_rx.Init.Priority = DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&hdma_uart4_rx) != HAL_OK)
     {
       Error_Handler();
@@ -448,9 +448,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     __HAL_LINKDMA(huart,hdmatx,hdma_uart4_tx);
 
     /* UART4 interrupt Init */
-    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_RX_IRQn, 5, 1);    // TODO Define priority in BSP (recovid_RevB.h)
+    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_RX_IRQn, 5, 2);    // TODO Define priority in BSP (recovid_RevB.h)
     HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_TX_IRQn, 5, 1);    // TODO Define priority in BSP (recovid_RevB.h)
-    HAL_NVIC_SetPriority(HMI_UART_IRQn, 5, 0);              // TODO Define priority in BSP (recovid_RevB.h)
+    HAL_NVIC_SetPriority(HMI_UART_IRQn, 5, 1);              // TODO Define priority in BSP (recovid_RevB.h)
   }
   else if(huart->Instance==USART2)
   {

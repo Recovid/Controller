@@ -20,7 +20,9 @@ TaskHandle_t monitoringTaskHandle;
 TaskHandle_t controllerTaskHandle;
 TaskHandle_t hmiTaskHandle;
 
-EventGroupHandle_t eventFlags;
+EventGroupHandle_t ctrlEventFlags;
+
+EventGroupHandle_t brthCycleState;
 
 #ifdef DEBUG
 SemaphoreHandle_t dbgMutex;
@@ -42,7 +44,9 @@ int main()
   printf("Starting Recovid\n");
 #endif
 
-  eventFlags = xEventGroupCreate();
+  ctrlEventFlags = xEventGroupCreate();
+
+  brthCycleState = xEventGroupCreate();
   
   if(xTaskCreate(breathing_run , "Breathing" , BREATHING_TASK_STACK_SIZE , NULL, BREATHING_TASK_PRIORITY , &breathingTaskHandle) != pdTRUE) {
     HardFault_Handler();

@@ -59,19 +59,19 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
 {
     strncpy(DATA_frame, DATA_pattern, sizeof(DATA_frame));
 
-    if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
+    /*if (!( CHECK_RANGE(    0, Vol_mL  , 10000)
         && CHECK_RANGE(-1000, VolM_Lpm,  1000)
         && CHECK_RANGE(-1000, P_cmH2O ,  1000)))
     {
         return false;
-    }
+    }*/
 
     replace_int_with_padding(DATA_frame, get_time_ms() % 1000000l, 6, 10);
-    replace_int_with_padding(DATA_frame, Vol_mL, 4, 10);
+    replace_int_with_padding(DATA_frame, roundf(Vol_mL), 4, 10);
     *strchr(DATA_frame, '.') = sign(VolM_Lpm);
-    replace_int_with_padding(DATA_frame, VolM_Lpm, 3, 10);
+    replace_int_with_padding(DATA_frame, roundf(VolM_Lpm), 3, 10);
     *strchr(DATA_frame, '.') = sign(P_cmH2O);
-    replace_int_with_padding(DATA_frame, P_cmH2O, 3, 10);
+    replace_int_with_padding(DATA_frame, roundf(P_cmH2O), 3, 10);
 
     replace_int_with_padding(DATA_frame, checksum8(DATA_frame), 2, 16);
 
@@ -85,22 +85,22 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
 {
     strncpy(DATA_X_frame, DATA_X_pattern, sizeof(DATA_X_frame));
 
-    if (!( CHECK_RANGE(    0, Vol_mL     , 10000)
+/*   if (!( CHECK_RANGE(    0, Vol_mL     , 10000)
         && CHECK_RANGE(-1000, VolM_Lpm   ,  1000)
         && CHECK_RANGE(-1000, P_cmH2O    ,  1000)
         && CHECK_RANGE(    0, Pplat_cmH2O,   100)
         && CHECK_RANGE(    0, PEP_cmH2O  ,   100))) {
         return false;
-    }
+    }*/
 
     replace_int_with_padding(DATA_X_frame, get_time_ms() % 1000000l, 6, 10);
-    replace_int_with_padding(DATA_X_frame, Vol_mL     , 4, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(Vol_mL)     , 4, 10);
     *strchr(DATA_X_frame, '.') = sign(VolM_Lpm);
-    replace_int_with_padding(DATA_X_frame, VolM_Lpm   , 3, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(VolM_Lpm)   , 3, 10);
     *strchr(DATA_X_frame, '.') = sign(P_cmH2O);
-    replace_int_with_padding(DATA_X_frame, P_cmH2O    , 3, 10);
-    replace_int_with_padding(DATA_X_frame, Pplat_cmH2O, 2, 10);
-    replace_int_with_padding(DATA_X_frame, PEP_cmH2O  , 2, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(P_cmH2O)    , 3, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(Pplat_cmH2O), 2, 10);
+    replace_int_with_padding(DATA_X_frame, roundf(PEP_cmH2O)  , 2, 10);
 
     replace_int_with_padding(DATA_X_frame, checksum8(DATA_X_frame), 2, 16);
 
@@ -114,7 +114,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
 {
     strncpy(RESP_frame, RESP_pattern, sizeof(RESP_frame));
 
-    if (!( CHECK_RANGE(   0, EoI_ratio*10,  100)
+    /*if (!( CHECK_RANGE(   0, EoI_ratio*10,  100)
         && CHECK_RANGE(   0, FR_pm       ,  100)
         && CHECK_RANGE(   0, VTe_mL      , 1000)
         && CHECK_RANGE(-100, VM_Lpm      ,  100)
@@ -122,15 +122,15 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float P
         && CHECK_RANGE(   0, PEP_cmH2O   ,  100)))
     {
         return false;
-    }
-    replace_int_with_padding(RESP_frame, EoI_ratio*10    , 2, 10);
-    replace_int_with_padding(RESP_frame, FR_pm           , 2, 10);
-    replace_int_with_padding(RESP_frame, VTe_mL          , 3, 10);
-    replace_int_with_padding(RESP_frame, Pcrete_cmH2O    , 2, 10);
+    }*/
+    replace_int_with_padding(RESP_frame, roundf(EoI_ratio*10)    , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(FR_pm)           , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(VTe_mL)          , 3, 10);
+    replace_int_with_padding(RESP_frame, roundf(Pcrete_cmH2O)    , 2, 10);
     *strchr(RESP_frame, '.') = sign(VM_Lpm);
-    replace_int_with_padding(RESP_frame, VM_Lpm          , 2, 10);
-    replace_int_with_padding(RESP_frame, Pplat_cmH2O     , 2, 10);
-    replace_int_with_padding(RESP_frame, PEP_cmH2O       , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(VM_Lpm)          , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(Pplat_cmH2O)     , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(PEP_cmH2O)       , 2, 10);
     replace_int_with_padding(RESP_frame, checksum8(RESP_frame), 2, 16);
 
     return send(RESP_frame);
@@ -333,11 +333,12 @@ void send_and_recv()
             else if (pf<(frame+MAX_FRAME)) {
                 *pf = c;
             }
+            dbg_printf("%2X ",c);
         }
         if ((frame+MAX_FRAME)<=pf) continue;
         *(pf++)='\n';
         *(pf++)='\0';
-
+        dbg_printf(frame);
         char* pcs8 = strstr(frame, CS8);
         if (!pcs8) continue;
 
@@ -393,6 +394,101 @@ void send_and_recv()
 
 #pragma GCC diagnostic ignored "-Wtype-limits"
 
+bool PRINT(test_non_default_settings)
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 300;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 =  10;
+    return
+        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
+        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
+        TEST_FLT_EQUALS( 300.f, get_setting_VT_mL       ()) &&
+        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
+        TEST_EQUALS    ( 600  , get_setting_Tinsu_ms    ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
+        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
+        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
+        TEST_EQUALS    ( 400  , get_setting_Tplat_ms    ()) &&
+        true;
+}
+
+bool PRINT(test_checked_EoI)
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 300;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(30);
+    return
+        TEST_FLT_EQUALS(  30.f , get_setting_FR_pm    ()) &&
+        TEST_EQUALS    (2000   , get_setting_T_ms     ()) &&
+        TEST_FLT_EQUALS( 300.f , get_setting_VT_mL    ()) &&
+        TEST_FLT_EQUALS(  30.f , get_setting_Vmax_Lpm ()) &&
+        TEST_EQUALS    ( 600   , get_setting_Tinsu_ms ()) &&
+        TEST_FLT_EQUALS(   0.4f, get_setting_IoE_ratio()) &&
+        TEST_FLT_EQUALS(   2.3f, get_setting_EoI_ratio()) &&
+        TEST_RANGE     (1390   , get_setting_Texp_ms  (), 1400) &&
+        TEST_RANGE     ( 600   , get_setting_Tinspi_ms(),  610) &&
+        TEST_RANGE     (   0   , get_setting_Tplat_ms (),   10) &&
+        true;
+}
+
+bool PRINT(test_checked_VM)
+    setting_FR_pm         =  30;
+    setting_VT_mL         = 600;
+    setting_EoI_ratio_x10 =  10;
+    setting_Vmax_Lpm      = checked_Vmax_Lpm(30);
+    return
+        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
+        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
+        TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
+        TEST_FLT_EQUALS(  36.f, get_setting_Vmax_Lpm    ()) &&
+        TEST_RANGE     ( 999  , get_setting_Tinsu_ms    (), 1000) && // due to Vmax rounding to floor
+        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
+        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
+        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
+        TEST_RANGE     (   0.f, get_setting_Tplat_ms    (), 1.f ) && // due to Vmax rounding to floor
+        true;
+}
+
+bool PRINT(test_checked_VT)
+    setting_FR_pm         = 30;
+    setting_Vmax_Lpm      = 30;
+    setting_EoI_ratio_x10 = 10;
+    setting_VT_mL         = checked_VT_mL(600);
+    return
+        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
+        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
+        TEST_FLT_EQUALS( 500.f, get_setting_VT_mL       ()) &&
+        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
+        TEST_EQUALS    (1000  , get_setting_Tinsu_ms    ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
+        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
+        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
+        TEST_EQUALS    (   0  , get_setting_Tplat_ms    ()) &&
+        true;
+}
+
+bool PRINT(test_checked_FR)
+    setting_VT_mL         = 600;
+    setting_Vmax_Lpm      =  30;
+    setting_EoI_ratio_x10 =  10;
+    setting_FR_pm         = checked_FR_pm(30);
+    return
+        TEST_RANGE     (  24.f, get_setting_FR_pm       (), 25.f) &&
+        TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding
+        TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
+        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
+        TEST_EQUALS    (1200  , get_setting_Tinsu_ms    ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
+        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
+        TEST_RANGE     (1200  , get_setting_Texp_ms     (), 1250) && // due to FR rounding
+        TEST_RANGE     (1200  , get_setting_Tinspi_ms   (), 1250) && // due to FR rounding
+        TEST           (        get_setting_Tplat_ms    ()<= 100) && // due to FR rounding
+        true;
+}
+
 //! \warning send_DATA fails at clock_ms > 0
 bool PRINT(test_send)
     TEST_ASSUME(init_uart(IHM_MODE_FILE, NULL, NULL));
@@ -434,6 +530,11 @@ bool PRINT(test_send)
 bool PRINT(TEST_PROTOCOL)
     return
         test_send() &&
+        test_non_default_settings() &&
+        test_checked_EoI() &&
+        test_checked_VM() &&
+        test_checked_VT() &&
+        test_checked_FR() &&
         true;
 }
 

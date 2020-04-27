@@ -23,22 +23,14 @@ static uint8_t       _sdp_AUR_buffer[3] 		= { 0 };
 
 static uint8_t       _npa_measurement_buffer[2]	= { 0 };
 
-static volatile float _current_flow;
-static volatile float _current_pressure;
-static volatile float _current_volume;
+static volatile float _current_flow_slm;
+static volatile float _current_Paw_cmH2O;
+static volatile float _current_vol_mL;
 
 volatile sensors_state_t _sensor_state;
 
 static volatile uint16_t _hyperfrish_sdp_time;
 
-// static void (*_flow_callback)(float flow, uint32_t delta_t_us);
-
-float    samples_Q_Lps[2000]; // > max Tinsu_ms
-float    average_Q_Lps[2000]; // > max Tinsu_ms
-
-static float    samples_Q_t_ms  = 0.f;
-static uint16_t samples_Q_index = 0;
-static bool     sampling_Q      = false;
 
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
@@ -115,12 +107,13 @@ bool is_Patmo_ok() {
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
 float read_Pdiff_Lpm() {
-  return _current_flow;
+	// TODO: correct with ambiant pressure and T°
+  return _current_flow_slm;
 }
 
 //! \returns the sensed pressure in cmH2O (1,019mbar in standard conditions)
 float read_Paw_cmH2O() {
-  return _current_pressure;
+  return _current_Paw_cmH2O;
 }
 
 //! \returns the atmospheric pressure in mbar
@@ -130,34 +123,13 @@ float read_Patmo_mbar() {
 
  //! \returns the current integrated volume
 float read_Vol_mL() {
-	return _current_volume;
+	return _current_vol_mL;
 }
 
  //! reset current integrated volume to 0
 void reset_Vol_mL() {
-	_current_volume = 0;
+	_current_vol_mL = 0;
 }
-
-
-
-// bool sensors_start_sampling_flow()
-// {
-//     samples_Q_t_ms = 0.f;
-//     samples_Q_index = 0;
-//     sampling_Q = true;
-//     return sampling_Q;
-// }
-
-// bool sensors_stop_sampling_flow()
-// {
-//     sampling_Q = false;
-//     return !sampling_Q;
-// }
-
-// uint16_t get_samples_Q_index_size()
-// {
-//     return 0; // TODO
-// }
 
 bool sensors_start() {
     // Start the sensor state machine.
@@ -202,7 +174,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
 			if( (_npa_measurement_buffer[0]>>6)==0) {
 				uint16_t praw =  (((uint16_t)_npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
-				_current_pressure = 1.01972 * ((float) 160*( praw - 1638.)/13107.);
+				_current_Paw_cmH2O = 1.01972 * ((float) 160*( praw - 1638.)/13107.);
 			} else if((_npa_measurement_buffer[0]>>6)==3) {
 				// TODO: Manage error status !!
 			}
@@ -242,12 +214,9 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 			_hyperfrish_sdp_time= get_time_us() - hyperfrish_sdp;
 			hyperfrish_sdp = get_time_us();
 			int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-			_current_flow = -((float)dp_raw)/105.0;
-      _current_volume += (_current_flow/60.) * ((float)_hyperfrish_sdp_time/1000000);
+			_current_flow_slm = -((float)dp_raw)/105.0;
+      _current_vol_mL += (_current_flow_slm/60.) * ((float)_hyperfrish_sdp_time/1000);
 
-			// if(_flow_callback != NULL) {
-			// 	_flow_callback(_current_flow, _hyperfrish_sdp_time);
-			// }
 			_sensor_state= REQ_SDP_MEASUREMENT;
 			HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
 		} else {

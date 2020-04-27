@@ -172,7 +172,6 @@ void uart_TxCpltCallback()
     if (hal_uart_process_tx_data() != true)
     {
         // TODO: this should be logged somehow, maybe in some kind of statistics?
-        light_yellow(On);
     }
     else
     {
@@ -182,29 +181,12 @@ void uart_TxCpltCallback()
 
 void uart_RxCpltCallback()
 {
-    uint32_t error = HAL_UART_GetError(&hmi_uart);
-    if (error == HAL_UART_ERROR_RTO) {
-        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
-        light_yellow(On);
-        return;
-    }
-
-    
-    if (hal_uart_process_rx_data(IDLE_LINE_NOT_DETECTED) != true) {
-    }
-    else
-    {
-//        light_green(On);
-    }
+    hal_uart_process_rx_data(IDLE_LINE_NOT_DETECTED);
 }
 
 void uart_ErrorCallback()
 {
-    uint32_t error = HAL_UART_GetError(&hmi_uart);
-    if ((error & HAL_UART_ERROR_RTO) == HAL_UART_ERROR_RTO) {
-        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
-        light_yellow(On);
-    }
+
 
 }
 
@@ -271,16 +253,16 @@ bool init_uart()
     HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_TX_COMPLETE_CB_ID, uart_TxCpltCallback);
     HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_ERROR_CB_ID, uart_ErrorCallback);
 
-    // // Enable RX timout
-    // LL_USART_EnableRxTimeout(hmi_uart.Instance);
-    // LL_USART_SetRxTimeout(hmi_uart.Instance, HMI_RX_LINE_TIMEOUT); // Wait DEFAULT_RX_LINE_TIMEOUT after last STOP Bit
-    // LL_USART_EnableIT_RTO(hmi_uart.Instance);
+    // Enable RX timout
+    LL_USART_EnableRxTimeout(hmi_uart.Instance);
+    LL_USART_SetRxTimeout(hmi_uart.Instance, HMI_RX_LINE_TIMEOUT); // Wait DEFAULT_RX_LINE_TIMEOUT after last STOP Bit
+    LL_USART_EnableIT_RTO(hmi_uart.Instance);
 
     // Start asynchronous DMA rx process
-    // if(HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE) != HAL_OK)
-    // {
-    //     return false;
-    // }
+    if(HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE) != HAL_OK)
+    {
+        return false;
+    }
 
     // Enable IT
     HAL_NVIC_EnableIRQ(HMI_DMA_CHANNEL_RX_IRQn);
@@ -308,3 +290,23 @@ int uart_recv()
     }
     return EOF;
 }
+
+
+
+
+/**
+  * @brief This function handles UART4 global interrupt / UART4 wake-up interrupt through EXTI line 34.
+  */
+__attribute__((used)) void UART4_IRQHandler(void)
+{
+    if(LL_USART_IsActiveFlag_RTO(hmi_uart.Instance))
+    {
+        LL_USART_ClearFlag_RTO(hmi_uart.Instance);
+        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
+    }
+
+    HAL_UART_IRQHandler(&hmi_uart);  /* USER CODE BEGIN UART4_IRQn 1 */
+
+  /* USER CODE END UART4_IRQn 1 */
+}
+

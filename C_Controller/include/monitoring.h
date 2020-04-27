@@ -3,7 +3,6 @@
 
 #include "recovid.h"
 
-
 void monitoring_run(void *);
 
 #endif

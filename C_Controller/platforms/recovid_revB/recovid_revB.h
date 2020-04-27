@@ -237,7 +237,7 @@ void fs_enabled_irq();
 #define HMI_TX_SYNC_TIMEOUT_MS        (2000)
 #define HMI_RX_BUFFER_SIZE            (1024)
 #define HMI_RX_DMA_BUFFER_SIZE        (512)
-#define HMI_RX_LINE_TIMEOUT           (512*8*1000)
+#define HMI_RX_LINE_TIMEOUT           (30)
 
 
 

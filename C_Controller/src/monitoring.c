@@ -11,7 +11,7 @@ void monitoring_run(void *args) {
 
   while(true) {
     mntr_printf("MNTR: Standby\n");
-    events= xEventGroupWaitBits(eventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    events= xEventGroupWaitBits(ctrlEventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
     mntr_printf("MNTR: Started\n");
 
     do {
@@ -20,13 +20,13 @@ void monitoring_run(void *args) {
 
 
 
-      events= xEventGroupGetBits(eventFlags);
+      events= xEventGroupGetBits(ctrlEventFlags);
     } while ( ( events & MONITORING_RUN_FLAG ) != 0 );
 
     mntr_printf("MNTR: stopping\n");      
 
     wait_ms(200);
-    xEventGroupSetBits(eventFlags, MONITORING_STOPPED_FLAG);
+    xEventGroupSetBits(ctrlEventFlags, MONITORING_STOPPED_FLAG);
 
 
   }
