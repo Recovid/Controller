@@ -95,7 +95,6 @@ uint32_t get_command_Tpbip_ms() { return command_Tpbip_ms; }
 
 static bool command_pause_all  = false;
 
-//! \warning pause to repair things during which cycle_respiration is paused indefinitely
 bool is_pause_asked() { return command_pause_all; }
 
 static bool command_soft_reset = false;

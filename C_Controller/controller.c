@@ -202,7 +202,7 @@ bool regulation_pep()
     }
     return true;
 }
-volatile RespirationState state = Unknown;
+volatile RespirationState state = RespirationOn;
 
 RespirationState current_respiration_state() { return state; }
 
@@ -231,64 +231,78 @@ void enter_state(RespirationState new)
 #ifndef NDEBUG
     const char* current = NULL;
     switch (state) {
+    case RespirationOn  : current = "On"             ; break;
     case Insufflation   : current = "Insufflation"   ; break;
     case Plateau        : current = "Plateau"        ; break;
     case Exhalation     : current = "Exhalation"     ; break;
     case ExhalationPause: current = "ExhalationPause"; break;
-    default             : current = "<unknown>"      ; break;
+    case RespirationOff : current = "Off"            ; break;
     }
     switch (new) {
-    case Insufflation   : /*hardware_serial_write_data("Insufflation \n", 15);*//*DEBUG_PRINTF(" %s -> Insufflation"   , current);*/ break;
-    case Plateau        : /*hardware_serial_write_data("Plateau      \n", 15);*//*DEBUG_PRINTF(" %s -> Plateau"        , current);*/ break;
-    case Exhalation     : /*hardware_serial_write_data("Exhalation   \n", 15);*//*DEBUG_PRINTF(" %s -> Exhalation"     , current);*/ break;
+    case RespirationOn  : /*DEBUG_PRINTF(" %s -> On"             , current);*/ break;
+    case Insufflation   : /*DEBUG_PRINTF(" %s -> Insufflation"   , current);*/ /*light_red   (Off); light_green (On); hardware_serial_write_data("Insufflation \n", 15);*/ break;
+    case Plateau        : /*DEBUG_PRINTF(" %s -> Plateau"        , current);*/ /*light_green (Off); light_yellow(On); hardware_serial_write_data("Plateau      \n", 15);*/ break;
+    case Exhalation     : /*DEBUG_PRINTF(" %s -> Exhalation"     , current);*/ /*light_yellow(Off); light_red   (On); hardware_serial_write_data("Exhalation   \n", 15);*/ break;
     case ExhalationPause: /*DEBUG_PRINTF(" %s -> ExhalationPause", current);*/ break;
-    default             : /*DEBUG_PRINTF(" %s -> <unknown>"      , current);*/ break;
+    case RespirationOff : /*DEBUG_PRINTF(" %s -> Off"            , current);*/ break;
     }
 #endif
-	/*switch (new) {
-		case Insufflation   : light_red(Off);light_green(On); break;
-		case Plateau        : light_green(Off); light_yellow(On); break;
-		case Exhalation     : light_yellow(Off); light_red(On); break;
-	}*/
     state = new;
     state_start_ms = get_time_ms();
-    if (state == Insufflation) {
-        VTi_mL       = 0.f;
-        Pcrete_cmH2O = 0.f;
-        reset_sensed_Vol_mL();
-        sensors_start_sampling_flow();
+    switch (state) {
+    case RespirationOn: {
+            // nothing to do on enter
+        }
+        break;
+    case Insufflation: {
+            VTi_mL       = 0.f;
+            Pcrete_cmH2O = 0.f;
+            reset_sensed_Vol_mL();
+            sensors_start_sampling_flow();
 
-        valve_inhale();
-		if(last_step != 0) {
-            motor_press(steps_t_us, last_step);
-		}
-		else {
-			motor_press_constant(MOTOR_STEP_TIME_US_MIN*(60.f / get_setting_Vmax_Lpm()) , 6*get_setting_VT_mL());
-		}
-        respi_start_ms = get_time_ms();
+            valve_inhale();
+            if (last_step != 0) {
+                motor_press(steps_t_us, last_step);
+            }
+            else {
+                motor_press_constant(MOTOR_STEP_TIME_US_MIN*(60.f / get_setting_Vmax_Lpm()) , 6*get_setting_VT_mL());
+            }
+            respi_start_ms = get_time_ms();
+        }
+        break;
+    case Plateau: {
+            VTe_start_mL = get_sensed_Vol_mL();
+            sensors_stop_sampling_flow();
+
+            assert(valve_inhale());
+            motor_release();
+        }
+        break;
+    case Exhalation: {
+            VMe_Lpm = 0.f;
+            PEP_cmH2O = 0.f;
+            sensors_stop_sampling_flow();
+            // TODO last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
+
+            valve_exhale();
+            motor_release();
+        }
+        break;
+    case ExhalationPause: {
+            valve_inhale();
+            motor_release();
+        }
+        break;
+    case RespirationOff: {
+            // TODO low_consumption();
+        }
+        break;
     }
-	else if(state==Plateau) {
-        sensors_stop_sampling_flow();
-        //valve_inhale();
-        VTe_start_mL = get_sensed_Vol_mL();
-        motor_release();
-	}
-	else if(state==Exhalation) {
-		sensors_stop_sampling_flow();
-        valve_exhale();
-        motor_release();
-		VMe_Lpm = 0.f;
-		PEP_cmH2O = 0.f;
-		//last_step = compute_motor_steps_and_Tinsu_ms(get_setting_Vmax_Lpm()/60.f, get_setting_VT_mL());
-	}
-	else if(state==ExhalationPause) {
-        valve_inhale();
-        motor_release();
-	}
 }
 
 
-
+extern float corrections[MOTOR_MAX];
+extern float average_Q_Lps[SAMPLING_SIZE];
 
 // TODO
 //#ifndef NTESTS
@@ -298,10 +312,6 @@ void enter_state(RespirationState new)
 //static float    Pmax ;
 //static uint32_t Tplat;
 //#endif
-
-extern float corrections[MOTOR_MAX];
-extern float average_Q_Lps[SAMPLING_SIZE];
-
 void cycle_respiration()
 {
 //#ifdef NTESTS
@@ -314,6 +324,7 @@ void cycle_respiration()
     const uint32_t Tpexp_ms = get_command_Tpexp_ms  ();
 //#endif
 
+    // Sense and compute data
 	if(last_sensed_ms + 25 <= get_time_ms())
 	{
 		float display = get_sensed_Vol_mL();
@@ -333,81 +344,104 @@ void cycle_respiration()
 		//		display = current_average_idx /*average_Q_Lps[current_average_idx] * 10*/;
 		//	}
 		//}
-		send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display);
+        send_DATA(get_sensed_P_cmH2O(), get_sensed_VolM_Lpm(), display); // TODO DATA_X if pause
 		last_sensed_ms = get_time_ms();
 	}
-	
-	if (Unknown == state) {
-        send_INIT(get_init_str());
-        enter_state(Insufflation);
-    }
-    else if (Insufflation == state) {
-        //if (Pmax <= get_sensed_P_cmH2O()) {
-        //    enter_state(Exhalation);
-        //}
-        /*if (VT <= get_sensed_VTi_mL()) {
-            enter_state(Plateau);
-        }*/
-        VTi_mL = get_sensed_Vol_mL();
-        Pcrete_cmH2O = MAX(Pcrete_cmH2O, get_sensed_P_cmH2O()); // TODO check specs
 
-		if( get_time_ms()  >= ( (800U) + respi_start_ms ) ) {
-	            enter_state(Plateau);
-		};
+    if (80 <= get_sensed_P_cmH2O()) {
+        valve_exhale(); // Risk Control Measure independant from state
     }
-	else if (Plateau == state) {
-        //valve_inhale();
-        /*if (Pmax <= get_sensed_P_cmH2O()
-            || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
-            enter_state(Exhalation);
-        }*/ 
-        VTi_mL = get_sensed_Vol_mL();
-        Pplat_cmH2O = MIN(Pplat_cmH2O, get_sensed_P_cmH2O()); // TODO average over Xms
-		// DO NOT FORGET PMAX !!!
-		if ( (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms() )  { // TODO check Tpins_ms < first_pause_ms+5000
+
+#ifndef NDEBUG
+    if (is_pause_asked()) return;
+#endif
+
+    // State machine
+    switch (state) {
+    case RespirationOn: {
+            send_INIT(get_init_str());
+            enter_state(Insufflation);
+        }
+        break;
+    case Insufflation: {
+            //if (Pmax <= get_sensed_P_cmH2O()) {
+            //    enter_state(Exhalation);
+            //}
+            //if (VT <= get_sensed_VTi_mL()) {
+            //    enter_state(Plateau);
+            //}
+            VTi_mL = get_sensed_Vol_mL();
+            Pcrete_cmH2O = MAX(Pcrete_cmH2O, get_sensed_P_cmH2O()); // TODO check specs
+
+            if (get_time_ms()  >= ( (800U) + respi_start_ms ) ) {
+                enter_state(Plateau);
+            };
+        }
+        break;
+    case Plateau: {
+            //if (Pmax <= get_sensed_P_cmH2O() // TODO
+            //    || (state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms()) { // TODO check Tpins_ms < first_pause_ms+5000
+            //    enter_state(Exhalation);
+            //}
+            VTi_mL = get_sensed_Vol_mL();
+            Pplat_cmH2O = MIN(Pplat_cmH2O, get_sensed_P_cmH2O()); // TODO average over Xms
+
+            if ((state_start_ms + MAX(Tplat,Tpins_ms)) <= get_time_ms() )  { // TODO check Tpins_ms < first_pause_ms+5000
                 enter_state(Exhalation);
+            }
         }
+        break;
+    case Exhalation: {
+            VMe_Lpm   = get_sensed_VolM_Lpm();
+            PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
 
+            if (Tpexp_ms > 0) {
+                enter_state(ExhalationPause);
+            }
+            else if ((respi_start_ms + T) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
+                VTe_end_mL = get_sensed_Vol_mL();
+                VTe_mL     = VTe_start_mL - VTe_end_mL;
+
+                const uint32_t t_ms = get_time_ms();
+                EoI_ratio =      (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
+                FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
+
+                // TODO regulation_pep();
+                send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
+                enter_state(
+                    is_soft_reset_asked() ? RespirationOn : // TODO reset
+                    is_off_asked() ? RespirationOff :
+                    Insufflation);
+            }
+        }
+        break;
+    case ExhalationPause: {
+            VMe_Lpm   = get_sensed_VolM_Lpm();
+            PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
+
+            if ((respi_start_ms + Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
+                VTe_end_mL = get_sensed_Vol_mL();
+                VTe_mL     = VTe_start_mL - VTe_end_mL;
+
+                const uint32_t t_ms = get_time_ms();
+                EoI_ratio =      (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
+                FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
+
+                // TODO regulation_pep();
+                send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
+                enter_state(
+                    is_soft_reset_asked() ? RespirationOn : // TODO reset
+                    is_off_asked() ? RespirationOff :
+                    Insufflation);
+            }
+        }
+        break;
+    case RespirationOff: {
+            // TODO Erase saved settings to restart from default ones
+            // final state
+        }
+        break;
     }
-    else if (Exhalation == state ) {
-        VMe_Lpm   = get_sensed_VolM_Lpm();
-
-        PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
-        if (Tpexp_ms > 0) {
-			enter_state(ExhalationPause);
-		}
-		else if ((respi_start_ms + T) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
-            uint32_t t_ms = get_time_ms();
-
-            VTe_end_mL    = get_sensed_Vol_mL();
-            VTe_mL        = VTe_start_mL - VTe_end_mL;
-
-            EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
-            FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
-
-            // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
-            enter_state(Insufflation);
-        }
-	}
-    else if (ExhalationPause == state) {
-        VMe_Lpm   = get_sensed_VolM_Lpm();
-        PEP_cmH2O = get_sensed_P_cmH2O(); // TODO average over Xms
-        if ((respi_start_ms + Tpexp_ms) <= get_time_ms()) { // TODO check Tpexp_ms < first_pause_ms+5000
-            uint32_t t_ms = get_time_ms();
-
-            VTe_end_mL    = get_sensed_Vol_mL();
-            VTe_mL        = VTe_start_mL - VTe_end_mL;
-
-            EoI_ratio =  (float)(t_ms-state_start_ms)/(state_start_ms-respi_start_ms);
-            FR_pm     = 1./(((float)(t_ms-respi_start_ms))/1000/60);
-
-            // TODO regulation_pep();
-            send_RESP(EoI_ratio, FR_pm, VTe_mL, VMe_Lpm, Pcrete_cmH2O, Pplat_cmH2O, PEP_cmH2O);
-            enter_state(Insufflation);
-        }
-	}
-	
 }
 
 // ================================================================================================

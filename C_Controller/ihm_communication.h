@@ -91,8 +91,9 @@ uint32_t get_command_Tpins_ms();
 uint32_t get_command_Tpexp_ms();
 uint32_t get_command_Tpbip_ms();
 
-bool     is_soft_reset_asked ();
-
+bool is_pause_asked     (); //!< \warning pause to repair things during which cycle_respiration is paused indefinitely
+bool is_soft_reset_asked();
+bool is_off_asked       ();
 
 // ------------------------------------------------------------------------------------------------
 //! Public interface to send event/data to the IHM and process read messages

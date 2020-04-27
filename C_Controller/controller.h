@@ -11,7 +11,7 @@
 //! \warning critical failures should result in a safe stop
 int self_tests();
 
-typedef enum { Insufflation, Plateau, Exhalation, ExhalationPause, Unknown } RespirationState;
+typedef enum { RespirationOn, Insufflation, Plateau, Exhalation, ExhalationPause, RespirationOff } RespirationState;
 
 //! \returns current RespirationState to schedule state-sensitive tasks
 RespirationState current_respiration_state();
