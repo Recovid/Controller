@@ -196,7 +196,24 @@ static void print_samples_Q(float* samples_Q_Lps, uint16_t* samples_Q_Lps_dt_us,
 	}
 }
 
-
+static void print_samples_P(uint16_t* samples_P, uint16_t* samples_P_dt_us, int nb_samples)
+{
+	static char msg[200];
+	strcpy(msg, "\nP ");
+	itoa(nb_samples, msg+3, 10);
+	hardware_serial_write_data(msg, strlen(msg));
+	msg[0] = '\n';
+	for(unsigned int j=0; j < nb_samples; j++)
+	{
+		char* current = itoa( (int) samples_P[j], msg+1, 10);
+		char* next = current + strlen(current);
+		next[0] = ' ';
+		next++;
+		itoa( (int) samples_P_dt_us[j], next, 10);
+		hardware_serial_write_data(msg, strlen(msg));
+		wait_ms(1);
+	}
+}
 
 static void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
 {
@@ -229,5 +246,6 @@ void test_motor()
 	while(!_home);
 	wait_ms(100);
 	print_samples_Q(samples_Q_Lps, samples_Q_Lps_dt_us, get_samples_Q_index_size());
+	print_samples_P(samples_P, samples_P_dt_us, get_samples_P_index_size());
 	print_steps(steps_t_us, nb_steps);
 }
