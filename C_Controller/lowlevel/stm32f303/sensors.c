@@ -134,15 +134,9 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
                 if ((_npa_measurement_buffer[0] >> 6) == 0) {
                     uint16_t praw = (((uint16_t) _npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
 					const uint16_t npa_t_us = (uint16_t)htim4.Instance->CNT;
-					uint16_t npa_dt_us;
-					if(npa_t_us < last_npa_t_us) {
-						npa_dt_us = ( ((uint32_t) npa_t_us + UINT16_MAX) - last_npa_t_us);
-					}
-					else {
-						npa_dt_us = npa_t_us - last_npa_t_us;
-					}
-					if(npa_dt_us > 4000) {
-				sensors_sample_P(praw, npa_dt_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
+					uint16_t npa_dt_us = npa_t_us - last_npa_t_us;
+					if(npa_dt_us > 4700) {
+						sensors_sample_P(praw, npa_dt_us); // Pressure (Paw) sensor is assumed to provide responses @ 1kHz
 						last_npa_t_us = npa_t_us;
 					}
 
