@@ -117,10 +117,10 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
             return;
         case STOPPED:
             return;
-        case READ_NPA_MEASUREMENT:
+        case READ_NPA_MEASUREMENT: {
             if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
                 // Retry
-                HAL_I2C_Master_Receive_DMA(hi2c, ADDR_NPA700B, (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer));
+                readNPA();
                 break;
             }
             if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
@@ -143,7 +143,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
             readSDP();
 
             break;
-
+        }
         case REQ_SDP_MEASUREMENT: {
             if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
                 // retry
@@ -158,10 +158,9 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
             readSDP();
             break;
         }
-        case READ_SDP_MEASUREMENT:
+        case READ_SDP_MEASUREMENT: {
             if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
-                _sensor_state = READ_NPA_MEASUREMENT;
-                HAL_I2C_Master_Receive_DMA(hi2c, ADDR_NPA700B, (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer));
+                readNPA();
                 break;
             }
             if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
@@ -185,5 +184,6 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
                 readNPA();
             }
             break;
+        }
     }
 }
