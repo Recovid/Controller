@@ -3,6 +3,7 @@
 #include "sensing.h"
 #include "ihm_communication.h"
 #include "hardware_serial.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 

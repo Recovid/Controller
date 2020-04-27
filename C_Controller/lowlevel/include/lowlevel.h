@@ -131,7 +131,7 @@ bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interru
 
 bool sensors_start_sampling_flow();
 bool sensors_stop_sampling_flow();
-bool sensors_sample_flow(int16_t read, uint32_t dt_us);
+bool sensors_sample_flow(int16_t read, uint16_t dt_us);
 float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
 
