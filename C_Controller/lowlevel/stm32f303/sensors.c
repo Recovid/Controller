@@ -1,15 +1,12 @@
 #include "configuration.h"
 #include "recovid_revB.h"
 #include "lowlevel.h"
+#include "bmp280.h"
 
 #include "sensing.h"
 
 typedef enum {
-    STOPPED,
-    STOPPING,
-    REQ_SDP_MEASUREMENT,
-    READ_SDP_MEASUREMENT,
-    READ_NPA_MEASUREMENT
+    STOPPED, STOPPING, REQ_SDP_MEASUREMENT, READ_SDP_MEASUREMENT, READ_NPA_MEASUREMENT, READ_BMP280,
 } sensors_state_t;
 
 static I2C_HandleTypeDef *_i2c = NULL;
@@ -23,13 +20,28 @@ static uint8_t _sdp_measurement_buffer[3] = { 0 };
 static uint8_t _sdp_AUR_buffer[3] = { 0 };
 
 static uint8_t _npa_measurement_buffer[2] = { 0 };
+static struct bmp280_dev bmp;
+struct bmp280_uncomp_data ucomp_data;
 
 volatile sensors_state_t _sensor_state;
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
+
+//--- BMP280
+static int8_t bmp280_write_direct(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
+static int8_t bmp280_read_direct(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
+
+static int8_t bmp280_write_DMA(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
+static int8_t bmp280_read_DMA(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
+
+static void bmp280_delay_ms(uint32_t period_ms);
+//---
+
+static void initBMP280(I2C_HandleTypeDef *hi2c);
 static void readSDP();
 static void reqSDP();
 static void readNPA();
+static void readBMP280();
 
 static bool sensors_init(I2C_HandleTypeDef *hi2c) {
     if (_i2c != NULL)
@@ -64,6 +76,9 @@ static bool sensors_init(I2C_HandleTypeDef *hi2c) {
     if (HAL_I2C_Master_Transmit(hi2c, ADDR_SPD610, (uint8_t*) _sdp_writeAUR_req, sizeof(_sdp_writeAUR_req), 1000) != HAL_I2C_ERROR_NONE) {
         return false;
     }
+
+    initBMP280(hi2c);
+
     // Sensors settle time
     HAL_Delay(100);
 
@@ -74,6 +89,60 @@ static bool sensors_init(I2C_HandleTypeDef *hi2c) {
     _i2c->ErrorCallback = process_i2c_callback;
 
     return true;
+}
+
+void initBMP280(I2C_HandleTypeDef *hi2c) {
+    struct bmp280_config conf;
+
+    /* Map the delay function pointer with the function responsible for implementing the delay */
+    bmp.delay_ms = bmp280_delay_ms;
+
+    /* Assign device I2C address based on the status of SDO pin (GND for PRIMARY(0x76) & VDD for SECONDARY(0x77)) */
+    bmp.dev_id = BMP280_I2C_ADDR_PRIM;
+
+    /* Select the interface mode as I2C */
+    bmp.intf = BMP280_I2C_INTF;
+
+    /* Map the I2C read & write function pointer with the functions responsible for I2C bus transfer */
+    bmp.read = bmp280_read_direct;
+    bmp.write = bmp280_write_direct;
+
+    /* To enable SPI interface: comment the above 4 lines and uncomment the below 4 lines */
+
+    /*
+     * bmp.dev_id = 0;
+     * bmp.read = spi_reg_read;
+     * bmp.write = spi_reg_write;
+     * bmp.intf = BMP280_SPI_INTF;
+     */
+    int8_t rslt = bmp280_init(&bmp);
+    //print_rslt(" bmp280_init status", rslt);
+
+    /* Always read the current settings before writing, especially when
+     * all the configuration is not modified
+     */
+    rslt = bmp280_get_config(&conf, &bmp);
+    //print_rslt(" bmp280_get_config status", rslt);
+
+    /* configuring the temperature oversampling, filter coefficient and output data rate */
+    /* Overwrite the desired settings */
+    conf.filter = BMP280_FILTER_COEFF_2;
+
+    /* Pressure oversampling set at 4x */
+    conf.os_pres = BMP280_OS_4X;
+
+    /* Setting the output data rate as 1HZ(1000ms) */
+    conf.odr = BMP280_ODR_1000_MS;
+    rslt = bmp280_set_config(&conf, &bmp);
+    //print_rslt(" bmp280_set_config status", rslt);
+
+    /* Always set the power mode after setting the configuration */
+    rslt = bmp280_set_power_mode(BMP280_NORMAL_MODE, &bmp);
+    //print_rslt(" bmp280_set_power_mode status", rslt);
+
+    bmp.read = bmp280_read_DMA;
+    bmp.write = bmp280_write_DMA;
+
 }
 
 bool init_sensors() {
@@ -106,6 +175,39 @@ static void readNPA() {
     _sensor_state = READ_NPA_MEASUREMENT;
     HAL_I2C_Master_Receive_DMA(_i2c, ADDR_NPA700B, (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer));
 }
+
+static void readBMP280() {
+    _sensor_state = READ_BMP280;
+    bmp280_get_uncomp_data(&ucomp_data, &bmp);
+}
+
+//--- BMP280 library callbacks
+
+static int8_t bmp280_write_direct(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length) {
+    return 0;
+}
+
+static int8_t bmp280_read_direct(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length) {
+    return HAL_I2C_Master_Receive(_i2c, i2c_addr, reg_data, length, 1000);
+}
+
+static int8_t bmp280_write_DMA(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length) {
+    return 0;
+}
+
+static int8_t bmp280_read_DMA(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length) {
+    return 0;
+}
+
+/**
+ * Cette fonction n'est appelée par la lib bmp280 que lors de l'initialisation, cela ne pose donc
+ * pas de pb de synchronisation.
+ */
+static void bmp280_delay_ms(uint32_t period_ms) {
+    HAL_Delay(period_ms);
+}
+
+//---
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
     static uint32_t last_sdp_t_ms = 0;
@@ -181,8 +283,23 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
                 }
                 readSDP();
             } else {
-                readNPA();
+                static uint8_t count = 0;
+                if (count++ == 0)
+                    readBMP280();
+                else
+                    readNPA();
             }
+            break;
+        }
+        case READ_BMP280: {
+            double pressure;
+            if (bmp280_get_comp_pres_double(&pressure, ucomp_data.uncomp_press, &bmp) != 0) {
+                // TODO: Manage error
+                _sensor_state = STOPPED;
+                break;
+            }
+            sensors_sample_atmospheric_pressure(pressure);
+            readNPA();
             break;
         }
     }

@@ -26,6 +26,8 @@ float get_last_sensed_ms();
 
 void sensors_sample_VolM( int16_t read, uint32_t dt_ms);
 void sensors_sample_P   (uint16_t read);
+void sensors_sample_atmospheric_pressure(double pressure);
+
 
 void compute_corrected_pressure();
 void compute_corrected_flow_volume();

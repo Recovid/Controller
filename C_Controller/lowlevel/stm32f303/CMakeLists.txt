@@ -16,6 +16,7 @@ add_library(lowlevel STATIC
     lights.c
     pep_valve.c
     flash.c
+    bmp280.c
 )
 
 target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})

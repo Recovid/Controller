@@ -32,6 +32,8 @@ static volatile float    samples_Q_t_ms  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
+static volatile double atmospheric_pressure_mbar = 0;
+
 float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
@@ -88,11 +90,17 @@ float get_sensed_Patmo_mbar()
 #ifndef NTESTS
     return 1013. + sinf(2*M_PI*get_time_ms()/1000/60) * PATMO_VARIATION_MBAR; // TODO test failure
 #else
-    return 1013.; // TODO
+    return atmospheric_pressure_mbar;
 #endif
 }
 
 // ------------------------------------------------------------------------------------------------
+
+
+void sensors_sample_atmospheric_pressure(double pressure_Pascal){
+    atmospheric_pressure_mbar = pressure_Pascal / 100;
+}
+
 
 void sensors_sample_P(uint16_t read)
 {
