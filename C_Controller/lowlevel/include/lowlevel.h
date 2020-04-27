@@ -134,6 +134,7 @@ bool sensors_stop_sampling_flow();
 bool sensors_sample_flow(int16_t read, uint16_t dt_us);
 float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
+uint16_t get_samples_P_index_size();
 
 //! \returns false in case of hardware failure
 bool is_sensors_ok();
