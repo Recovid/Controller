@@ -177,17 +177,57 @@ static void motor_enable(bool ena) {
 	HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, ena?GPIO_PIN_SET:GPIO_PIN_RESET);
 }
 
+static void print_samples_Q(float* samples_Q_Lps, uint16_t* samples_Q_Lps_dt_us, int nb_samples)
+{
+	static char msg[200];
+	strcpy(msg, "\nQ ");
+	itoa(nb_samples, msg+3, 10);
+	hardware_serial_write_data(msg, strlen(msg));
+	msg[0] = '\n';
+	for(unsigned int j=0; j < nb_samples; j++)
+	{
+		char* current = itoa( (int) (samples_Q_Lps[j] * 1000.0f), msg+1, 10);
+		char* next = current + strlen(current);
+		next[0] = ' ';
+		next++;
+		itoa( (int) samples_Q_Lps_dt_us[j], next, 10);
+		hardware_serial_write_data(msg, strlen(msg));
+		wait_ms(1);
+	}
+}
 
+
+
+static void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
+{
+      static char msg[200];
+      strcpy(msg, "\nSteps                ");
+      itoa( nb_steps , msg+6, 10);
+      hardware_serial_write_data(msg, strlen(msg));
+      msg[0] = '\n';
+      for(unsigned int j=0; j < nb_steps; j+=100)
+      {
+              itoa((int) steps_t_us[j], msg+1, 10);
+              hardware_serial_write_data(msg, strlen(msg));
+              wait_ms(1);
+      }
+}
 
 void test_motor() 
 {
+
+	const int nb_steps = 3000;
 	valve_inhale();
-	compute_constant_motor_steps(150, 3000);
-	motor_press(steps_t_us, 3000);
+	compute_constant_motor_steps(150, nb_steps);
+	sensors_start_sampling_flow();
+	motor_press(steps_t_us, nb_steps);
 	while(_moving);
+	sensors_stop_sampling_flow();
 	wait_ms(200);
 	motor_release();
 	valve_exhale();
 	while(!_home);
 	wait_ms(100);
+	print_samples_Q(samples_Q_Lps, samples_Q_Lps_dt_us, get_samples_Q_index_size());
+	print_steps(steps_t_us, nb_steps);
 }

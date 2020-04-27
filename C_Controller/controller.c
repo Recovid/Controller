@@ -142,6 +142,8 @@ int self_tests()
     wait_ms(10000);*/
 
 	init_motor();
+	init_sensors();
+	sensors_start();
 	while(true)
 	{
 		test_motor();
