@@ -107,6 +107,7 @@ void motor_limit_sw_A_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>25) {
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
+    _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
 //	  _limit_sw_A ? light_yellow(On) : light_yellow(Off);
     check_home();
   }
@@ -118,6 +119,7 @@ void motor_limit_sw_B_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>25) {
     _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
+    _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
 //  	_limit_sw_B ? light_green(On) : light_green(Off);
     check_home();
   }
@@ -154,38 +156,12 @@ static void motor_enable(bool ena) {
 
 void test_motor() 
 {
-	static char msg[200];
-	for(int i = 1; i < 4; i++) 
-	{
-		valve_inhale();
-		sensors_start_sampling_flow();
-		motor_press_constant(MOTOR_STEP_TIME_US_MIN*i, 3800);
-		sensors_start_sampling_flow();
-		wait_ms(2000);
-		motor_stop();
-		valve_exhale();
-		wait_ms(100);
-		sensors_stop_sampling_flow();
-		motor_release();
-		strcpy(msg, "\nSample");
-		hardware_serial_write_data(msg, strlen(msg)); 
-		msg[0] = '\n';
-		for(unsigned int j=0; j < COUNT_OF(samples_Q_Lps); j++)
-		{
-			itoa( (int) (samples_Q_Lps[j] * 1000.0f), msg+1, 10);
-			hardware_serial_write_data(msg, strlen(msg)); 
-			wait_ms(1);
-		}
-
-		strcpy(msg, "\nSteps");
-		hardware_serial_write_data(msg, strlen(msg)); 
-		msg[0] = '\n';
-		for(unsigned int j=0; j < COUNT_OF(steps_t_us); j++)
-		{
-			itoa((int) steps_t_us[j], msg+1, 10);
-			hardware_serial_write_data(msg, strlen(msg)); 
-			wait_ms(1);
-		}
-		wait_ms(2000);
-	}
+	valve_inhale();
+	motor_press_constant(100, 3800);
+	while(_moving);
+	wait_ms(200);
+	motor_release();
+	valve_exhale();
+	while(!_home);
+	wait_ms(100);
 }
