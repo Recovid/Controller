@@ -58,12 +58,12 @@ bool init_ihm(ihm_mode_t ihm_mode, const char* pathInputFile, const char* pathOu
 {
     if (ihm_mode >= IHM_MODE_MAX)
     {
-        printf("Wrong ihm mode \n");
+        DEBUG_PRINT("Unknown ihm mode");
         return false;
     }
     else if (ihm_mode == IHM_MODE_FILE)
     {
-        printf("Serial oppened in File Mode \n");
+        DEBUG_PRINT("Ihm in File Mode");
         // TODO Replace with HAL_UART_init, no connection per se
         if (pathInputFile)
             in  = fopen(pathInputFile, "r");
