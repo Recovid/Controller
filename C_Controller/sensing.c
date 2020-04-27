@@ -235,29 +235,7 @@ uint32_t compute_samples_average_and_latency_us()
     return latency_us;
 }
 
-uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int i = 0; i < COUNT_OF(steps_t_us); i++)
-    {
-        if(i < max_steps) {
-		steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-        }
-        else {
-		steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
-        }
-    }
-    motor_press(steps_t_us, max_steps);
-    return max_steps;
-}
 
-uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
-    motor_press(steps_t_us, nb_steps);
-    return max_steps;
-}
 
 float corrections[MOTOR_MAX];
 //! \returns last steps_t_us motion to reach vol_mL
