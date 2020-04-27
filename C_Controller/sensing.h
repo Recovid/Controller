@@ -25,7 +25,7 @@ float get_sensed_VMe_Lpm();
 float get_last_sensed_ms();
 
 void sensors_sample_VolM( int16_t read, uint32_t dt_ms);
-void sensors_sample_P   (uint16_t read);
+void sensors_sample_P(uint16_t read, uint16_t dt_us);
 
 void compute_corrected_pressure();
 void compute_corrected_flow_volume();
@@ -50,6 +50,7 @@ extern  uint16_t last_step;
 #define SAMPLING_SIZE	(300)
 
 extern float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+extern uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE];
 extern float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
 

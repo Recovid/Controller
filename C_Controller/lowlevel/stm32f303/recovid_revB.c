@@ -10,6 +10,7 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 DMA_HandleTypeDef hdma_tim2_up;
 DMA_HandleTypeDef hdma_tim3_ch4_up;
 
@@ -25,6 +26,7 @@ bool MX_UART4_UART_Init(void);
 bool MX_I2C1_Init(void);
 bool MX_TIM2_Init(void);
 bool MX_TIM3_Init(void);
+bool MX_TIM4_Init(void);
 
 
 int init_hardware()
@@ -38,6 +40,7 @@ int init_hardware()
     if(!MX_I2C1_Init()) return false;
     if(!MX_TIM2_Init()) return false;
     if(!MX_TIM3_Init()) return false;
+    if(!MX_TIM4_Init()) return false;
 
 
 
@@ -261,6 +264,49 @@ bool MX_TIM3_Init(void)
     return true;
 
 }
+
+
+bool MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 72-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 0xFFFF;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+  return true;
+}
+
 
 bool MX_UART4_UART_Init(void)
 {
