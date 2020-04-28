@@ -128,6 +128,9 @@ float read_Paw_cmH2O();
 //! \returns the atmospheric pressure in mbar
 float read_Patmo_mbar();
 
+//! \returns the atmospheric pressure in mbar
+float read_temp_degreeC();
+
 //! \returns the current integrated volume
 float read_Vol_mL();
 

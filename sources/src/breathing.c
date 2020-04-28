@@ -109,6 +109,7 @@ void breathing_run(void *args) {
 	  unsigned int _steps = 4000;
 	  //compute_constant_motor_steps(d, _steps, _motor_steps_us);
 	  compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
+	  brth_printf("T_C = %d Patmo = %d\n", (int) (read_temp_degreeC()*100), (int) (read_Patmo_mbar()*100));
 
       // Start Inhalation
       valve_inhale();
