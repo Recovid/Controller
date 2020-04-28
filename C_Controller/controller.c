@@ -63,9 +63,11 @@ bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 
 int self_tests()
 {
-    DEBUG_PRINT("Start self tests");
+
+//    DEBUG_PRINT("Start self tests");
     int test_bits = 0xFFFFFFFF;
 
+#ifndef TEST_MOTOR
     // TODO test 'Arret imminent' ?
 
     printf("Buzzer low\n");
@@ -110,24 +112,8 @@ int self_tests()
     printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     check(&test_bits, 3, valve_inhale());
     printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-
-    motor_press_constant(400, 1000);
-    wait_ms(1000);
-    motor_stop();
-
     motor_release();
     wait_ms(3000);
-
-	light_green(On);
-	valve_inhale();
-	motor_press_constant(MOTOR_STEP_TIME_US_MIN, 3800);
-	wait_ms(1000);
-	motor_stop();
-	valve_exhale();
-	motor_release();
-	light_green(Off);
-	wait_ms(3000);
-
 
     //printf("Press   Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     //check(&test_bits, 4, motor_stop());
@@ -140,6 +126,16 @@ int self_tests()
     motor_pep_move(10);
     // TODO check(&test_bits, 8, motor_pep_...
     wait_ms(10000);*/
+
+#else
+	init_motor();
+	init_sensors();
+	sensors_start();
+	while(true)
+	{
+		test_motor();
+	}
+#endif
 
     return test_bits;
 }
@@ -271,11 +267,13 @@ void enter_state(RespirationState new)
         sensors_stop_sampling_flow();
         //valve_inhale();
         VTe_start_mL = get_sensed_Vol_mL();
+		wait_ms(200); //TODO Find instant reverse
         motor_release();
 	}
 	else if(state==Exhalation) {
 		sensors_stop_sampling_flow();
         valve_exhale();
+		wait_ms(200);//TODO Find instant reverse
         motor_release();
 		VMe_Lpm = 0.f;
 		PEP_cmH2O = 0.f;

@@ -214,6 +214,11 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
     return false; // TODO
 }
 
+uint32_t motor_press_constant(uint16_t step_us, uint16_t nb_steps)
+{
+	return step_us*nb_steps;
+}
+
 bool motor_press_speed(float speed)
 {
     motor_move();

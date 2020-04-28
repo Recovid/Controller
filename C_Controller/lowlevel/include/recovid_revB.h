@@ -38,6 +38,7 @@ extern "C"
   extern DMA_HandleTypeDef hdma_tim2_up;    // BAVU Motor DMA UP
 
   extern TIM_HandleTypeDef htim3;           // PEP Motor steps timer
+  extern TIM_HandleTypeDef htim4;           // 1mhz timer (use for timestamping samples)
   extern DMA_HandleTypeDef hdma_tim3_ch4_up;// PEP Motor DMA UP
 
   extern UART_HandleTypeDef huart2;

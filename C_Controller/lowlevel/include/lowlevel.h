@@ -72,6 +72,8 @@ bool is_motor_ok();
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 
+uint32_t motor_press_constant(uint16_t step_profile_us, uint16_t nb_steps);
+
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
@@ -131,9 +133,10 @@ bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interru
 
 bool sensors_start_sampling_flow();
 bool sensors_stop_sampling_flow();
-bool sensors_sample_flow(int16_t read, uint32_t dt_us);
+bool sensors_sample_flow(int16_t read, uint16_t dt_us);
 float sensors_samples_time_s();
 uint16_t get_samples_Q_index_size();
+uint16_t get_samples_P_index_size();
 
 //! \returns false in case of hardware failure
 bool is_sensors_ok();

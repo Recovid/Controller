@@ -7,6 +7,7 @@
 #include "configuration.h"
 #include "ihm_communication.h"
 #include "lowlevel/include/lowlevel.h"
+#include "platform.h"
 
 #ifndef NTESTS
 #include "flow_samples.h"
@@ -26,15 +27,21 @@ static float current_Vol_mL   = 0.f;
 
 static volatile uint16_t raw_P     = 0.f;
 static volatile int16_t raw_VolM  = 0.f;
-static volatile uint32_t raw_dt_ms = 0.f;
+static volatile uint32_t raw_dt_us = 0.f;
 
-static volatile float    samples_Q_t_ms  = 0.f;
+static volatile float    samples_Q_t_us  = 0.f;
 static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
+
 float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
+uint16_t samples_Q_Lps_dt_us[SAMPLING_SIZE]; // > max Tinsu_ms
 float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 
+uint16_t samples_P[SAMPLING_SIZE]; // > max Tinsu_ms
+uint16_t samples_P_dt_us[SAMPLING_SIZE]; // > max Tinsu_ms
+static volatile uint16_t samples_P_index = 0;
+static volatile bool     sampling_P      = false;
 // ------------------------------------------------------------------------------------------------
 
 
@@ -81,6 +88,8 @@ float get_last_sensed_ms() { return last_sense_ms; }
 
 uint16_t get_samples_Q_index_size() { return samples_Q_index; }
 
+uint16_t get_samples_P_index_size() { return samples_P_index; }
+
 //! \returns the atmospheric pressure in mbar
 //! \warning NOT IMPLEMENTED
 float get_sensed_Patmo_mbar()
@@ -94,10 +103,19 @@ float get_sensed_Patmo_mbar()
 
 // ------------------------------------------------------------------------------------------------
 
-void sensors_sample_P(uint16_t read)
+bool sensors_sample_P(uint16_t read, uint16_t dt_us)
 {
+	UNUSED(dt_us);
     raw_P = read;
 	compute_corrected_pressure();
+	if (!sampling_P) return false;
+
+	if(samples_P_index < SAMPLING_SIZE) {
+		samples_P[samples_P_index] = raw_P;
+		samples_P_dt_us[samples_P_index]  = dt_us;
+		samples_P_index++ ;
+	}
+    return true;
 }
 
 void compute_corrected_pressure()
@@ -124,47 +142,52 @@ void compute_corrected_flow_volume()
         temp_flow_Lpm = uncorrected_flow_Lpm * 0.87f;
     }
 
-    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * raw_dt_ms/1000.f/*s*/;
-    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_ms;
+    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * (float)raw_dt_us/1000000.f/*s*/;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * (float)raw_dt_us * 1000.f;
 }
 
 static char buf[200];
 
 bool sensors_start_sampling_flow()
 {
-    samples_Q_t_ms = 0.f;
+    samples_Q_t_us = 0.f;
     samples_Q_index = 0;
     sampling_Q = true;
-	light_green(On);
+    samples_P_index = 0;
+    sampling_P = true;
 
     return sampling_Q;
 }
 
+
+
 #ifdef NTESTS
-bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
+bool sensors_sample_flow(int16_t read, uint16_t dt_us)
 {
 	raw_VolM = read;
-	raw_dt_ms = dt_ms;
+	raw_dt_us = dt_us;
 	compute_corrected_flow_volume();
 
 	if (!sampling_Q) return false;
 
 	if(samples_Q_index < SAMPLING_SIZE) {
-		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
-		samples_Q_t_ms  += dt_ms;
+		samples_Q_Lps[samples_Q_index] = read;
+		samples_Q_Lps_dt_us[samples_Q_index]  = dt_us;
+		samples_Q_t_us  += dt_us;
 		samples_Q_index++ ;
 	}
     return true;
 }
 #else
-bool sensors_sample_flow(int16_t read, uint32_t dt_ms)
+bool sensors_sample_flow(int16_t read, uint16_t dt_us)
 {
     UNUSED(read); //TODO read values
     if (!sampling_Q) return false;
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(inf_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = inf_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += dt_ms;
+        samples_Q_Lps_dt_us[i] = dt_us;
+        samples_Q_t_us  += dt_us;
         samples_Q_index ++;
     }
     return true;
@@ -176,7 +199,7 @@ bool sensors_sample_flow_low_C()
 
     for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i<COUNT_OF(low_C_samples_Q_Lps) ; i++) {
         samples_Q_Lps[i] = low_C_samples_Q_Lps[i];
-        samples_Q_t_ms  += SAMPLES_T_US;
+        samples_Q_t_us  += SAMPLES_T_US;
         samples_Q_index ++;
     }
     return true;
@@ -186,127 +209,15 @@ bool sensors_sample_flow_low_C()
 bool sensors_stop_sampling_flow()
 {
     sampling_Q = false;
-	light_green(Off);
+    sampling_P = false;
     return !sampling_Q;
 }
 
-//! \returns estimated latency (µs) between motor motion and Pdiff readings
-uint32_t compute_samples_average_and_latency_us()
-{
-    bool unusable_samples = true;
-    uint32_t latency_us = 0;
-    float sum = 0.f;
-    for (uint16_t i=0 ; i<COUNT_OF(samples_Q_Lps) && i < COUNT_OF(average_Q_Lps); ++i) {
-        if (unusable_samples) {
-            if (samples_Q_Lps[i] > CALIB_UNUSABLE_PDIFF_LPS) {
-                unusable_samples = false;
-            }
-            else {
-                latency_us += SAMPLES_T_US;
-            }
-        }
-        // Sliding average over CALIB_PDIFF_SAMPLES_MIN samples at same index
-        sum += samples_Q_Lps[i];
-        if (i >= CALIB_PDIFF_SAMPLES_MIN) {
-            sum -= samples_Q_Lps[i-CALIB_PDIFF_SAMPLES_MIN];
-        }
 
 
 
 
-        if (i >= get_samples_Q_index_size() && (i >= 1 + CALIB_PDIFF_SAMPLES_MIN/2) ) {
-            average_Q_Lps[ (i-CALIB_PDIFF_SAMPLES_MIN/2) ] = average_Q_Lps[(i-CALIB_PDIFF_SAMPLES_MIN/2)- 1];
-        }
-        else if ((CALIB_PDIFF_SAMPLES_MIN/2 ) <= i && (i<= get_samples_Q_index_size() - (CALIB_PDIFF_SAMPLES_MIN/2)) ) {
-            average_Q_Lps[(i-CALIB_PDIFF_SAMPLES_MIN/2)] = sum / CALIB_PDIFF_SAMPLES_MIN;
-        }
-        else {
-			//if (i >= 1 + CALIB_PDIFF_SAMPLES_MIN/2) {
-			//	light_green(On);
-			//}
-            average_Q_Lps[i] = 0.f;
-        }
-    }
-    return latency_us;
-}
 
-uint16_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int i = 0; i < COUNT_OF(steps_t_us); i++)
-    {
-        if(i < max_steps) {
-		steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-        }
-        else {
-		steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
-        }
-    }
-    motor_press(steps_t_us, max_steps);
-    return max_steps;
-}
-
-uint16_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-    for(unsigned int t=0; t<max_steps; ++t) { steps_t_us[t]= step_t_us; }
-    motor_press(steps_t_us, nb_steps);
-    return max_steps;
-}
-
-float corrections[MOTOR_MAX];
-//! \returns last steps_t_us motion to reach vol_mL
-uint32_t compute_motor_steps_and_Tinsu_ms(float desired_flow_Lps, float vol_mL)
-{
-    uint32_t latency_us = compute_samples_average_and_latency_us(); // removes Pdiff noise and moderates flow adjustments over cycles
-//	sprintf(buf, "latency : %d\n", latency_us);
-//	hardware_serial_write_data(buf, strlen(buf)); 
-//	sprintf(buf, "get_samples_Q_index_size : %d\n", get_samples_Q_index_size());
-//	hardware_serial_write_data(buf, strlen(buf)); 
-
-    uint32_t last_step = 0;
-    float Tinsu_us = 0.f;
-    for (uint16_t i=0 ; i<COUNT_OF(steps_t_us) ; ++i) {
-        uint16_t Q_index = (Tinsu_us + latency_us) / SAMPLES_T_US;
-        const uint16_t average_Q_index = MIN(get_samples_Q_index_size()-(1+CALIB_PDIFF_SAMPLES_MIN/2),Q_index);
-//		if(i % 100 == 0) {
-//			sprintf(buf, "Q_Index : %d\n", Q_index);
-//			hardware_serial_write_data(buf, strlen(buf)); 
-//		}
-        const float actual_Lps = average_Q_Lps[average_Q_index];
-        float correction;
-		if(CHECK_FLT_EQUALS(0.0f, actual_Lps) || CHECK_FLT_EQUALS(0.0f, desired_flow_Lps))
-		{
-			light_red(On);
-			correction = 1;
-		}
-		else {
-			correction = MAX(0.5, MIN(2.0f, desired_flow_Lps / actual_Lps));
-			light_red(Off);
-		}
-		corrections[i] = correction;
-
-        const float new_step_t_us = MAX(MOTOR_STEP_TIME_US_MIN, ((float)steps_t_us[i]) / correction);
-        const float vol = Tinsu_us/1000/*ms*/ * desired_flow_Lps;
-		Tinsu_us += new_step_t_us;
-		if(new_step_t_us < MOTOR_STEP_TIME_INIT - (A*i)) {
-			steps_t_us[i] = MOTOR_STEP_TIME_INIT - (A*i);
-			last_step = i;
-		}
-		else if (vol < 1.0f * vol_mL) { // actual Q will almost always be lower than desired TODO +10%
-			steps_t_us[i] = new_step_t_us;
-			last_step = i;
-		}
-		else {
-			steps_t_us[i] = MIN(UINT16_MAX, new_step_t_us + (A)*(i-last_step));
-		}
-//#ifndef NTESTS
-//            DEBUG_PRINTF("t_us=%f steps_t_us=%d vol=%f", Tinsu_us, steps_t_us[i], vol);
-//#endif
-    }
-//    DEBUG_PRINTF("Tinsu predicted = %d ms", (uint32_t)(Tinsu_us/1000));
-    return last_step;
-}
 
 // ------------------------------------------------------------------------------------------------
 
@@ -349,8 +260,7 @@ bool PRINT(test_compute_samples_average_and_latency_us)
 
 bool PRINT(test_compute_motor_steps_and_Tinsu_ms)
     TEST_ASSUME(flow_samples());
-    TEST_ASSUME(compute_constant_motor_steps(1000, UINT16_MAX)==MOTOR_MAX);
-    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f);
+    uint32_t last_step = compute_motor_steps_and_Tinsu_ms(1.5f, 230.f, steps_t_us);
     return TEST_EQUALS(309, last_step); // TODO Check with more accurate calibration
 }
 
