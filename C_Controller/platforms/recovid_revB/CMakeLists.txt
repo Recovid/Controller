@@ -3,11 +3,10 @@ set(PLATFORM_INC_DIR .)
 add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
-add_library(platform STATIC
-#    sysmem.c
-#    syscalls.c
-
+add_library(platform OBJECT 
     recovid_revB.c
+    syscalls.c
+    sysmem.c
     stm32f3xx_hal_msp_tick.c
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
@@ -21,7 +20,16 @@ add_library(platform STATIC
     gpio.c
 )
 
-include_directories(${PLATFORM_INC_DIR} ../../include)
+target_include_directories(platform PUBLIC 
+	${PLATFORM_INC_DIR}
+	${PLATFORM_SRC_DIR}/HAL/
+	${PLATFORM_SRC_DIR}/HAL/Drivers/STM32F3xx_HAL_Driver/Inc/
+	${PLATFORM_SRC_DIR}/HAL/Drivers/CMSIS/Include
+	${PLATFORM_SRC_DIR}/HAL/Drivers/CMSIS/Device/ST/STM32F3xx/Include/
+	${PLATFORM_SRC_DIR}/HAL/Drivers/CMSIS/Include
+	${PLATFORM_SRC_DIR}/FreeRTOS/Source/include/
+	${PLATFORM_SRC_DIR}/FreeRTOS/Source/portable/GCC/ARM_CM4F/
+	)
 
 target_include_directories(platform PUBLIC ${PLATFORM_INC_DIR})
 target_link_libraries(platform PUBLIC hal freertos)

@@ -39,49 +39,7 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
     -Wall \
 ")
 
-set(REDEFINED_SYMBOLS
-	HAL_MspInit
-	HAL_I2C_MasterTxCpltCallback
-	HAL_I2C_ErrorCallback
-	HAL_I2C_MasterTxCpltCallback
-	HAL_I2C_MasterRxCpltCallback
-	DMA1_Channel1_IRQHandler
-	DMA1_Channel4_IRQHandler
-	DMA1_Channel5_IRQHandler
-	DMA1_Channel6_IRQHandler
-	DMA1_Channel7_IRQHandler
-	NMI_Handler
-	HardFault_Handler
-	MemManage_Handler
-	BusFault_Handler
-	UsageFault_Handler
-	SVC_Handler
-	DebugMon_Handler
-	PendSV_Handler
-	SysTick_Handler
-	EXTI9_5_IRQHandler
-	EXTI15_10_IRQHandler
-	USART2_IRQHandler
-	DMA2_Channel3_IRQHandler
-	DMA2_Channel5_IRQHandler	
-	UART4_IRQHandler
-	HAL_MspInit
-	HAL_I2C_MspInit
-	HAL_I2C_MspDeInit
-	TIM1_UP_TIM16_IRQHandler
-	HAL_TIM_MspPostInit
-	HAL_TIM_Base_MspDeInit
-	HAL_SuspendTick
-	HAL_ResumeTick
-	HAL_InitTick
-	pep_nfault_irq
-	pep_home_irq
-)
-
-list(TRANSFORM REDEFINED_SYMBOLS PREPEND "-u")
-string (REPLACE ";" " " REDEFINED_SYMBOLS_FLAGS_STR "${REDEFINED_SYMBOLS}")
 set(COMMON_TOOLCHAIN_LFLAGS "\
-    ${REDEFINED_SYMBOLS_FLAGS_STR} \
     ${COMMON_TOOLCHAIN_CFLAGS} \
     -Wl,--gc-sections \
     --specs=nano.specs \

@@ -58,9 +58,9 @@ include_directories(include)
 # Platform
 
 add_subdirectory(platforms)
-if (NOT TARGET platform)
-    message(FATAL_ERROR "Target platform ${TARGET} not supported")
-endif()
+#if (NOT TARGET platform)
+#    message(FATAL_ERROR "Target platform ${TARGET} not supported")
+#endif()
 
 ###############################################################################
 # Top-level Targets
@@ -88,17 +88,19 @@ set(SHARED_SOURCES
 # low-level
 if(NOT native_win32) # !POSIX for high-level deterministic tests only
     set(SHARED_SOURCES ${SHARED_SOURCES}
-        platforms/recovid_revB/sysmem.c
-        platforms/recovid_revB/syscalls.c
-    )
+            )
 endif()
 
 add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} src/main.c)
-target_link_libraries(     ${EXECUTABLE} m platform)
+
+if(${TARGET} STREQUAL "recovid_revB")
+	set(OPTIONAL_HAL hal)
+endif()
+target_link_libraries(${EXECUTABLE} m platform freertos ${OPTIONAL_HAL})
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} tests/main.c)
-target_link_libraries(test_${EXECUTABLE} m platform)
+target_link_libraries(test_${EXECUTABLE} m platform freertos  ${OPTIONAL_HAL})
 
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 

@@ -1,4 +1,5 @@
-add_library(hal STATIC
+add_library(hal OBJECT 
+#    stm32f3xx_nucleo.c
     system_stm32f3xx.c
     Drivers/startup_stm32f303retx.s
     Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_hal_cortex.c
@@ -39,14 +40,15 @@ add_library(hal STATIC
     Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_utils.c
 )
 target_include_directories(hal PUBLIC
-    .
-    Core/Inc
-    Drivers/STM32F3xx_HAL_Driver/Inc
-    Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
-    Drivers/CMSIS/Device/ST/STM32F3xx/Include
-    Drivers/CMSIS/Include
-    ..      # for stm32f3xx_hal_conf.h
+	${PLATFORM_INC_DIR} # For FreeRTOSConfig.h
+	${PLATFORM_SRC_DIR}
+	${PLATFORM_SRC_DIR}/HAL/
+	${PLATFORM_SRC_DIR}/HAL/Drivers/CMSIS/Include/
+    ${PLATFORM_SRC_DIR}/HAL/Drivers/CMSIS/Device/ST/STM32F3xx/Include
+	${PLATFORM_SRC_DIR}/HAL/Drivers/STM32F3xx_HAL_Driver/Inc/
 )
+
+
 
 target_compile_options(hal PRIVATE
     -Wno-unused-parameter
