@@ -1,4 +1,4 @@
-add_library(hal STATIC
+add_library(hal OBJECT 
 #    stm32f3xx_nucleo.c
     syscalls.c
     sysmem.c
@@ -43,13 +43,15 @@ add_library(hal STATIC
 )
 
 target_include_directories(hal PUBLIC
-    .
-    Core/Inc
-    Drivers/STM32F3xx_HAL_Driver/Inc
-    Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
-    Drivers/CMSIS/Device/ST/STM32F3xx/Include
-    Drivers/CMSIS/Include
+	${LOWLEVEL_INC_DIR} # For FreeRTOSConfig.h
+	${LOWLEVEL_SRC_DIR}/HAL/
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/CMSIS/Include/
+    ${LOWLEVEL_SRC_DIR}/HAL/Drivers/CMSIS/Device/ST/STM32F3xx/Include
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/STM32F3xx_HAL_Driver/Inc/
 )
+
+message(${LOWLEVEL_SRC_DIR})
+
 
 target_compile_options(hal PRIVATE
     -Wno-unused-parameter
