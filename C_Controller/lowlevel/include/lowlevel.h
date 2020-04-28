@@ -72,6 +72,8 @@ bool is_motor_ok();
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 
+uint32_t motor_press_constant(uint16_t step_profile_us, uint16_t nb_steps);
+
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map

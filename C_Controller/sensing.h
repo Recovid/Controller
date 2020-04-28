@@ -33,11 +33,11 @@ void compute_corrected_flow_volume();
 
 uint32_t compute_samples_average_and_latency_us(); //!< For test purposes
 
-//! \returns last steps_t_us motion to reach vol_mL
-uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL);
+//! \returns the total move time
+uint32_t compute_motor_steps_and_Tinsu_ms(float flow_Lps, float vol_mL, uint16_t* steps_t_us);
 
-//! \returns the actual count of steps planned due to MOTOR_MAX
-uint32_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps);
+//! \returns the total move time
+uint32_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps, uint16_t* steps_t_us);
 
 
 //! \remark Do not actually read sensors (this is done by interrupts), but use their data to compute values used by others

@@ -17,6 +17,10 @@ elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
 endif()
 
+if(TEST_MOTOR)
+	add_compile_definitions("TEST_MOTOR")
+endif()
+
 SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
@@ -82,6 +86,7 @@ set(SHARED_SOURCES
     configuration.c
     alarms.c
     ihm_communication.c
+    compute_motor.c
 )
 
 
