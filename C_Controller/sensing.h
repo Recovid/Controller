@@ -19,6 +19,7 @@ float get_sensed_Pcrete_cmH2O(); //!< \returns max sensed Paw during Insufflatio
 float get_sensed_Pplat_cmH2O (); //!< \returns sensed Paw at end of Plateau
 float get_sensed_PEP_cmH2O   (); //!< \returns sensed Paw at end of Exhale
 float get_sensed_Patmo_mbar  ();
+int32_t get_sensed_temperature_degreeC();
 
 float get_sensed_VMe_Lpm();
 
@@ -26,7 +27,8 @@ float get_last_sensed_ms();
 
 void sensors_sample_VolM( int16_t read, uint32_t dt_ms);
 void sensors_sample_P   (uint16_t read);
-void sensors_sample_atmospheric_pressure(double pressure);
+void sensors_sample_atmospheric_pressure(uint32_t pressure_Pa);
+void sensors_sample_temperature(int32_t temperature_degreeCx100);
 
 
 void compute_corrected_pressure();

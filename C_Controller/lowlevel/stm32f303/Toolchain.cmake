@@ -113,6 +113,11 @@ set(HAL_CFLAGS "\
 set(HAL_LFLAGS "\
     -T${LINKER_SCRIPT} \
 ")
+set(BMP280_CFLAGS "\
+	-DBMP280_DISABLE_64BIT_COMPENSATION \
+	-DBMP280_DISABLE_DOUBLE_COMPENSATION \
+")
+
 
 
 # May not work on old openocd versions
@@ -122,7 +127,7 @@ set(OPENOCD_CFG board/st_nucleo_f3.cfg)
 # Conclusion
 
 
-set(CMAKE_C_FLAGS   "${COMMON_TOOLCHAIN_CFLAGS} ${HAL_CFLAGS} -std=gnu99"
+set(CMAKE_C_FLAGS   "${COMMON_TOOLCHAIN_CFLAGS} ${HAL_CFLAGS} ${BMP280_CFLAGS} -std=gnu99"
     CACHE INTERNAL "c flags")
 set(CMAKE_CXX_FLAGS "${COMMON_TOOLCHAIN_CFLAGS} ${HAL_CFLAGS} -std=gnu++11"
     CACHE INTERNAL "c++ flags")

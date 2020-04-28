@@ -33,6 +33,7 @@ static volatile uint16_t samples_Q_index = 0;
 static volatile bool     sampling_Q      = false;
 
 static volatile double atmospheric_pressure_mbar = 0;
+static volatile int32_t temperature_degreeC = 0;
 
 float samples_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
 float average_Q_Lps[SAMPLING_SIZE]; // > max Tinsu_ms
@@ -94,11 +95,27 @@ float get_sensed_Patmo_mbar()
 #endif
 }
 
+//! \returns the atmospheric pressure in mbar
+//! \warning NOT IMPLEMENTED
+int32_t get_sensed_temperature_degreeC()
+{
+#ifndef NTESTS
+    return 25;
+#else
+    return temperature_degreeC;
+#endif
+}
+
 // ------------------------------------------------------------------------------------------------
 
 
-void sensors_sample_atmospheric_pressure(double pressure_Pascal){
-    atmospheric_pressure_mbar = pressure_Pascal / 100;
+void sensors_sample_atmospheric_pressure(uint32_t pressure_Pa){
+    atmospheric_pressure_mbar = round((float)pressure_Pa / 100);
+}
+
+
+void sensors_sample_temperature(int32_t temperature_degreeCx100){
+    temperature_degreeC = round((float)temperature_degreeCx100 / 100);
 }
 
 
