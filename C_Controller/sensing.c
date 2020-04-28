@@ -171,7 +171,7 @@ bool sensors_sample_flow(int16_t read, uint16_t dt_us)
 	if (!sampling_Q) return false;
 
 	if(samples_Q_index < SAMPLING_SIZE) {
-		samples_Q_Lps[samples_Q_index] = current_VolM_Lpm / 60.0f;
+		samples_Q_Lps[samples_Q_index] = read;
 		samples_Q_Lps_dt_us[samples_Q_index]  = dt_us;
 		samples_Q_t_us  += dt_us;
 		samples_Q_index++ ;
