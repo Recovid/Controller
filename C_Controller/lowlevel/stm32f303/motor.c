@@ -330,7 +330,7 @@ static void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
       itoa( nb_steps , msg+6, 10);
       hardware_serial_write_data(msg, strlen(msg));
       msg[0] = '\n';
-      for(unsigned int j=0; j < nb_steps; j+=100)
+      for(unsigned int j=0; j < nb_steps; j+=1)
       {
               itoa((int) steps_t_us[j], msg+1, 10);
               hardware_serial_write_data(msg, strlen(msg));
