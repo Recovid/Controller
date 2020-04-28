@@ -7,7 +7,14 @@ import threading
 import matplotlib.pyplot as plt
 
 
+startTime = int(round(time.time() * 1000))
+tsi_sample = None
+dp_sample = None
+paw_sample = None
+
 def readTSI(dev, bdrate, samplesNb, periodMs : int, name):
+    global startTime
+    global tsi_sample
     ser = serial.Serial(dev, bdrate, timeout=10)
     backnb=samplesNb
     command = "SSR" + str(periodMs).zfill(4)
@@ -28,7 +35,6 @@ def readTSI(dev, bdrate, samplesNb, periodMs : int, name):
         return
     counter = 0
     samples = []
-    startTime = int(round(time.time() * 1000))
     while True:
         line = str(ser.readline())
         if len(line) > 3:
@@ -56,26 +62,53 @@ def readTSI(dev, bdrate, samplesNb, periodMs : int, name):
             elif counter == samplesNb:
                 stop_event.set()
                 break
-    np_samples = np.array(samples)
-    np.savetxt(name+'_tsi.txt', np_samples)
+    tsi_samples = np.array(samples)
+    np.savetxt(name+'_tsi.txt', tsi_samples)
     print("TSI finished", backnb, "samples")
 
 
 def read_recovid(dev, bdrate, name):
+    global startTime
+    global dp_sample
+    global paw_sample
     ser = serial.Serial(dev, bdrate, timeout=10)
-    f = open(name+'_recovid.txt', 'w+')
-    startTime = int(round(time.time() * 1000))
+    reco_start = None
+    timesum=0
+    Psave=True
+    
     while True:
         if stop_event.isSet():
             break
         line = ser.readline()
         line=line.decode('utf-8').rstrip('\n')
-        if line=='START':
-            f.flush()
+        if reco_start is None:
+            if "START" == line:
+                millis = int(round(time.time() * 1000) - startTime)
+                reco_time=millis
+            else:
+                continue
+        if "START" in line:
             millis = int(round(time.time() * 1000) - startTime)
-            print("START", millis, file=f)
+            reco_time=millis
+        elif "P" in line:
+            Psave=True
+            timesum=reco_time
+        elif "Q" in line:
+            Psave=False
+            timesum=reco_time
         else:
-            print(line, file=f)
+            vals = line.split(' ')
+            if(len(vals)==2):
+                timesum=timesum+int(vals[1])/1000.0
+                if Psave:
+                    paw_sample.append([timesum,int(vals[0])])
+                else:
+                    dp_sample.append([timesum,int(vals[0])])
+    dp_sample=np.array(dp_sample)
+    paw_sample=np.array(paw_sample)
+    f = open(name+'_recovid.txt', 'a+')
+    np.savetxt(f,np.array(dp_sample))
+    np.savetxt(f,np.array(paw_sample))
     f.close()
     print("Recovid finished")
 
@@ -86,6 +119,10 @@ samples_cnt = int(1000/25*60)
 stop_event = threading.Event()
 
 def main(argv):
+    global dp_sample
+    global paw_sample
+    global tsi_sample
+    
     samples_cnt = int(800/25*int(argv[1]))
     name=argv[2]
     thread_tsi = threading.Thread(target=readTSI, args=('/dev/ttyUSB0', 38400, samples_cnt, T, name))
@@ -95,19 +132,30 @@ def main(argv):
     thread_tsi.join()
     thread_covid.join()
 
-    #tsi = np.loadtxt(name+'_tsi.txt')
-    #recovid = np.loadtxt(name+'_recovid.txt')
+    tsi = np.loadtxt(name+'_tsi.txt')
+    
+    time_tsi = tsi[:,0]
+    dp_tsi = tsi[:,1]
+    
+    dpi_reco = np.interp(time_tsi,dp_sample[:,0],dp_sample[:,1])
+    pawi_reco = np.interp(time_tsi,paw_sample[:,0],paw_sample[:,1])
+    
+    out = np.column_stack((time_tsi, pawi_reco, dp_tsi, dpi_reco ))
+    np.savetxt(name+'interp.txt', out)
 
-    #fig, ax = plt.subplots(1, 1)
+    fig, axs = plt.subplots(2, 1)
+    
+    axs[0].plot(time_tsi,dpi_reco )
+    axs[0].plot(time_tsi,dp_tsi )
+    axs[0].grid(True)
+    axs[0].legend(['Flow Reco', 'Flow TSI'])
+    
+    axs[1].plot(time_tsi,pawi_reco )
+    axs[1].grid(True)
+    axs[1].legend(['Paw Reco'])
+    plt.savefig('fig')
+    plt.show()
 
-    #ftsi = ax.plot(tsi[:,0], tsi[:,1])
-    #freco = ax.plot(recovid[:, 0], recovid[:, 1])
-    #plt.legend(['F TSI', 'F Recovid'])
-    #ax.set(xlabel='time (ms)', ylabel='?', title='Sensors')
-    #ax.grid()
-    #plt.show()
-
-    # print(tsi.shape, recovid.shape)
     print("main finished")
 
 
