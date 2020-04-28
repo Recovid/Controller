@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 
 
 startTime = int(round(time.time() * 1000))
-tsi_sample = None
-dp_sample = None
-paw_sample = None
+tsi_sample = []
+dp_sample = []
+paw_sample = []
 
 def readTSI(dev, bdrate, samplesNb, periodMs : int, name):
     global startTime
@@ -83,19 +83,23 @@ def read_recovid(dev, bdrate, name):
         line=line.decode('utf-8').rstrip('\n')
         if reco_start is None:
             if "START" == line:
+                print("INIT")
                 millis = int(round(time.time() * 1000) - startTime)
-                reco_time=millis
+                reco_start=millis
             else:
                 continue
         if "START" in line:
             millis = int(round(time.time() * 1000) - startTime)
-            reco_time=millis
+            reco_start=millis
+            print(reco_start)
         elif "P" in line:
+            print("P")
             Psave=True
-            timesum=reco_time
+            timesum=reco_start
         elif "Q" in line:
+            print("Q")
             Psave=False
-            timesum=reco_time
+            timesum=reco_start
         else:
             vals = line.split(' ')
             if(len(vals)==2):
@@ -106,6 +110,8 @@ def read_recovid(dev, bdrate, name):
                     dp_sample.append([timesum,int(vals[0])])
     dp_sample=np.array(dp_sample)
     paw_sample=np.array(paw_sample)
+    print(dp_sample)
+    print(paw_sample)
     f = open(name+'_recovid.txt', 'a+')
     np.savetxt(f,np.array(dp_sample))
     np.savetxt(f,np.array(paw_sample))
@@ -145,8 +151,8 @@ def main(argv):
 
     fig, axs = plt.subplots(2, 1)
     
-    axs[0].plot(time_tsi,dpi_reco )
-    axs[0].plot(time_tsi,dp_tsi )
+    axs[0].plot(time_tsi,dpi_reco*-1/105 )
+    axs[0].plot(time_tsi,dp_tsi)
     axs[0].grid(True)
     axs[0].legend(['Flow Reco', 'Flow TSI'])
     
