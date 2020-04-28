@@ -70,12 +70,12 @@ extern UART_HandleTypeDef huart2;         // Dbg uart
 #define motor_tim             htim2
 #define MOTOR_TIM_CHANNEL     TIM_CHANNEL_1
 
-#define MOTOR_PULSE_WIDTH_US 10
+#define MOTOR_PULSE_WIDTH_US  20
 
 #define MOTOR_PRESS_DIR     GPIO_PIN_RESET
 #define MOTOR_RELEASE_DIR   GPIO_PIN_SET
 
-#define MOTOR_RELEASE_STEP_US   200
+#define MOTOR_RELEASE_STEP_US   300
 #define MOTOR_HOME_STEP_US      400
 
 

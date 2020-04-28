@@ -43,10 +43,10 @@
 #define CONTROLLER_TASK_PRIORITY    (TASK_PRIORITY_NORMAL)
 #define HMI_TASK_PRIORITY           (TASK_PRIORITY_BELOW_NORMAL)
 
-#define BREATHING_TASK_STACK_SIZE   (768)
-#define MONITORING_TASK_STACK_SIZE  (512)
+#define BREATHING_TASK_STACK_SIZE   (1024)
+#define MONITORING_TASK_STACK_SIZE  (768)
 #define CONTROLLER_TASK_STACK_SIZE  (768)
-#define HMI_TASK_STACK_SIZE         (1152)
+#define HMI_TASK_STACK_SIZE         (1024)
 
 extern TaskHandle_t breathingTaskHandle;
 extern TaskHandle_t monitoringTaskHandle;

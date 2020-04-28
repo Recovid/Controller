@@ -55,6 +55,8 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_release();
 
+void motor_enable(bool ena);
+
 //!
 bool is_motor_moving();
 

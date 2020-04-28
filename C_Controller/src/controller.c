@@ -83,14 +83,16 @@ void controller_run(void* args) {
 
     wait_ms(1000);
 
+    motor_enable(false);
+
     // Start breathing and monitoring and hmi
     ctrl_printf("CTRL: Starting breathing, monitoring and hmi tasks\n");
-    // xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
-    // wait_ms(100);
+    xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
+    wait_ms(100);
     xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
     wait_ms(100);
-    // xEventGroupSetBits(ctrlEventFlags, HMI_RUN_FLAG );
-    // wait_ms(100);
+    xEventGroupSetBits(ctrlEventFlags, HMI_RUN_FLAG );
+    wait_ms(100);
     
     while(!is_Failsafe_Enabled()) {
       // TODO Implement controller logic
@@ -231,7 +233,7 @@ int self_tests()
     while(!is_motor_pep_home()) wait_ms(10);
     motor_pep_move(10);
     while(is_motor_pep_moving()) wait_ms(10);
-    // // TODO check(&test_bits, 8, motor_pep_...
+    // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;
 }
