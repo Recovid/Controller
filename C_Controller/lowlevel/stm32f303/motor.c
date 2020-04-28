@@ -79,76 +79,13 @@ unsigned int print_christophe(
 
 }
 
-unsigned int compute_motor_press_christophe(
-										unsigned int step_t_ns_init, 
-										unsigned int acc_ns, 
-										unsigned int step_t_min_ns, 
-										unsigned int speed_down_t_ns, 
-										unsigned int speed_down_t2_ps, 
-										unsigned int step_t_ns_final,
-										unsigned int dec_ns,
-										int nb_steps, 
-										uint16_t* steps_t_us)
-{
-	unsigned int step_total_us = 0;
-	unsigned int pente_acc, debit_constant, pente_dec;
-	for(int i = 0; i < nb_steps; i++)
-	{
 
-		//Pas acceleration
-		// =SI(N°pas<Pas_temps_initial/Acc_temps,ARRONDI.INF((Pas_temps_initial-Acc_temps*N°pas),0)/1000,0)
-		if( i< step_t_ns_init / acc_ns ) {
-			pente_acc = (step_t_ns_init - (acc_ns*i)) / 1000;
-		}
-		else {
-			pente_acc = 0;
-		}
-
-		//Accélération phase
-		//=ARRONDI.INF((Pas_temps_min+(N°pas*Ralent_débit_lin)+(N°pas^2*Ralent_débit_2/1000))/1000,0)
-		debit_constant =  ((step_t_min_ns + i*speed_down_t_ns + (i*i*speed_down_t2_ps/1000)) /1000);
-		
-		//Fin
-		//=SI(ET(H17<=N_Pas_fin,(H17>(N_Pas_fin-(Pas_temps_fin-Pas_temps_min)/Décc_temps))),
-		//	ARRONDI.INF((Pas_temps_fin/1000)+((H17-N_Pas_fin)*(Décc_temps/1000)),0)
-		//else
-		//	,0)
-		if(nb_steps - ((step_t_ns_final - step_t_min_ns)/dec_ns)  < i &&  i < nb_steps)
-			pente_dec = (step_t_ns_final / 1000)+  ((i-nb_steps)*(dec_ns/1000));
-		else
-			pente_dec = 0;
-
-		steps_t_us[i] = MAX(pente_acc, MAX(debit_constant, pente_dec));
-		step_total_us += steps_t_us[i];
-	}
-	for(int i = nb_steps; i < MOTOR_MAX; i++) 
-	{
-		steps_t_us[i] = UINT16_MAX;
-	}
-	return step_total_us;
-}
-
-uint32_t compute_constant_motor_steps(uint16_t step_t_us, uint16_t nb_steps)
-{
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-	uint32_t total_time = 0;
-    for(unsigned int i=0; i<MOTOR_MAX; ++i) {
-        if(i < max_steps) {
-               steps_t_us[i] = MAX(step_t_us, MOTOR_STEP_TIME_INIT - (A)*i);
-        }
-        else {
-               steps_t_us[i] = MIN(UINT16_MAX, step_t_us + (A)*(i-max_steps));
-        }
-		total_time += step_t_us;
-	}
-    return max_steps;
-}
 
 
 uint32_t motor_press_constant(uint16_t step_t_us, uint16_t nb_steps)
 {
-    const uint16_t max_steps = MIN(nb_steps, COUNT_OF(steps_t_us));
-	uint32_t total_time = compute_constant_motor_steps(step_t_us, nb_steps);
+    const uint16_t max_steps = MIN(nb_steps, MOTOR_MAX);
+	uint32_t total_time = compute_constant_motor_steps(step_t_us, nb_steps, steps_t_us);
     motor_press(steps_t_us, nb_steps);
 	return total_time;
 }
@@ -350,6 +287,7 @@ void test_motor()
 
 
 	const int nb_steps = 3800;
+
 	unsigned int t_us = compute_motor_press_christophe(step_t_ns_init,
 												acc_ns,
 												step_t_min_ns,
@@ -379,5 +317,4 @@ void test_motor()
 	wait_ms(100);
 	print_samples_Q(samples_Q_Lps, samples_Q_Lps_dt_us, get_samples_Q_index_size());
 	print_samples_P(samples_P, samples_P_dt_us, get_samples_P_index_size());
-	while(true);
 }
