@@ -107,6 +107,7 @@ def read_recovid(dev, bdrate, name):
                 if Psave:
                     paw_sample.append([timesum,int(vals[0])])
                 else:
+                    #print(int(vals[0]))
                     dp_sample.append([timesum,int(vals[0])])
     dp_sample=np.array(dp_sample)
     paw_sample=np.array(paw_sample)
@@ -147,11 +148,11 @@ def main(argv):
     pawi_reco = np.interp(time_tsi,paw_sample[:,0],paw_sample[:,1])
     
     out = np.column_stack((time_tsi, pawi_reco, dp_tsi, dpi_reco ))
-    np.savetxt(name+'interp.txt', out)
+    np.savetxt(name+'_interp.txt', out)
 
     fig, axs = plt.subplots(2, 1)
     
-    axs[0].plot(time_tsi,dpi_reco*-1/105 )
+    axs[0].plot(time_tsi,dpi_reco*-1/105000 )
     axs[0].plot(time_tsi,dp_tsi)
     axs[0].grid(True)
     axs[0].legend(['Flow Reco', 'Flow TSI'])
