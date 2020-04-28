@@ -142,8 +142,8 @@ void compute_corrected_flow_volume()
         temp_flow_Lpm = uncorrected_flow_Lpm * 0.87f;
     }
 
-    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * raw_dt_us/1000000.f/*s*/;
-    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * raw_dt_us * 1000.f;
+    current_VolM_Lpm = temp_flow_Lpm + uncorrected_flow_Lpm * error_ps * (float)raw_dt_us/1000000.f/*s*/;
+    current_Vol_mL  += (current_VolM_Lpm/60.f/*mLpms*/) * (float)raw_dt_us * 1000.f;
 }
 
 static char buf[200];
