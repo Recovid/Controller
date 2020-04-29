@@ -26,7 +26,6 @@ static uint32_t       _cycle_start_ms;
 
 
 
-#define MAX_MOTOR_STEPS         (4800)
 
 static uint16_t _motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it configurable with a define. This represent a physical limit a the system.
 static uint32_t _steps;

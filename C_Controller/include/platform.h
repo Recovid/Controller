@@ -2,6 +2,7 @@
 #define __PLATFORM_H__
 
 #include "common.h"
+#include "platform_config.h"
 
 
 // Public interface to the lowlevel hardware and/or simulated hardware
