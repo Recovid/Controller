@@ -1,7 +1,7 @@
 add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
-add_library(lowlevel STATIC
+add_library(lowlevel OBJECT 
     stm32f3xx_hal_msp_tick.c
     stm32f3xx_hal_msp.c
     stm32f3xx_it.c
@@ -19,8 +19,16 @@ add_library(lowlevel STATIC
     bmp280.c
 )
 
-target_include_directories(lowlevel PUBLIC ${LOWLEVEL_INC_DIR})
-target_link_libraries(lowlevel PUBLIC hal freertos)
+target_include_directories(lowlevel PUBLIC 
+	${LOWLEVEL_INC_DIR}
+	${LOWLEVEL_SRC_DIR}/HAL/
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/STM32F3xx_HAL_Driver/Inc/
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/CMSIS/Include
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/CMSIS/Device/ST/STM32F3xx/Include/
+	${LOWLEVEL_SRC_DIR}/HAL/Drivers/CMSIS/Include
+	${LOWLEVEL_SRC_DIR}/FreeRTOS/Source/include/
+	${LOWLEVEL_SRC_DIR}/FreeRTOS/Source/portable/GCC/ARM_CM4F/
+	)
 
 target_compile_definitions(lowlevel PUBLIC NTESTS) # remove unit-tests from target
 target_compile_definitions(hal PUBLIC NTESTS) # remove unit-tests from target

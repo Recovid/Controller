@@ -17,6 +17,10 @@ elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
 endif()
 
+if(TEST_MOTOR)
+	add_compile_definitions("TEST_MOTOR")
+endif()
+
 SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
@@ -82,6 +86,7 @@ set(SHARED_SOURCES
     configuration.c
     alarms.c
     ihm_communication.c
+    compute_motor.c
 )
 
 
@@ -98,11 +103,15 @@ if(NOT native_win32) # !POSIX for high-level deterministic tests only
 endif()
 
 add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} main.c)
-target_link_libraries(     ${EXECUTABLE} m lowlevel)
+
+if(${TARGET} STREQUAL "stm32f303")
+	set(OPTIONAL_HAL hal)
+endif()
+target_link_libraries(${EXECUTABLE} m lowlevel freertos ${OPTIONAL_HAL})
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} tests/main.c)
-target_link_libraries(test_${EXECUTABLE} m lowlevel)
+target_link_libraries(test_${EXECUTABLE} m lowlevel freertos  ${OPTIONAL_HAL})
 
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 
