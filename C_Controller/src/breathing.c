@@ -105,9 +105,9 @@ void breathing_run(void *args) {
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
-      _steps = 3500;
+      _steps = 4000;
       for(uint32_t t=0; t<_steps; ++t) {
-        float d = 300; //compte_motor_step_time(t, 1., A_calibrated, B_calibrated, 400);
+        float d = 200+(t/20); //compte_motor_step_time(t, 1., A_calibrated, B_calibrated, 400);
         _motor_steps_us[t]= (uint16_t)d;
       }
 
