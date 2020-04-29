@@ -96,11 +96,16 @@ add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} src/main.c)
 if(${TARGET} STREQUAL "recovid_revB")
 	set(OPTIONAL_HAL hal)
 endif()
-target_link_libraries(${EXECUTABLE} m platform freertos ${OPTIONAL_HAL})
+
+if(${TARGET} STREQUAL "sim")
+	set(OPTIONAL_PTHREAD pthread)
+endif()
+
+target_link_libraries(${EXECUTABLE} m platform freertos ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} tests/main.c)
-target_link_libraries(test_${EXECUTABLE} m platform freertos  ${OPTIONAL_HAL})
+target_link_libraries(test_${EXECUTABLE} m platform freertos  ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
 
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 

@@ -395,10 +395,10 @@ void send_and_recv()
 #pragma GCC diagnostic ignored "-Wtype-limits"
 
 bool PRINT(test_non_default_settings)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 300;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 =  10;
+    set_setting_FR_pm(        30);
+    set_setting_VT_mL(       300);
+    set_setting_Vmax_Lpm(     30);
+    set_setting_EoI_ratio_x10(10);
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -414,10 +414,10 @@ bool PRINT(test_non_default_settings)
 }
 
 bool PRINT(test_checked_EoI)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 300;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(30);
+    set_setting_FR_pm(        30);
+    set_setting_VT_mL(       300);
+    set_setting_Vmax_Lpm(     30);
+    set_setting_EoI_ratio_x10(10);
     return
         TEST_FLT_EQUALS(  30.f , get_setting_FR_pm    ()) &&
         TEST_EQUALS    (2000   , get_setting_T_ms     ()) &&
@@ -433,10 +433,11 @@ bool PRINT(test_checked_EoI)
 }
 
 bool PRINT(test_checked_VM)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 600;
-    setting_EoI_ratio_x10 =  10;
-    setting_Vmax_Lpm      = checked_Vmax_Lpm(30);
+    set_setting_FR_pm(        30);
+    set_setting_VT_mL(       600);
+    set_setting_EoI_ratio_x10(10);
+    set_setting_Vmax_Lpm(30);
+
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -452,10 +453,11 @@ bool PRINT(test_checked_VM)
 }
 
 bool PRINT(test_checked_VT)
-    setting_FR_pm         = 30;
-    setting_Vmax_Lpm      = 30;
-    setting_EoI_ratio_x10 = 10;
-    setting_VT_mL         = checked_VT_mL(600);
+    set_setting_FR_pm(        30);
+    set_setting_Vmax_Lpm(30);
+    set_setting_VT_mL(600);
+    set_setting_EoI_ratio_x10(10);
+
     return
         TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
         TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
@@ -471,10 +473,11 @@ bool PRINT(test_checked_VT)
 }
 
 bool PRINT(test_checked_FR)
-    setting_VT_mL         = 600;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 =  10;
-    setting_FR_pm         = checked_FR_pm(30);
+    set_setting_VT_mL(600);
+    set_setting_Vmax_Lpm(30);
+    set_setting_EoI_ratio_x10(10);
+    set_setting_FR_pm(30);
+
     return
         TEST_RANGE     (  24.f, get_setting_FR_pm       (), 25.f) &&
         TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding
@@ -491,7 +494,7 @@ bool PRINT(test_checked_FR)
 
 //! \warning send_DATA fails at clock_ms > 0
 bool PRINT(test_send)
-    TEST_ASSUME(init_uart(IHM_MODE_FILE, NULL, NULL));
+    TEST_ASSUME(init_uart());
     TEST_ASSUME(send_INIT(""));
     TEST_ASSUME(strcmp(INIT_frame, "INIT \tCS8:65\n")==0);
     TEST_ASSUME(send_SET(VT___, VT____FMT, 300));

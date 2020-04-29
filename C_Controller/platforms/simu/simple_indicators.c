@@ -1,6 +1,6 @@
-#include "simple_indicators.h"
-
 #include <stdio.h>
+#include <stdbool.h>
+#include "platform.h"
 
 #ifndef WIN32
 bool blink() {

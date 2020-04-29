@@ -3,10 +3,10 @@
 
 
 
-#define DEFAULT_setting_FR_pm          (18) //!< \see checked_FR_pm()         to set it within the range defined by     VT, Vmax, EoI
-#define DEFAULT_setting_VT_mL          (300) //!< \see checked_VT_mL()         to set it within the range defined by FR,     Vmax, EoI
-#define DEFAULT_setting_Vmax_Lpm       (60) //!< \see checked_Vmax_Lpm()      to set it within the range defined by FR, VT,       EoI
-#define DEFAULT_setting_EoI_ratio_x10  (20) //!< \see checked_EoI_ratio_x10() to set it within the range defined by FR, VT, Vmax
+#define DEFAULT_setting_FR_pm          (18) //!< \see set_setting_FR_pm to set it within the range defined by     VT, Vmax, EoI
+#define DEFAULT_setting_VT_mL          (300)//!< \see set_setting_VT_mL to set it within the range defined by FR,     Vmax, EoI
+#define DEFAULT_setting_Vmax_Lpm       (60) //!< \see set_setting_Vmax_Lpm to set it within the range defined by FR, VT,       EoI
+#define DEFAULT_setting_EoI_ratio_x10  (20) //!< \see set_setting_EoI_ratio_x10 to set it within the range defined by FR, VT, Vmax
 
 #define DEFAULT_setting_PEP_cmH2O      (5)
 

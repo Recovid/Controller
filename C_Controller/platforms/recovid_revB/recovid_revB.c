@@ -46,7 +46,7 @@ static bool MX_TIM7_Init(void);
 
 
 
-int init_hardware()
+bool init_hardware()
 {
     HAL_Init();
     if(!SystemClock_Config()) return false;

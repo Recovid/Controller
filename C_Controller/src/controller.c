@@ -14,10 +14,10 @@
 //! \warning Global settings MUST use types that can be atomically read/write in a threadsafe way on STM32
 //! \warning Non volatile memory may be limited to uint16_t by the corresponding driver
 
-static uint16_t setting_FR_pm; //!< \see checked_FR_pm()         to set it within the range defined by     VT, Vmax, EoI
-static uint16_t setting_VT_mL; //!< \see checked_VT_mL()         to set it within the range defined by FR,     Vmax, EoI
-static uint16_t setting_Vmax_Lpm; //!< \see checked_Vmax_Lpm()      to set it within the range defined by FR, VT,       EoI
-static uint16_t setting_EoI_ratio_x10; //!< \see checked_EoI_ratio_x10() to set it within the range defined by FR, VT, Vmax
+static uint16_t setting_FR_pm;         //!< \see set_setting_FR_pm()         to set it within the range defined by     VT, Vmax, EoI
+static uint16_t setting_VT_mL;         //!< \see set_setting_VT_mL()         to set it within the range defined by FR,     Vmax, EoI
+static uint16_t setting_Vmax_Lpm;      //!< \see set_setting_Vmax_Lpm()      to set it within the range defined by FR, VT,       EoI
+static uint16_t setting_EoI_ratio_x10; //!< \see set_setting_EoI_ratio_x10() to set it within the range defined by FR, VT, Vmax
 
 static uint16_t setting_PEP_cmH2O;
 
@@ -408,100 +408,5 @@ void set_command_soft_reset() { command_soft_reset= true; }
 
 #pragma GCC diagnostic ignored "-Wtype-limits"
 
-
-bool PRINT(test_non_default_settings)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 300;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 =  10;
-    return
-        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
-        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
-        TEST_FLT_EQUALS( 300.f, get_setting_VT_mL       ()) &&
-        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
-        TEST_EQUALS    ( 600  , get_setting_Tinsu_ms    ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
-        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
-        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
-        TEST_EQUALS    ( 400  , get_setting_Tplat_ms    ()) &&
-        true;
-}
-
-bool PRINT(test_checked_EoI)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 300;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 = checked_EoI_ratio_x10(30);
-    return
-        TEST_FLT_EQUALS(  30.f , get_setting_FR_pm    ()) &&
-        TEST_EQUALS    (2000   , get_setting_T_ms     ()) &&
-        TEST_FLT_EQUALS( 300.f , get_setting_VT_mL    ()) &&
-        TEST_FLT_EQUALS(  30.f , get_setting_Vmax_Lpm ()) &&
-        TEST_EQUALS    ( 600   , get_setting_Tinsu_ms ()) &&
-        TEST_FLT_EQUALS(   0.4f, get_setting_IoE_ratio()) &&
-        TEST_FLT_EQUALS(   2.3f, get_setting_EoI_ratio()) &&
-        TEST_RANGE     (1390   , get_setting_Texp_ms  (), 1400) &&
-        TEST_RANGE     ( 600   , get_setting_Tinspi_ms(),  610) &&
-        TEST_RANGE     (   0   , get_setting_Tplat_ms (),   10) &&
-        true;
-}
-
-bool PRINT(test_checked_VM)
-    setting_FR_pm         =  30;
-    setting_VT_mL         = 600;
-    setting_EoI_ratio_x10 =  10;
-    setting_Vmax_Lpm      = checked_Vmax_Lpm(30);
-    return
-        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
-        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
-        TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
-        TEST_FLT_EQUALS(  36.f, get_setting_Vmax_Lpm    ()) &&
-        TEST_RANGE     ( 999  , get_setting_Tinsu_ms    (), 1000) && // due to Vmax rounding to floor
-        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
-        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
-        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
-        TEST_RANGE     (   0.f, get_setting_Tplat_ms    (), 1.f ) && // due to Vmax rounding to floor
-        true;
-}
-
-bool PRINT(test_checked_VT)
-    setting_FR_pm         = 30;
-    setting_Vmax_Lpm      = 30;
-    setting_EoI_ratio_x10 = 10;
-    setting_VT_mL         = checked_VT_mL(600);
-    return
-        TEST_FLT_EQUALS(  30.f, get_setting_FR_pm       ()) &&
-        TEST_EQUALS    (2000  , get_setting_T_ms        ()) &&
-        TEST_FLT_EQUALS( 500.f, get_setting_VT_mL       ()) &&
-        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
-        TEST_EQUALS    (1000  , get_setting_Tinsu_ms    ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
-        TEST_EQUALS    (1000  , get_setting_Texp_ms     ()) &&
-        TEST_EQUALS    (1000  , get_setting_Tinspi_ms   ()) &&
-        TEST_EQUALS    (   0  , get_setting_Tplat_ms    ()) &&
-        true;
-}
-
-bool PRINT(test_checked_FR)
-    setting_VT_mL         = 600;
-    setting_Vmax_Lpm      =  30;
-    setting_EoI_ratio_x10 =  10;
-    setting_FR_pm         = checked_FR_pm(30);
-    return
-        TEST_RANGE     (  24.f, get_setting_FR_pm       (), 25.f) &&
-        TEST_RANGE     (2400  , get_setting_T_ms        (), 2500) && // due to FR rounding
-        TEST_FLT_EQUALS( 600.f, get_setting_VT_mL       ()) &&
-        TEST_FLT_EQUALS(  30.f, get_setting_Vmax_Lpm    ()) &&
-        TEST_EQUALS    (1200  , get_setting_Tinsu_ms    ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_IoE_ratio   ()) &&
-        TEST_FLT_EQUALS(   1.f, get_setting_EoI_ratio   ()) &&
-        TEST_RANGE     (1200  , get_setting_Texp_ms     (), 1250) && // due to FR rounding
-        TEST_RANGE     (1200  , get_setting_Tinspi_ms   (), 1250) && // due to FR rounding
-        TEST           (        get_setting_Tplat_ms    ()<= 100) && // due to FR rounding
-        true;
-}
 
 #endif

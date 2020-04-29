@@ -1,9 +1,9 @@
-#include "hardware_serial.h"
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -65,7 +65,7 @@ static int set_interface_attribs(int fd, int speed)
 // }
 
 
-int hardware_serial_read_data(char * data, uint16_t data_size)
+int uart_read_data(char * data, uint16_t data_size)
 {
     int read_return = 0;
 
@@ -87,7 +87,7 @@ int hardware_serial_read_data(char * data, uint16_t data_size)
     return read_return;
 }
 
-int hardware_serial_write_data(const char * data, uint16_t data_size)
+int uart_write_data(const char * data, uint16_t data_size)
 {
     int write_return = 0;
 
@@ -108,7 +108,27 @@ int hardware_serial_write_data(const char * data, uint16_t data_size)
     return write_return;
 }
 
-int hardware_serial_init(const char * serial_port)
+bool uart_send(const char* frame)
+{
+
+    return uart_write_data(frame, strlen(frame));
+}
+
+int uart_recv()
+{
+    char blocking_read = 0;
+
+    int t_s = uart_read_data(&blocking_read, sizeof(char));;
+
+    if (t_s > 0) {
+
+        return blocking_read;
+    }
+    return EOF;
+}
+
+
+int uart_init(const char * serial_port)
 {
     if(serial_port == NULL)
     {

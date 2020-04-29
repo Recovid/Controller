@@ -1,4 +1,5 @@
-#include "lowlevel.h"
+#include <stdbool.h>
+#include "platform.h"
 
 bool is_Battery_ok()
 {

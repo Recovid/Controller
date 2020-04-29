@@ -1,4 +1,5 @@
-#include "flash.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 uint16_t read_saved_value(uint16_t idx)
 {

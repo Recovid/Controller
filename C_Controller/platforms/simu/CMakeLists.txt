@@ -1,3 +1,6 @@
+add_compile_definitions(MAX_NUMBER_OF_TASKS=300)
+add_compile_definitions(MAX_NUMBER_OF_TASKS=300)
+
 if(NOT CMAKE_HOST_WIN32) # !POSIX cannot use FreeRTOS which requires sys/time.h for instance
 	set(FREERTOS_DIR_X86        ${PLATFORM_SRC_DIR}/FreeRTOS-Sim)
     set(FREERTOS_SRC_DIR_X86    ${FREERTOS_DIR_X86}/Source)
@@ -21,27 +24,33 @@ if(NOT CMAKE_HOST_WIN32) # !POSIX cannot use FreeRTOS which requires sys/time.h 
         ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 		${FREERTOS_INC_DIR_X86}
         ${PLATFORM_INC_DIR}
+		${PLATFORM_SRC_DIR}
     )
     target_link_libraries(freertos PUBLIC pthread)
 endif()
 
 ###############################################################################
 
-set(LOWLEVEL_SOURCES
+set(PLATFORM_SOURCES
     lowlevel_simulation.c
     simple_indicators.c
     flash.c
     ups.c
+    gpio.c
+    time.c
 )
 
+add_compile_definitions(MAX_NUMBER_OF_TASKS=300)
+
 if(NOT CMAKE_HOST_WIN32)
-    set(LOWLEVEL_SOURCES ${LOWLEVEL_SOURCES} hardware_serial.c)
+    set(PLATFORM_SOURCES ${PLATFORM_SOURCES} uart.c)
 endif()
 
-add_library(lowlevel OBJECT ${LOWLEVEL_SOURCES})
+add_library(platform OBJECT ${PLATFORM_SOURCES})
 
-target_include_directories(lowlevel PUBLIC 
+target_include_directories(platform PUBLIC 
 	${PLATFORM_INC_DIR}
+	${PLATFORM_SRC_DIR}
     ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 	${FREERTOS_INC_DIR_X86}
 	)
