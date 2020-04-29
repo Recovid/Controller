@@ -18,11 +18,13 @@ static void check_home() ;
 void motor_enable(bool ena);
 
 bool motor_release() {
+  motor_stop();
   if( !_home) {
 	  HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
 	  _moving=true;
 	  _homing=true;
-	  _motor_tim->Instance->ARR = MOTOR_RELEASE_STEP_US;
+    _motor_tim->Init.Period = MOTOR_RELEASE_STEP_US;
+    HAL_TIM_Base_Init(_motor_tim);
 	  HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
   }
   return true;
@@ -32,14 +34,14 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 {   
     motor_stop();
     if (nb_steps > 0) {
-    	portENTER_CRITICAL();
         motor_enable(true);
         HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
         _moving=true;
-        _motor_tim->Instance->ARR = steps_profile_us[0];
-        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
+        _motor_tim->Init.Period = steps_profile_us[0];
+        HAL_TIM_Base_Init(_motor_tim);
+        HAL_DMA_Init(_motor_tim->hdma[TIM_DMA_ID_UPDATE]);
+        HAL_TIM_PWM_Start_IT(_motor_tim, MOTOR_TIM_CHANNEL);
         HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
-      portEXIT_CRITICAL();
     }
     return true;
 }
@@ -47,7 +49,8 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 bool motor_stop() {
   if(_moving) {
     HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
-    HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
+    HAL_TIM_PWM_Stop_IT(_motor_tim, MOTOR_TIM_CHANNEL);
+    HAL_DMA_DeInit(_motor_tim->hdma[TIM_DMA_ID_UPDATE]);
     _moving=false;
 	//dbg_print("MOTOR STOP\n");
   }
@@ -83,7 +86,8 @@ bool init_motor()
 
     if(_home) {
       HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
-      _motor_tim->Instance->ARR = MOTOR_HOME_STEP_US;
+      _motor_tim->Init.Period = MOTOR_HOME_STEP_US;
+      HAL_TIM_Base_Init(_motor_tim);
       _moving = true;
       _homing= false;
       HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);    
@@ -95,7 +99,8 @@ bool init_motor()
     _homing=true;
     _moving=true;
     HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
-    _motor_tim->Instance->ARR = MOTOR_HOME_STEP_US;
+    _motor_tim->Init.Period = MOTOR_HOME_STEP_US;
+    HAL_TIM_Base_Init(_motor_tim);
     HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);    
     while(!_home);
   }
