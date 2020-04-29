@@ -82,6 +82,7 @@ set(SHARED_SOURCES
    src/controller.c
    src/hmi.c
    src/protocol.c
+   src/compute_motor.c
 )
 
 

@@ -1,7 +1,7 @@
 #include "recovid_revB.h"
 #include "platform.h"
 #include "FreeRTOS.h"
-
+#include "recovid.h"
 
 static TIM_HandleTypeDef* _motor_tim = NULL;
 
@@ -46,9 +46,10 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
 
 bool motor_stop() {
   if(_moving) {
-    HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
     HAL_TIM_DMABurst_WriteStop(_motor_tim, TIM_DMA_ID_UPDATE);
+    HAL_TIM_PWM_Stop(_motor_tim, MOTOR_TIM_CHANNEL);
     _moving=false;
+	//dbg_print("MOTOR STOP\n");
   }
   return true;
 }
