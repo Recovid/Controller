@@ -12,6 +12,7 @@ static float VTe_mL;
 static float Pcrete_cmH2O; 
 static float Pplat_cmH2O; 
 static float PEP_cmH2O; 
+static float VTe_start=0.;
 
 
 
@@ -151,7 +152,6 @@ void breathing_run(void *args) {
         wait_ms(10);
       }
       VTi= read_Vol_mL();
-      reset_Vol_mL();        
       valve_exhale();
       while(Exhalation == _state) { 
           if ( T <= (get_time_ms() - _cycle_start_ms )) { 
@@ -168,8 +168,7 @@ void breathing_run(void *args) {
           }
         wait_ms(10);
       }
-      VTe = read_Vol_mL();
-      reset_Vol_mL();
+      VTe = VTe_start - read_Vol_mL();
 
 
 
@@ -201,6 +200,7 @@ static void enter_state(BreathingState newState) {
       brth_printf("BRTH: Plateau\n");
       break;
     case Exhalation:
+      VTe_start = read_Vol_mL();
       brthState =  BRTH_CYCLE_EXHALATION;
       brth_printf("BRTH: Exhalation\n");
       break;
