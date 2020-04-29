@@ -3,6 +3,7 @@
 #include "breathing.h"
 #include "platform.h"
 
+#include <compute_motor.h>
 #include <math.h>
 
 
@@ -105,11 +106,10 @@ void breathing_run(void *args) {
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
-      _steps = 3500;
-      for(uint32_t t=0; t<_steps; ++t) {
-        float d = 300; //compte_motor_step_time(t, 1., A_calibrated, B_calibrated, 400);
-        _motor_steps_us[t]= (uint16_t)d;
-      }
+	  uint16_t d = 300;
+	  unsigned int _steps = 4000;
+	  compute_constant_motor_steps(d, _steps, _motor_steps_us);
+	  //compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us); 
 
       // Start Inhalation
       valve_inhale();
