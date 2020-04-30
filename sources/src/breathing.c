@@ -107,8 +107,8 @@ void breathing_run(void *args) {
 
 	  uint16_t d = 300;
 	  unsigned int _steps = 4000;
-	  compute_constant_motor_steps(d, _steps, _motor_steps_us);
-	  //compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us); 
+	  //compute_constant_motor_steps(d, _steps, _motor_steps_us);
+	  compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
 
       // Start Inhalation
       valve_inhale();
