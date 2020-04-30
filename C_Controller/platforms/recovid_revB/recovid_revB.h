@@ -75,8 +75,6 @@ extern UART_HandleTypeDef huart2;         // Dbg uart
 #define MOTOR_PRESS_DIR     GPIO_PIN_RESET
 #define MOTOR_RELEASE_DIR   GPIO_PIN_SET
 
-#define MOTOR_RELEASE_STEP_US   300
-#define MOTOR_HOME_STEP_US      400
 
 
 
