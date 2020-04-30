@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.7)
 ###############################################################################
 # Compilers setup
 
-set(Lowlevel_dir ${CMAKE_SOURCE_DIR}/lowlevel)
+set(platforms_dir ${CMAKE_SOURCE_DIR}/platforms)
 
 if( (CMAKE_HOST_WIN32) AND  ( (NOT TARGET) OR ("${TARGET}" STREQUAL "native") ) )
 	set(native_win32 TRUE)
@@ -17,11 +17,7 @@ elseif(NOT TARGET)
     set(TARGET stm32f303) # default target for system tests
 endif()
 
-if(TEST_MOTOR)
-	add_compile_definitions("TEST_MOTOR")
-endif()
-
-SET(CMAKE_TOOLCHAIN_FILE ${Lowlevel_dir}/${TARGET}/Toolchain.cmake)
+SET(CMAKE_TOOLCHAIN_FILE ${platforms_dir}/${TARGET}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
 
@@ -56,16 +52,15 @@ if(native_win32)
     add_compile_options(-Wpedantic)
 endif()
 
-# TODO: Remove this because lowlevel shouldn't include top-level
-include_directories(.)
+include_directories(include)
 
 ###############################################################################
-# Libraries
+# Platform
 
-add_subdirectory(lowlevel)
-if (NOT TARGET lowlevel)
-    message(FATAL_ERROR "lowlevel target ${TARGET} does not define a 'lowlevel' library")
-endif()
+add_subdirectory(platforms)
+#if (NOT TARGET platform)
+#    message(FATAL_ERROR "Target platform ${TARGET} not supported")
+#endif()
 
 ###############################################################################
 # Top-level Targets
@@ -81,41 +76,41 @@ set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 # high-level
 set(SHARED_SOURCES
-    sensing.c
-    controller.c
-    configuration.c
-    alarms.c
-    ihm_communication.c
-    compute_motor.c
+   src/controller.c
+   src/monitoring.c
+   src/breathing.c
+   src/controller.c
+   src/hmi.c
+   src/protocol.c
+   src/compute_motor.c
 )
 
 
 # low-level
 if(NOT native_win32) # !POSIX for high-level deterministic tests only
     set(SHARED_SOURCES ${SHARED_SOURCES}
-        tasks_recovid.c
-        TaskMessageManagement.c
-        TaskRespirationCycle.c
-		TaskSensing.c
-        # Sensing is performed by interrupts once init_sensors is called
-        # Alarms are monitored and triggered in TaskRespirationCycle
-    )
+            )
 endif()
 
-add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} main.c)
+add_executable(            ${EXECUTABLE} ${SHARED_SOURCES} src/main.c)
 
-if(${TARGET} STREQUAL "stm32f303")
+if(${TARGET} STREQUAL "recovid_revB")
 	set(OPTIONAL_HAL hal)
 endif()
-target_link_libraries(${EXECUTABLE} m lowlevel freertos ${OPTIONAL_HAL})
+
+if(${TARGET} STREQUAL "sim")
+	set(OPTIONAL_PTHREAD pthread)
+endif()
+
+target_link_libraries(${EXECUTABLE} m platform freertos ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} tests/main.c)
-target_link_libraries(test_${EXECUTABLE} m lowlevel freertos  ${OPTIONAL_HAL})
+target_link_libraries(test_${EXECUTABLE} m platform freertos  ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
 
 add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
 
 # Targets for flashing on stm32
-if(${TARGET} STREQUAL "stm32f303")
-    Setup_Programming_for(${EXECUTABLE} test_${EXECUTABLE})
+if(${TARGET} STREQUAL "recovid_revB")
+    Setup_Programming_for(${EXECUTABLE} )
 endif()

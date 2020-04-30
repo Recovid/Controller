@@ -11,7 +11,7 @@ on:
 jobs:
   build_native:
     env:
-      target: native
+      target: simu 
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -38,10 +38,10 @@ jobs:
       run: |
         git submodule update --init
         cd C_Controller
-        target=stm32f303
+        target=recovid_revB
         mkdir -p _build_${target}
         cd _build_${target}
-        cmake .. -DCMAKE_BUILD_TYPE=Debug -DTARGET=${target}
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
         make -j$(nproc) C_Controller.${target}.elf
 
     - name: Upload stm32 binaries

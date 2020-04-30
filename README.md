@@ -1,12 +1,3 @@
-# Controller v2
-
-The C_Controller subdirectory contains the code for Controller v2 that is currently being tested on the final hardware (mechanic+electronic). 
-
-Integration is performed on master using Pull Requests from feature/fix branches that can be contributed from anyone with an accompanying issue describing the fix/enhancement contributed. 
-
-Merge into master is based after verification on either the simulated environment (for highlevel code with unit tests) or the final hardware available at MinMaxMedical premises. Verification priorities are set by MinMaxMedical but can always be discussed by mail or on teams/discord channels. 
-
-
 # Controller Target
 * Board: STM32 Nucleo
 * IDE: STM32Cube : https://www.st.com/en/development-tools/stm32cubeide.html
@@ -15,7 +6,7 @@ Merge into master is based after verification on either the simulated environmen
 
 NB: C_Controller project allows to test part of the code in simulated environments more or less close to the target based on C99 GCC 7 compiler
 
-# Controller Specifications (partial)
+# Controller Specifications
 Sensors, electro-valves and controller
 
 ## Recovid-synoptique
