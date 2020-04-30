@@ -30,18 +30,19 @@
 
 #ifndef NDEBUG
 #define DEBUG
-// #define DEBUG_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
-// #define DEBUG_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
-
-#define DEBUG_PRINTF(_fmt, ...) ((void)0)
-#define DEBUG_PRINT( _msg     ) ((void)0)
 #endif
 
-//#define STDERR_PRINTF(_fmt, ...) (fprintf(stderr, _fmt "\n", __VA_ARGS__))
-//#define STDERR_PRINT( _msg     ) (fprintf(stderr,    "%s\n",      (_msg)))
+#ifdef DEBUG
+#define DEBUG_PRINTF(_fmt, ...) ((void)0) //(fprintf(stderr, _fmt "\n", __VA_ARGS__))
+#define DEBUG_PRINT( _msg     ) ((void)0) //(fprintf(stderr,    "%s\n",      (_msg)))
+#define STDERR_PRINTF(_fmt, ...) ((void)0)//(fprintf(stderr, _fmt "\n", __VA_ARGS__))
+#define STDERR_PRINT( _msg     ) ((void)0)//(fprintf(stderr,    "%s\n",      (_msg)))
+#else
+#define DEBUG_PRINTF(_fmt, ...) ((void)0)
+#define DEBUG_PRINT( _msg     ) ((void)0)
 #define STDERR_PRINTF(_fmt, ...) ((void)0)
 #define STDERR_PRINT( _msg     ) ((void)0)
-
+#endif
 
 #ifdef NDEBUG
 #define ASSERT_EQUALS(_expected,_evaluated) ((void)0)

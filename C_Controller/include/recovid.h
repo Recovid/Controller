@@ -88,11 +88,13 @@ void monitoring_run(void *);
 
 #ifdef DEBUG
 extern SemaphoreHandle_t dbgMutex;
-
-
-
 #define dbg_print(_fmt)       { xSemaphoreTake(dbgMutex,  portMAX_DELAY); printf(_fmt); xSemaphoreGive(dbgMutex); }
 #define dbg_printf(_fmt,...)  { xSemaphoreTake(dbgMutex,  portMAX_DELAY); printf(_fmt, ##__VA_ARGS__); xSemaphoreGive(dbgMutex); }
+#else
+#define dbg_print(_fmt)       
+#define dbg_printf(_fmt,...)  
+#endif
+
 
 #ifdef DEBUG_HMI
 #define hmi_print(_fmt)       dbg_print(_fmt)
@@ -126,7 +128,6 @@ extern SemaphoreHandle_t dbgMutex;
 #define brth_printf(_fmt,...)
 #endif
 
-#endif
 
 
 
