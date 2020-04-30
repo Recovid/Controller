@@ -12,11 +12,11 @@ unsigned int compute_motor_press_christophe(
 										unsigned int step_t_ns_final,
 										unsigned int dec_ns,
 										unsigned int nb_steps, 
-										uint16_t* steps_t_us)
+										uint32_t* steps_t_us)
 {
 	unsigned int step_total_us = 0;
 	unsigned int pente_acc, debit_constant, pente_dec;
-    const uint16_t max_steps = MIN(nb_steps, MAX_MOTOR_STEPS);
+    const uint32_t max_steps = MIN(nb_steps, MAX_MOTOR_STEPS);
 	for(unsigned int i = 0; i < max_steps; i++)
 	{
 
@@ -48,23 +48,27 @@ unsigned int compute_motor_press_christophe(
 	}
 	for(unsigned int i = nb_steps; i < MAX_MOTOR_STEPS; i++) 
 	{
-		steps_t_us[i] = UINT16_MAX;
+		steps_t_us[i] = UINT32_MAX;
 	}
 	return step_total_us;
 }
 
-uint32_t compute_constant_motor_steps(uint16_t step_t_us, unsigned int nb_steps, uint16_t* steps_t_us)
+
+unsigned int compute_constant_motor_steps(uint32_t step_t_us, unsigned int nb_steps, uint32_t* steps_t_us)
 {
-    const uint16_t max_steps = MIN(nb_steps, MAX_MOTOR_STEPS);
-	uint32_t total_time = 0;
+    const uint32_t max_steps = MIN(nb_steps, MAX_MOTOR_STEPS);
+	unsigned int total_time = 0;
     for(unsigned int i=0; i< MAX_MOTOR_STEPS; ++i) {
 		if(i < max_steps) {
-			   int pente_acc = ( MOTOR_STEP_TIME_INIT) - ((MOTOR_ACC_COEF)*i);
-			   steps_t_us[i] = (uint16_t) MAX(step_t_us, pente_acc);
+			   int pente_acc = (MOTOR_STEP_TIME_INIT) - ((MOTOR_ACC_COEF)*i);
+				if(pente_acc > 0)
+				   steps_t_us[i] = (uint32_t) MAX(step_t_us, pente_acc);
+				else
+				   steps_t_us[i] = step_t_us;
 		}
 		else {
 			   int pente_dec = ((MOTOR_ACC_COEF)* (i-max_steps));
-			   steps_t_us[i] = MIN(UINT16_MAX,pente_dec);
+			   steps_t_us[i] = MIN(UINT32_MAX,pente_dec);
 		}
 		total_time += step_t_us;
 	}
@@ -92,11 +96,11 @@ void print_christophe_header(
 }
 
 
-void print_steps(uint16_t* steps_t_us, unsigned int nb_steps)
+void print_steps(uint32_t* steps_t_us, unsigned int nb_steps)
 {
-    dbg_printf("Steps %d\n", nb_steps);  
+    printf("Steps %d\n", nb_steps);
 	for(unsigned int j=0; j < nb_steps; j+=1)
     {
-		dbg_printf("%d\n", steps_t_us[j]);
+		printf("%u\n", steps_t_us[j]);
     }
 }
