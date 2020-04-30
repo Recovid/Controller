@@ -143,7 +143,7 @@ void motor_move()
 }
 
 //Not yet implemented
-bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps)
 {
     return false; // TODO
 }

@@ -48,7 +48,7 @@ bool is_motor_ok();
 
 //! Press the BAVU to insufflate air to the patient according to the defined steps_profile in µs/step
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps);
+bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps);
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
