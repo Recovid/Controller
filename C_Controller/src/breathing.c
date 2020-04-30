@@ -5,7 +5,7 @@
 
 #include <compute_motor.h>
 #include <math.h>
-
+#include <stdint.h>
 
 static float EoI_ratio;       
 static float FR_pm;           
@@ -107,10 +107,18 @@ void breathing_run(void *args) {
       // _flow_samples_count = 0;
 
 	  uint32_t d = 300;
-	  unsigned int _steps = 4000;
+	  unsigned int _steps = 240;
 	  //compute_constant_motor_steps(d, _steps, _motor_steps_us);
-	  compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
-
+	  //compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
+	  compute_motor_press_christophe2( 240,     //Vmax_tour_par_min
+			  						   200,     //pas_par_tour_mot
+									   8000,    //Sa_pas_par_s2,
+									   4000000, //step_t_minQK_ns,
+									   150,     //speed_down_t_ns, 
+									   50,      //speed_down_t2_ns,
+									   8000,   //Sd_pas_par_s2,
+									   _steps,  //nb_steps_stop
+									   _motor_steps_us); //motor_steps_us
       // Start Inhalation
       valve_inhale();
       motor_press(_motor_steps_us, _steps);

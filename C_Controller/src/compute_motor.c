@@ -2,6 +2,59 @@
 #include "platform.h"
 #include "recovid.h"
 #include "compute_motor.h"
+#include <math.h>
+
+unsigned int compute_motor_press_christophe2( unsigned int Vmax_tour_par_min,
+			  						   		  unsigned int pas_par_tour_mot,
+									   		  unsigned int Sa_pas_par_s2,
+									   		  unsigned int step_t_minQK_ns,
+									   		  unsigned int speed_down_t_ns, 
+									   		  unsigned int speed_down_t2_ns,
+									   		  unsigned int Sd_pas_par_s2,
+									   		  unsigned int nb_steps_stop,
+											  uint32_t* steps_t_us)
+{
+	
+	unsigned int step_total_us = 0;
+    const uint32_t max_steps = MIN(nb_steps_stop, MAX_MOTOR_STEPS);
+	unsigned int pente_acc, debit_constant, pente_dec;
+	unsigned int Vmax_pas_par_s = (Vmax_tour_par_min / 60) * pas_par_tour_mot;
+	unsigned int step_t_min_vmax_us = 1000000/ Vmax_pas_par_s;
+	unsigned int npas_acc = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sa_pas_par_s2);
+	unsigned int npas_dec = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sd_pas_par_s2);
+	for(unsigned int n_pas = 1; n_pas <= max_steps; n_pas++)
+	{
+		//Pas acceleration
+		//
+		//=SI(n_pas<=(Vmax_pas_par_s/(2*Sa_pas_par_s2)*Vmax_pas_par_s);ARRONDI.INF(1000000/RACINE(2*n_pas*Sa_pas_par_s2);0);step_t_min_vmax_us)
+		if(n_pas <= npas_acc) {
+			pente_acc = 1000000/sqrt(2*n_pas*Sa_pas_par_s2);
+		}
+		else {
+			pente_acc = step_t_min_vmax_us;
+		}
+
+		//Pas QK
+		if(n_pas<nb_steps_stop)
+		{
+			debit_constant = ((step_t_minQK_ns/1000)+( (n_pas*speed_down_t_ns) /1000)+((speed_down_t2_ns*n_pas*n_pas) /1000));
+		}
+		else {
+			debit_constant = step_t_min_vmax_us;
+		}
+
+		//Pas décélération
+		if( n_pas>=nb_steps_stop-npas_dec && n_pas<=nb_steps_stop) {
+			pente_dec = (1000000/sqrt(2*(nb_steps_stop+1-n_pas)*Sd_pas_par_s2));
+		}
+		else {
+			pente_dec = step_t_min_vmax_us;
+		}
+		steps_t_us[n_pas-1] = MAX(pente_acc, MAX(debit_constant, pente_dec));
+		step_total_us += steps_t_us[n_pas-1];
+	}
+	return step_total_us;
+};
 
 unsigned int compute_motor_press_christophe(
 										unsigned int step_t_ns_init, 

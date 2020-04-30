@@ -1,6 +1,15 @@
 #ifndef __COMPUTE_MOTOR_H__
 #define __COMPUTE_MOTOR_H__
 
+unsigned int compute_motor_press_christophe2( unsigned int Vmax_tour_par_min,
+			  						   		  unsigned int pas_par_tour_mot,
+									   		  unsigned int Sa_pas_par_s2,
+									   		  unsigned int step_t_minQK_ns,
+									   		  unsigned int speed_down_t_ns, 
+									   		  unsigned int speed_down_t2_ps,
+									   		  unsigned int Sd_pas_par_s2,
+									   		  unsigned int nb_steps_stop,
+											  uint32_t* steps_t_us);
 
 unsigned int compute_motor_press_christophe(
 		unsigned int step_t_ns_init, 

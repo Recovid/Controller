@@ -2,7 +2,6 @@
 #include "platform.h"
 #include "FreeRTOS.h"
 #include "recovid.h"
-
 static TIM_HandleTypeDef* _motor_tim = NULL;
 
 static void period_elapsed_callback(TIM_HandleTypeDef *tim);
