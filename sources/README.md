@@ -50,15 +50,15 @@ set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.
 # Add unix build tools (make, ...)
 set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.make.win32_1.1.0.201910081157\tools\bin;
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
+cmake  -DTARGET=recovid_revB -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
 make -j8
-make -j8 C_Controller.stm32f303.elf.binary
+make -j8 C_Controller.recovid_revB.elf.binary
 
 #Flash IT
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -rdu
-"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w TON_BINAIRE C_Controller.stm32f303.elf.binary --start
+"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w TON_BINAIRE C_Controller.recovid_revB.elf.binary --start
 
 ````
 
@@ -67,15 +67,15 @@ make -j8 C_Controller.stm32f303.elf.binary
 
 
 ````bash
+$ git submodule update --init # Initialize the submodule (FreeRTOS)
 #Add cross toolchain to your path
 PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.linux64_1.0.0.201904181610/tools/bin
 #Add openocd to your path for flashing
 PATH=$PATH:/opt/st/stm32cubeide_1.3.0/plugins/com.st.stm32cube.ide.mcu.externaltools.openocd.linux64_1.3.0.202002181050/tools/bin/
 #Run cmake to generate the makefile
-cmake  -DTARGET=stm32f303 -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
-# make the bin to flash
+cmake  -DTARGET=recovid_revB -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
+# make the binary
 make -j16 C_Controller.stm32f303.elf
 # and flash it using OpenOCD
-make -j16 C_Controller.stm32f303.elf.flash
-
+make C_Controller.recovid_revB.elf.flash
 ````
