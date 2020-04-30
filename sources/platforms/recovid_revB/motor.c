@@ -29,7 +29,7 @@ bool motor_release() {
   return true;
 }
 
-bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
+bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps)
 {   
     motor_stop();
     if (nb_steps > 0) {
@@ -39,8 +39,8 @@ bool motor_press(uint16_t* steps_profile_us, uint16_t nb_steps)
         _motor_tim->Init.Period = steps_profile_us[0];
         HAL_TIM_Base_Init(_motor_tim);
         HAL_DMA_Init(_motor_tim->hdma[TIM_DMA_ID_UPDATE]);
-        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
-        HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	(uint32_t*)&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
+        HAL_TIM_PWM_Start_IT(_motor_tim, MOTOR_TIM_CHANNEL);
+        HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE,	&steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps-1);
     }
     return true;
 }
