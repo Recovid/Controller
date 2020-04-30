@@ -7,17 +7,16 @@
 // ----- includes
 // --------------------------------------------------------------------------------------------------------------------
 
-//#include "hardware_serial.h"
-#include "bsp.h"
+#include "recovid_revB.h"
 #include "platform.h"
 #include "platform_config.h"
+
+#include "ifl_deque.h"
+#include "stm32f3xx_ll_usart.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "ifl_deque.h"
-#include "stm32f3xx_ll_usart.h"
-#include "stm32f3xx_hal.h"
 
 // --------------------------------------------------------------------------------------------------------------------
 // ----- local constant macros

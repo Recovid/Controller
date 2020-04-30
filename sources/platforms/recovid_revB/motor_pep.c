@@ -1,5 +1,5 @@
-#include "bsp.h"
-#include "platform.h"
+#include "recovid_revB.h"
+#include "platform_config.h"
 #include <math.h>
 
 static TIM_HandleTypeDef* _motor_tim = NULL;

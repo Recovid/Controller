@@ -1,6 +1,6 @@
-#include "bsp.h"
+#include "recovid_revB.h"
 #include "platform.h"
-#include "config.h"
+#include "platform_config.h"
 
 typedef enum {
 	STOPPED,

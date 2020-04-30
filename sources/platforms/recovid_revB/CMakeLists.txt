@@ -3,14 +3,15 @@ set(PLATFORM_DIR ${CMAKE_CURRENT_LIST_DIR})
 add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
-add_library(platform OBJECT 
-    main.c
+add_library(recovid_revB OBJECT 
+    startup_stm32f303retx.s
+    system_stm32f3xx.c
     syscalls.c
     sysmem.c
-    bsp.c
-    bsp_hal_msp_tick.c
-    bsp_hal_msp.c
-    bsp_hal_it.c
+    recovid_revB.c
+    recovid_revB_hal_msp_tick.c
+    recovid_revB_hal_msp.c
+    recovid_revB_hal_it.c
     time.c
     uart.c
     motor.c
@@ -21,7 +22,7 @@ add_library(platform OBJECT
     gpio.c
 )
 
-target_include_directories(platform PUBLIC 
+target_include_directories(recovid_revB PUBLIC 
 	${PLATFORM_DIR}
 	${PLATFORM_DIR}/HAL/STM32F3xx_HAL_Driver/Inc/
 	${PLATFORM_DIR}/HAL/CMSIS/Include
@@ -31,8 +32,19 @@ target_include_directories(platform PUBLIC
 	${PLATFORM_DIR}/FreeRTOS/Source/portable/GCC/ARM_CM4F/
 	)
 
-target_include_directories(platform PUBLIC ${PLATFORM_INC_DIR})
-target_link_libraries(platform PUBLIC hal freertos)
+add_library(platform INTERFACE )
+
+target_sources(platform INTERFACE 
+    $<TARGET_OBJECTS:recovid_revB>
+    $<TARGET_OBJECTS:hal>
+    $<TARGET_OBJECTS:freertos>
+)
+
+target_include_directories(platform INTERFACE 
+    ${PLATFORM_INC_DIR} 
+    ${PLATFORM_DIR}/FreeRTOS/Source/include/
+	${PLATFORM_DIR}/FreeRTOS/Source/portable/GCC/ARM_CM4F/)
+
 
 ###############################################################################
 # Setup OpenOCD

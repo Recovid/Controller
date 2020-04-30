@@ -74,9 +74,8 @@ endif()
 set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 
-
-# high-level
-set(SHARED_SOURCES
+# Controller
+set(SOURCES
    src/controller.c
    src/monitoring.c
    src/breathing.c
@@ -87,23 +86,17 @@ set(SHARED_SOURCES
 )
 
 
-# low-level
-if(NOT native_win32) # !POSIX for high-level deterministic tests only
-    set(SHARED_SOURCES ${SHARED_SOURCES}
-            )
-endif()
+add_executable(${EXECUTABLE} ${SOURCES} )
 
-add_executable(${EXECUTABLE} ${SHARED_SOURCES} )
+#if(${TARGET} STREQUAL "recovid_revB")
+#	set(OPTIONAL_HAL hal)
+#endif()
 
-if(${TARGET} STREQUAL "recovid_revB")
-	set(OPTIONAL_HAL hal)
-endif()
+#if(${TARGET} STREQUAL "sim")
+#	set(OPTIONAL_PTHREAD pthread)
+#endif()
 
-if(${TARGET} STREQUAL "sim")
-	set(OPTIONAL_PTHREAD pthread)
-endif()
-
-target_link_libraries(${EXECUTABLE} m platform freertos ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
+target_link_libraries(${EXECUTABLE} m platform )
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 #add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} ${TARGET_DIR}/tests/main.c)

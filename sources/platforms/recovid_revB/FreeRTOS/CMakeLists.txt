@@ -15,7 +15,7 @@ add_library(freertos OBJECT
 )
 
 target_include_directories(freertos PUBLIC
-    ${FREERTOS_DIR_STM32}       # For FreeRTOSConfig.h
+    ${PLATFORM_DIR}                # For FreeRTOSConfig.h
 	${FREERTOS_INC_DIR_STM32}
     ${FREERTOS_SRC_DIR_STM32}
     ${FREERTOS_SRC_DIR_STM32}/portable/GCC/ARM_CM4F

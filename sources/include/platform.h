@@ -3,8 +3,6 @@
 
 #include "common.h"
 
-// Public interface to the lowlevel hardware and/or simulated hardware
-bool init_hardware();
 
 
 uint32_t get_time_ms();

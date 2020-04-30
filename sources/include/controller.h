@@ -4,6 +4,7 @@
 #include "common.h"
 
 
+
 //! set the desired setting value.
 //! \returns a value within the range defined by physical constraints and VT, Vmax, EoI
 float set_setting_FR_pm(float desired);
@@ -127,9 +128,6 @@ void set_command_soft_reset();
 
 
 
-
-
-void controller_run(void*);
 
 
 

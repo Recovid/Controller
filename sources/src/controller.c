@@ -8,6 +8,67 @@
 #include <math.h>
 
 
+TaskHandle_t breathingTaskHandle;
+TaskHandle_t monitoringTaskHandle;
+TaskHandle_t controllerTaskHandle;
+TaskHandle_t hmiTaskHandle;
+
+EventGroupHandle_t ctrlEventFlags;
+
+EventGroupHandle_t brthCycleState;
+
+#ifdef DEBUG
+SemaphoreHandle_t dbgMutex;
+#endif
+
+
+
+
+extern void breathing_run(void*);
+extern void hmi_run(void*);
+extern void monitoring_run(void *);
+void controller_run(void*);
+
+
+void controller_main()
+{
+
+#ifdef DEBUG
+  dbgMutex= xSemaphoreCreateBinary();
+  xSemaphoreGive(dbgMutex);
+  printf("Starting Recovid\n");
+#endif
+
+  ctrlEventFlags = xEventGroupCreate();
+
+  brthCycleState = xEventGroupCreate();
+  
+  if(xTaskCreate(breathing_run , "Breathing" , BREATHING_TASK_STACK_SIZE , NULL, BREATHING_TASK_PRIORITY , &breathingTaskHandle) != pdTRUE) {
+    return;
+  }
+  if(xTaskCreate(monitoring_run, "Monitoring", MONITORING_TASK_STACK_SIZE, NULL, MONITORING_TASK_PRIORITY, &monitoringTaskHandle) != pdTRUE) {
+    return;
+  }
+  if(xTaskCreate(controller_run, "Controller", CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &controllerTaskHandle)  != pdTRUE) {
+    return;
+  }
+  if(xTaskCreate(hmi_run       , "HMI"       , HMI_TASK_STACK_SIZE       , NULL, HMI_TASK_PRIORITY       , &hmiTaskHandle) != pdTRUE) {
+    return;
+  }
+
+  // start scheduler
+  vTaskStartScheduler();
+    
+  // We should never get here
+}
+
+
+
+
+
+
+
+
 // ------------------------------------------------------------------------------------------------
 //! Settings
 
@@ -403,10 +464,3 @@ bool is_command_Tpbip_expired() {
 void set_command_soft_reset() { command_soft_reset= true; }
 
 
-#ifndef NTESTS
-#define PRINT(_name) _name() { fprintf(stderr,"- " #_name "\n");
-
-#pragma GCC diagnostic ignored "-Wtype-limits"
-
-
-#endif

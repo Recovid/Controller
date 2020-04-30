@@ -37,6 +37,7 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
     -fomit-frame-pointer \
     -ftree-vectorize \
     -Wall \
+    -Wno-main \
 ")
 
 set(COMMON_TOOLCHAIN_LFLAGS "\
