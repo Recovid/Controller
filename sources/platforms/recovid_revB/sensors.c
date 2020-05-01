@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "platform_config.h"
 #include "bmp280.h"
+#include "log_timings.h"
 #include <string.h>
 
 /*

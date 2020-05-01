@@ -1,5 +1,7 @@
 #include "recovid_revB.h"
 #include "platform_config.h"
+#include "log_timings.h"
+#include <stdbool.h>
 
 
 I2C_HandleTypeDef hi2c1;
@@ -61,6 +63,7 @@ void main()
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM7_Init();
+  LOG_TIME_INIT_TIM6_HARDWARE()
 
   // Start the controller
   // This function should never returns
