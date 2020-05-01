@@ -48,6 +48,6 @@
 #define HMI_RX_DMA_BUFFER_SIZE        (512)
 #define HMI_RX_LINE_TIMEOUT           (30)
 
-
+#define MAX_PEP_SAMPLES				  (5)
 
 #endif
