@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "platform_config.h"
 #include "bmp280.h"
+#include "log_timings.h"
 #include <string.h>
 
 /*
@@ -105,6 +106,7 @@ static bool initSDP610()
 	for (int t = 1; t < 127; ++t) {
 		if(HAL_I2C_IsDeviceReady(_i2c, (uint16_t)(t<<1), 2, 2) == HAL_OK) {
 			dbg_printf("Found device at address: %02X\n", t);
+			LOG_TIME_DUMP()
 		}
 
 	}

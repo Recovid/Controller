@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "breathing.h"
 #include "platform.h"
+#include "log_timings.h"
 
 #include <compute_motor.h>
 #include <math.h>
@@ -54,10 +55,12 @@ static void enter_state(BreathingState newState);
 void breathing_run(void *args) {
   UNUSED(args);
   EventBits_t events;
-
+  LOG_TIME_EVENT(LOG_TIME_EVENT_START | LOG_TIME_TASK_BREATHING)
   while(true) {
     brth_printf("BRTH: Standby\n");
+    LOG_TIME_EVENT(LOG_TIME_EVENT_STOP | LOG_TIME_TASK_BREATHING)
     events= xEventGroupWaitBits(ctrlEventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    LOG_TIME_EVENT(LOG_TIME_EVENT_START | LOG_TIME_TASK_BREATHING)
     brth_printf("BRTH: Started\n");
 
     // _flow_samples_count=0;
@@ -177,7 +180,6 @@ void breathing_run(void *args) {
 
     wait_ms(200);
     xEventGroupSetBits(ctrlEventFlags, BREATHING_STOPPED_FLAG);
-
   }
 }
 
