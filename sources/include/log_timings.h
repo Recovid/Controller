@@ -32,20 +32,16 @@
 #define LOG_TIME_TASK_CONTROLLER  0x2
 #define LOG_TIME_TASK_HMI         0x3
 
+
+typedef struct
+{
+	uint8_t  id;    /* id: MSB=1 start, else end. 7 low bits = id. */
+	uint16_t date;  /* date in us from TIM6. there are overflows   */
+} log_time_entry;
+
 #ifdef LOG_TIME
   #include <FreeRTOS.h> 
   #include <task.h> /*we need  TaskHandle_t */
-
-  #ifdef native
-    void log_time_initHw()      {}
-    void log_time_start()       {}
-    void log_time_event(int id) {UNUSED(id);}
-    void log_time_dump()        {}
-    int  log_time_full()        {return 0;}
-
-    void log_time_init_task(const char *name, int id)  {UNUSED(name); UNUSED(id)   ;}
-    void log_time_event_task(TaskHandle_t t,int start) {UNUSED(t)   ; UNUSED(start);}
-  #else /* stm32 target => implementation in lowlevel/stm32f303/log_timings.h */
     void log_time_initHw();
     void log_time_start();
     void log_time_event(int id);
@@ -54,7 +50,6 @@
 
     void log_time_init_task(const char *name, int id);
     void log_time_event_task(TaskHandle_t t,int start);
-  #endif /* native */
   
   /* should be called */
   #define LOG_TIME_INIT_TIM6_HARDWARE() log_time_initHw();

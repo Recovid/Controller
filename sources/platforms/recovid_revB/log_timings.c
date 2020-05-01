@@ -5,12 +5,6 @@
 #include "common.h"
 #include <string.h> /* strlen */
 
-typedef struct
-{
-	uint8_t  id;    /* id: MSB=1 start, else end. 7 low bits = id. */
-	uint16_t date;  /* date in us from TIM6. there are overflows   */
-} log_time_entry;
-
 /* save logs before sending externally (through uart..)*/
 /* 3 bytes per entry */
 volatile log_time_entry log_time_tab[LOG_TIME_SIZE];

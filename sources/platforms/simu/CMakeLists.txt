@@ -40,6 +40,7 @@ add_library(simu OBJECT
     time.c
     uart.c
     main.c
+	log_timings.c
 )
 
 if(NOT CMAKE_HOST_WIN32)
