@@ -15,4 +15,6 @@
 #define MOTOR_HOME_STEP_US      (      400* ( MOTOR_CORRECTION_USTEPS)  )
 #define MAX_MOTOR_STEPS         (     4800/ ( MOTOR_CORRECTION_USTEPS)  )
 
+#define MAX_PEP_SAMPLES				  (10)
+
 #endif
