@@ -1,0 +1,3 @@
+set(TARGET_DIR ${CMAKE_CURRENT_LIST_DIR}/${TARGET})
+
+add_subdirectory(${TARGET_DIR})

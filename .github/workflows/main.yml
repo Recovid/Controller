@@ -9,7 +9,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build_native:
+  build_simu:
     env:
       target: simu 
     runs-on: ubuntu-latest
@@ -18,15 +18,15 @@ jobs:
     - name: Check ${{env.target}} build
       run: |
         git submodule update --init
-        cd C_Controller
+        cd sources
         mkdir -p _build_${target}
         cd _build_${target}
         cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
         make -j$(nproc)
 
-  build_stm32f303:
+  build_recovid_revB:
     env:
-      target: stm32f303
+      target: recovid_revB
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -34,18 +34,18 @@ jobs:
       with:
         release: '9-2019-q4'
 
-    - name: Check stm32 build
+    - name: Check recovid_revB build
       run: |
         git submodule update --init
-        cd C_Controller
+        cd sources
         target=recovid_revB
         mkdir -p _build_${target}
         cd _build_${target}
         cmake .. -DCMAKE_BUILD_TYPE=Release -DTARGET=${target}
-        make -j$(nproc) C_Controller.${target}.elf
+        make -j$(nproc) Controller.${target}.elf
 
-    - name: Upload stm32 binaries
+    - name: Upload recovid_revB binaries
       uses: actions/upload-artifact@v2-preview
       with:
-        name: Stm32_binaries
-        path: C_Controller/_build_${{env.target}}/*.elf
+        name: recovid_revB_binaries
+        path: Controller/_build_${{env.target}}/*.elf
