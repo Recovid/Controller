@@ -31,7 +31,7 @@ typedef enum {
 } sensors_state_t;
 
 
-static I2C_HandleTypeDef* _i2c= NULL;
+static I2C_HandleTypeDef* _i2c= &sensors_i2c;
 static bool initialized = false;
 
 static const uint8_t _sdp_reset_req[1]  = { 0xFE };
@@ -69,18 +69,15 @@ static void bmp280_delay_ms(uint32_t period_ms);
 
 static bool initBMP280();
 static bool initSDP610();
-static HAL_StatusTypeDef readBMP280_stage_1();
-static HAL_StatusTypeDef readBMP280_stage_2();
 
 
 
 static inline uint16_t get_time_us() { return timer_us.Instance->CNT; }
 
-static bool sensors_init(I2C_HandleTypeDef *hi2c) {
+bool init_sensors() {
 	if (initialized)
 		return true;
 
-    _i2c = hi2c;
 
     if (!initSDP610() || !initBMP280())
         return false;
@@ -141,10 +138,6 @@ static bool initSDP610()
 	return true;
 }
 
-bool init_sensors() {
-	return sensors_init(&sensors_i2c);
-}
-
 
 static bool initBMP280() {
 
@@ -198,18 +191,20 @@ static bool initBMP280() {
 
 //! \returns false in case of hardware failure
 bool is_sensors_ok() {
-	return _i2c != NULL;
+  return initialized;
 }
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
+
 bool is_Paw_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
+
 bool is_Patmo_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
@@ -257,7 +252,7 @@ static void readNPA() {
 	HAL_I2C_Master_Receive_DMA(_i2c, ADDR_NPA700B, (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer));
 }
 
-static HAL_StatusTypeDef readBMP280_stage_1() {
+static void readBMP280_stage_1() {
     _sensor_state = READ_BMP280_STAGE_1;
     bmp280_DMA_buffer[0] = BMP280_PRES_MSB_ADDR;
     /*
@@ -266,14 +261,14 @@ static HAL_StatusTypeDef readBMP280_stage_1() {
      * qui ne permet pas de rentrer dans la machine d'état. On utilise donc la fonction d'envoi avec interruptions moins
      * gourmande que la version synchone. (mais la version synchrone fonctionne également si besoin.)
      */
-    return HAL_I2C_Master_Transmit_IT(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, 1);
+    HAL_I2C_Master_Transmit_IT(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, 1);
 }
 
-static HAL_StatusTypeDef readBMP280_stage_2() {
+static void readBMP280_stage_2() {
     uint8_t bytesToRead = 6;
     assert(bytesToRead <= sizeof(bmp280_DMA_buffer));
     _sensor_state = READ_BMP280_STAGE_2;
-    return HAL_I2C_Master_Receive_DMA(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, bytesToRead);
+    HAL_I2C_Master_Receive_DMA(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, bytesToRead);
 }
 
 
