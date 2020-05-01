@@ -1,4 +1,5 @@
 #include "recovid_revB.h"
+#include "log_timings.h"
 #include <stdbool.h>
 
 
@@ -58,6 +59,7 @@ bool init_hardware()
     if(!MX_TIM2_Init()) return false;
     if(!MX_TIM3_Init()) return false;
     if(!MX_TIM7_Init()) return false;
+	LOG_TIME_INIT_TIM6_HARDWARE()
 
 	return true;
 }

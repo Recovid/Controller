@@ -1,6 +1,7 @@
 #include "common.h"
 #include "platform.h"
 #include "recovid_revB.h"
+#include "log_timings.h"
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -12,9 +13,12 @@ uint32_t get_time_ms()
 
 uint32_t wait_ms(uint32_t t_ms)
 {
-  if(xTaskGetCurrentTaskHandle() != NULL)
+  TaskHandle_t handle = xTaskGetCurrentTaskHandle();
+  if(handle != NULL) {
+    LOG_TIME_EVENT_TASK(handle, LOG_TIME_EVENT_STOP)
     vTaskDelay(t_ms/portTICK_PERIOD_MS);
-  else {
+    LOG_TIME_EVENT_TASK(handle, LOG_TIME_EVENT_START)
+  } else {
   	HAL_Delay(t_ms);
   }
   return get_time_ms();

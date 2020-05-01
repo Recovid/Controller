@@ -4,9 +4,7 @@
 #include "monitoring.h"
 #include "hmi.h"
 #include "platform.h"
-
-
-
+#include "log_timings.h"
 
 #define PRIORITY_LOW            8
 #define PRIORITY_BELOW_NORMAL   16
@@ -60,6 +58,11 @@ int main()
   if(xTaskCreate(hmi_run       , "HMI"       , HMI_TASK_STACK_SIZE       , NULL, HMI_TASK_PRIORITY       , &hmiTaskHandle) != pdTRUE) {
     HardFault_Handler();
   }
+
+  LOG_TIME_INIT_TASK("Breathing"  , LOG_TIME_TASK_BREATHING)
+  LOG_TIME_INIT_TASK("Monitoring" , LOG_TIME_TASK_MONITORING)
+  LOG_TIME_INIT_TASK("Controller" , LOG_TIME_TASK_CONTROLLER)
+  LOG_TIME_INIT_TASK("HMI"        , LOG_TIME_TASK_HMI)
 
   // start scheduler
   vTaskStartScheduler();

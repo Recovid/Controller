@@ -18,6 +18,7 @@ add_library(platform OBJECT
     indicators.c
     pep_valve.c
     gpio.c
+	log_timings.c
 )
 
 target_include_directories(platform PUBLIC 

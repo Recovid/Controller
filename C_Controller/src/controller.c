@@ -3,6 +3,7 @@
 #include "breathing.h"
 #include "monitoring.h"
 #include "defaults.h"
+#include "log_timings.h"
 
 
 #include <math.h>
@@ -50,6 +51,7 @@ static int self_tests();
 
 void controller_run(void* args) {
   UNUSED(args);
+  LOG_TIME_EVENT(LOG_TIME_EVENT_START | LOG_TIME_TASK_CONTROLLER)
   
   EventBits_t events;
 
@@ -58,12 +60,12 @@ void controller_run(void* args) {
 #endif
 
   while(true) {
+	  
 
     // TODO: Implemente the actual startup process
 
     ctrl_printf("CTRL: Waiting for failsafe signal\n");
     while(is_Failsafe_Enabled()) wait_ms(200);
-    
     
     ctrl_printf("CTRL: Initializing system\n");
   
@@ -98,7 +100,6 @@ void controller_run(void* args) {
       // TODO Implement controller logic
       // check monitoring process
       // check breathing process
-      
       wait_ms(20);
     }
 
@@ -109,7 +110,9 @@ void controller_run(void* args) {
     ctrl_printf("CTRL: Waiting for breathing, monitoring and hmi tasks to stop\n");
     do {
       // TODO implement retry logic and eventually kill tasks !!
+      LOG_TIME_EVENT(LOG_TIME_EVENT_STOP  | LOG_TIME_TASK_CONTROLLER)
       sync = xEventGroupWaitBits(ctrlEventFlags, (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG), pdTRUE, pdTRUE, 200/portTICK_PERIOD_MS);
+      LOG_TIME_EVENT(LOG_TIME_EVENT_START | LOG_TIME_TASK_CONTROLLER)
     } while( (sync & (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG)) != (BREATHING_STOPPED_FLAG | MONITORING_STOPPED_FLAG | HMI_STOPPED_FLAG));
 
     ctrl_printf("CTRL: breathing, monitoring and hmi tasks stopped\n");

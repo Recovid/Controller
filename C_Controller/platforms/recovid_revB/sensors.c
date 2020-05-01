@@ -1,6 +1,7 @@
 #include "recovid_revB.h"
 #include "platform.h"
 #include "recovid.h"
+#include "log_timings.h"
 
 typedef enum {
 	STOPPED,
@@ -49,6 +50,7 @@ static bool sensors_init(I2C_HandleTypeDef *hi2c) {
 	// First try to complete pending sdp rad request if any !!!
 	if (HAL_I2C_Master_Receive(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000) != HAL_I2C_ERROR_NONE) {
 		printf("Tried to finished pending sdp read request... but nothing came...\n");
+		LOG_TIME_DUMP()
 	}
 
 	// Reset SDP
