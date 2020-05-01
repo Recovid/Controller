@@ -19,8 +19,12 @@ EventGroupHandle_t brthCycleState;
 SemaphoreHandle_t dbgMutex;
 #endif
 
+extern void breathing_run(void*);
+extern void hmi_run(void*);
+extern void monitoring_run(void *);
+extern void controller_run(void *);
 
-int main(int argc char *argv )
+int main(int argc, char *argv)
 {
 
   if(!init_hardware()) {
