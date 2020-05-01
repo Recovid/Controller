@@ -16,6 +16,8 @@ static float Pplat_cmH2O;
 static float PEP_cmH2O; 
 static float PEP_cmH2O_samples[MAX_PEP_SAMPLES]; 
 static unsigned int PEP_cmH2O_samples_index; 
+static float Pplat_cmH2O_samples[MAX_PPLAT_SAMPLES]; 
+static unsigned int Pplat_cmH2O_samples_index; 
 
 void init_sample_PEP_cmH2O()
 {
@@ -42,6 +44,30 @@ float get_PEP_avg_cmH2O()
   return (sum_PEP / MAX_PEP_SAMPLES);
 }
 
+void init_sample_Pplat_cmH2O()
+{
+    //Samples Pplat for a rolling average 
+  Pplat_cmH2O_samples_index = 0;
+  for(int i = 0; i < MAX_PPLAT_SAMPLES; i++)
+    Pplat_cmH2O_samples[i] = 0;
+
+}
+
+void sample_Pplat_cmH2O( float Paw_cmH2O)
+{
+  Pplat_cmH2O_samples[Pplat_cmH2O_samples_index] = Paw_cmH2O;
+  Pplat_cmH2O_samples_index = (Pplat_cmH2O_samples_index + 1) % MAX_PPLAT_SAMPLES; 
+}
+
+float get_Pplat_avg_cmH2O()
+{
+  float sum_Pplat = 0;
+  for(int i=0; i < MAX_PPLAT_SAMPLES; i++)
+  {
+    sum_Pplat += Pplat_cmH2O_samples[i];
+  }
+  return (sum_Pplat / MAX_PPLAT_SAMPLES);
+}
 static float VTe_start_mL=0.;
 
 
@@ -119,6 +145,7 @@ void breathing_run(void *args) {
       uint32_t Tplat    = get_setting_Tplat_ms  ();
 	 
       init_sample_PEP_cmH2O();
+      init_sample_Pplat_cmH2O();
 
       brth_printf("BRTH: T     : %ld\n", T);
       brth_printf("BRTH: VT    : %ld\n", (uint32_t)(VT*100));
@@ -171,11 +198,14 @@ void breathing_run(void *args) {
       while(Plateau == _state) {
         if (Pmax <= read_Paw_cmH2O()) { 
             brth_print("BRTH: Paw > Pmax --> Exhalation\n");
+            Pplat_cmH2O = get_Pplat_avg_cmH2O();
             enter_state(Exhalation);
         } else if ( is_command_Tpins_expired() && (Tplat <= (get_time_ms() - _state_start_ms)) ) {
             brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
+            Pplat_cmH2O = get_Pplat_avg_cmH2O();
             enter_state(Exhalation);
         }
+        sample_Pplat_cmH2O(read_Paw_cmH2O());
         wait_ms(PERIOD_BREATING_MS);
       }
       VTi_mL= read_Vol_mL();
