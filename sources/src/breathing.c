@@ -192,6 +192,7 @@ void breathing_run(void *args) {
           //   ++_flow_samples_count;          
           // }
           // wait_ms(FLOW_SAMPLING_PERIOD_MS);
+          Pcrete_cmH2O = MAX(Pcrete_cmH2O, read_Paw_cmH2O());
           wait_ms(PERIOD_BREATING_MS);
       }
       motor_release();
@@ -206,6 +207,7 @@ void breathing_run(void *args) {
             enter_state(Exhalation);
         }
         sample_Pplat_cmH2O(read_Paw_cmH2O());
+        Pcrete_cmH2O = MAX(Pcrete_cmH2O, read_Paw_cmH2O());
         wait_ms(PERIOD_BREATING_MS);
       }
       VTi_mL= read_Vol_mL();
