@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "breathing.h"
 #include "platform.h"
+#include "platform_config.h"
 
 #include <compute_motor.h>
 #include <math.h>
@@ -13,6 +14,34 @@ static float VTi_mL;
 static float Pcrete_cmH2O; 
 static float Pplat_cmH2O; 
 static float PEP_cmH2O; 
+static float PEP_cmH2O_samples[MAX_PEP_SAMPLES]; 
+static unsigned int PEP_cmH2O_samples_index; 
+
+void init_sample_PEP_cmH2O()
+{
+    //Samples PEP for a rolling average 
+  PEP_cmH2O_samples_index = 0;
+  for(int i = 0; i < MAX_PEP_SAMPLES; i++)
+    PEP_cmH2O_samples[i] = 0;
+
+}
+
+void sample_PEP_cmH2O( float Paw_cmH2O)
+{
+  PEP_cmH2O_samples[PEP_cmH2O_samples_index] = Paw_cmH2O;
+  PEP_cmH2O_samples_index = (PEP_cmH2O_samples_index + 1) % MAX_PEP_SAMPLES; 
+}
+
+float get_PEP_avg_cmH2O()
+{
+  float sum_PEP = 0;
+  for(int i=0; i < MAX_PEP_SAMPLES; i++)
+  {
+    sum_PEP += PEP_cmH2O_samples[i];
+  }
+  return (sum_PEP / MAX_PEP_SAMPLES);
+}
+
 static float VTe_start_mL=0.;
 
 
@@ -88,6 +117,8 @@ void breathing_run(void *args) {
       float    VM       = get_setting_Vmax_Lpm  ();
       float    Pmax     = get_setting_Pmax_cmH2O();
       uint32_t Tplat    = get_setting_Tplat_ms  ();
+	 
+      init_sample_PEP_cmH2O();
 
       brth_printf("BRTH: T     : %ld\n", T);
       brth_printf("BRTH: VT    : %ld\n", (uint32_t)(VT*100));
@@ -134,7 +165,7 @@ void breathing_run(void *args) {
           //   ++_flow_samples_count;          
           // }
           // wait_ms(FLOW_SAMPLING_PERIOD_MS);
-          wait_ms(10);
+          wait_ms(PERIOD_BREATING_MS);
       }
       motor_release();
       while(Plateau == _state) {
@@ -145,7 +176,7 @@ void breathing_run(void *args) {
             brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
             enter_state(Exhalation);
         }
-        wait_ms(10);
+        wait_ms(PERIOD_BREATING_MS);
       }
       VTi_mL= read_Vol_mL();
       valve_exhale();
@@ -153,7 +184,7 @@ void breathing_run(void *args) {
           if ( T <= (get_time_ms() - _cycle_start_ms )) { 
               uint32_t t_ms = get_time_ms();
 
-
+	      PEP_cmH2O = get_PEP_avg_cmH2O();
               EoI_ratio =  (float)(t_ms-_cycle_start_ms)/(_state_start_ms-_cycle_start_ms);
               FR_pm     = 1./(((float)(t_ms-_cycle_start_ms))/1000/60);
 
@@ -162,7 +193,8 @@ void breathing_run(void *args) {
               // TODO regulation_pep();
               enter_state(Finished);
           }
-        wait_ms(10);
+	  sample_PEP_cmH2O(read_Paw_cmH2O());
+	  wait_ms(PERIOD_BREATING_MS);
       }
       VTe_mL = VTe_start_mL - read_Vol_mL();
 

@@ -15,4 +15,7 @@
 #define MOTOR_HOME_STEP_US      (      400* ( MOTOR_CORRECTION_USTEPS)  )
 #define MAX_MOTOR_STEPS         (     4800/ ( MOTOR_CORRECTION_USTEPS)  )
 
+#define PERIOD_BREATING_MS      (10)
+#define MAX_PEP_SAMPLES         (100 / PERIOD_BREATING_MS) // moyenne glissante sur les 100ms dernieres de l'expi
+
 #endif

@@ -48,6 +48,7 @@
 #define HMI_RX_DMA_BUFFER_SIZE        (512)
 #define HMI_RX_LINE_TIMEOUT           (30)
 
-
+#define PERIOD_BREATING_MS            (10)
+#define MAX_PEP_SAMPLES               (100 / PERIOD_BREATING_MS) // moyenne glissante sur les 100ms dernieres de l'expi
 
 #endif
