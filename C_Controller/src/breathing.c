@@ -28,7 +28,7 @@ static uint32_t       _cycle_start_ms;
 
 
 
-static uint16_t _motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it configurable with a define. This represent a physical limit a the system.
+static uint32_t _motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it configurable with a define. This represent a physical limit a the system.
 static uint32_t _steps;
 
 
@@ -106,10 +106,11 @@ void breathing_run(void *args) {
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
-	  uint16_t d = 300;
+	  uint32_t d = 300;
 	  unsigned int _steps = 4000;
-	  compute_constant_motor_steps(d, _steps, _motor_steps_us);
-	  //compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us); 
+	  //compute_constant_motor_steps(d, _steps, _motor_steps_us);
+	  compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
+	  brth_printf("T_C = %d Patmo = %d\n", (int) (read_temp_degreeC()*100), (int) (read_Patmo_mbar()*100));
 
       // Start Inhalation
       valve_inhale();

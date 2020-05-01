@@ -11,7 +11,7 @@ unsigned int compute_motor_press_christophe(
 		unsigned int step_t_ns_final,
 		unsigned int dec_ns,
 		unsigned int nb_steps, 
-		uint16_t* steps_t_us);
+		uint32_t* steps_t_us);
 
 void print_christophe_header(
 		unsigned int step_t_ns_init, 
@@ -24,9 +24,9 @@ void print_christophe_header(
 		int nb_steps);
 
 
-uint32_t compute_constant_motor_steps(uint16_t step_t_us, unsigned int nb_steps, uint16_t* steps_t_us);
+unsigned int compute_constant_motor_steps(uint32_t step_t_us, unsigned int nb_steps, uint32_t* steps_t_us);
 
-void print_steps(uint16_t* steps_t_us, unsigned int nb_steps);
+void print_steps(uint32_t* steps_t_us, unsigned int nb_steps);
 
 #endif //__COMPUTE_MOTOR_H__
 
