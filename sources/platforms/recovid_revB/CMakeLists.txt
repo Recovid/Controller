@@ -21,6 +21,7 @@ add_library(recovid_revB OBJECT
     pep_valve.c
     gpio.c
     bmp280.c
+	log_timings.c
 )
 
 target_include_directories(recovid_revB PUBLIC 
