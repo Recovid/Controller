@@ -45,7 +45,7 @@ void hmi_run(void *args) {
       // TODO: Find a better solution 
       brthEvents= xEventGroupWaitBits(brthCycleState, BRTH_RESULT_UPDATED, pdTRUE, pdTRUE, 5/portTICK_PERIOD_MS);
       
-      if(BRTH_CYCLE_FINISHED == (brthEvents & BRTH_CYCLE_FINISHED)) {
+      if(BRTH_RESULT_UPDATED == (brthEvents & BRTH_RESULT_UPDATED)) {
           // BRTH_CYCLE_FINISHED event received.
           // send cycle info to HMI
           hmi_print("Updating breathing cycle info\n");
