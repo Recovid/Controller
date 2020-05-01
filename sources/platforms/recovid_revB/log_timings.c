@@ -30,42 +30,42 @@ void log_time_initHw(){
     TIM6->EGR = TIM_EGR_UG; //update event => load PSC
     TIM6->CR1 = TIM_CR1_CEN; //enable, all other fields to 0
 
+	//init data
 	log_time_current_size = 0;
+	for(int i = 0;i<LOG_TIME_SIZE;i++){
+		log_time_tab[i].id  = 0;
+		log_time_tab[i].date= 0;
+	}
 }
 
 void log_time_event(int id)
 {
     __disable_irq();
 	const uint16_t date = TIM6->CNT;
-	if(log_time_current_size < LOG_TIME_SIZE) {
-		log_time_tab[log_time_current_size].id   = id;
-		log_time_tab[log_time_current_size].date = date;
-		log_time_current_size++;
-	}
+	log_time_tab[log_time_current_size].id   = id;
+	log_time_tab[log_time_current_size].date = date;
+	/* if full, restart */
+	log_time_current_size = (log_time_current_size+1)%LOG_TIME_SIZE;
     __enable_irq();
-}
-
-void log_time_start()
-{
-	log_time_current_size = 0;
 }
 
 void log_time_dump()
 {
-	const int size = log_time_current_size;
+	const int indexW = log_time_current_size;
 	dbg_printf("dump log timings\r\n");
-	for(int i = 0;i<size;i++)
+	for(int i = 0;i<LOG_TIME_SIZE;i++)
 	{
-		char c;
-		if(log_time_tab[i].id & LOG_TIME_EVENT_START) c = 's';
-		else c = 'e';
-		dbg_printf("%c\t%d\t%d\r\n",c,log_time_tab[i].id & 0x7F,log_time_tab[i].date);
+		int indexR = (i+indexW)%LOG_TIME_SIZE;
+		const uint8_t  id   = log_time_tab[indexR].id;
+		const uint16_t date = log_time_tab[indexR].date;
+		if(id != 0 || date !=0)
+		{
+			char c;
+			if(id & LOG_TIME_EVENT_START) c = 's';
+			else c = 'e';
+			dbg_printf("%c\t%d\t%d\r\n",c,id & 0x7F,date);
+		}
 	}
-}
-
-int log_time_full()
-{
-	return (log_time_current_size == LOG_TIME_SIZE);
 }
 
 /* store the task handle of tasks */

@@ -52,7 +52,6 @@ void hmi_run(void *args) {
       
 
 	  LOG_TIME_EVENT(LOG_TIME_EVENT_START | LOG_TIME_TASK_HMI)
-	  if(LOG_TIME_FULL()) LOG_TIME_DUMP() /* debug */
       if(BRTH_RESULT_UPDATED == (brthEvents & BRTH_RESULT_UPDATED)) {
           // BRTH_CYCLE_FINISHED event received.
           // send cycle info to HMI
