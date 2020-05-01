@@ -312,7 +312,6 @@ bool sensors_start() {
     // Start the sensor state machine.
     // This state machine is managed in the I2C interupt routine.
 	HAL_TIM_Base_Start(&timer_us);
-	HAL_I2C_Master_Transmit_IT(_i2c, ADDR_SPD610 , (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req) );
 	reqSDP();
 	return true;
 }
