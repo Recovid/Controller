@@ -165,7 +165,7 @@ void breathing_run(void *args) {
           //   ++_flow_samples_count;          
           // }
           // wait_ms(FLOW_SAMPLING_PERIOD_MS);
-          wait_ms(10);
+          wait_ms(PERIOD_BREATING_MS);
       }
       motor_release();
       while(Plateau == _state) {
@@ -176,7 +176,7 @@ void breathing_run(void *args) {
             brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
             enter_state(Exhalation);
         }
-        wait_ms(10);
+        wait_ms(PERIOD_BREATING_MS);
       }
       VTi_mL= read_Vol_mL();
       valve_exhale();
@@ -194,7 +194,7 @@ void breathing_run(void *args) {
               enter_state(Finished);
           }
 	  sample_PEP_cmH2O(read_Paw_cmH2O());
-	  wait_ms(10);
+	  wait_ms(PERIOD_BREATING_MS);
       }
       VTe_mL = VTe_start_mL - read_Vol_mL();
 
