@@ -1,43 +1,6 @@
-# How to build simulator
+# How to build the firmware
 
-To build the C_Controller you need
-``` sh
-$ git submodule update --init # Initialize the submodule (FreeRTOS)
-$ cmake -DTARGET=native # prepare the build of the simulator
-$ make # build the simulator
-$ ./C_Controller # run the simulator without stdout output
-```
-# How to run with ihm
-## Using fifo to emulate Serial (Unix Only)
-``` sh
-$ git clone https://github.com/Recovid/ihm.git
-$ cd ihm
-$ mkfifo in; mkfifo out
-$ python main.py -m
-$ cd C_Controller
-$ ./C_Controller -f ../../ihm/out ../../ihm/in
-```
-
-## Using a virtual serial port (Unix Only)
-``` sh
-$ socat -d -d pty,raw,echo=0 pty,raw,echo=0
-```
-
-``` sh
-ihm $ python -s /dev/pts/2 # Replace with output of socat
-```
-
-``` sh
-C_Controller $ ./C_Controller -s /dev/pts/3 # Replace with output of socat
-```
-
-
-
-# How to build real firmware
-
-Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-
-If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONNECTION=1"
+Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) to get the correct toolchain and tools.
 
 ## Using windows
 
@@ -79,3 +42,41 @@ make -j16 C_Controller.stm32f303.elf
 # and flash it using OpenOCD
 make C_Controller.recovid_revB.elf.flash
 ````
+
+
+
+# How to build simulator
+
+To build the Controller simulator you need
+``` sh
+$ git submodule update --init # Initialize the submodule (FreeRTOS)
+$ cmake -DTARGET=native # prepare the build of the simulator
+$ make # build the simulator
+$ ./Controller # run the simulator without stdout output
+```
+# How to run with ihm
+## Using fifo to emulate Serial (Unix Only)
+``` sh
+$ git clone https://github.com/Recovid/ihm.git
+$ cd ihm
+$ mkfifo in; mkfifo out
+$ python main.py -m
+$ cd Controller
+$ ./Controller -f ../../ihm/out ../../ihm/in
+```
+
+## Using a virtual serial port (Unix Only)
+``` sh
+$ socat -d -d pty,raw,echo=0 pty,raw,echo=0
+```
+
+``` sh
+ihm $ python -s /dev/pts/2 # Replace with output of socat
+```
+
+``` sh
+Controller $ ./Controller -s /dev/pts/3 # Replace with output of socat
+```
+
+
+
