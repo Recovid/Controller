@@ -17,7 +17,7 @@ static float PEP_cmH2O;
 static float PEP_cmH2O_samples[MAX_PEP_SAMPLES]; 
 static unsigned int PEP_cmH2O_samples_index; 
 
-void init_sample_PEP_cmH2O()
+static void init_sample_PEP_cmH2O()
 {
     //Samples PEP for a rolling average 
   PEP_cmH2O_samples_index = 0;
@@ -26,13 +26,13 @@ void init_sample_PEP_cmH2O()
 
 }
 
-void sample_PEP_cmH2O( float Paw_cmH2O)
+static void sample_PEP_cmH2O( float Paw_cmH2O)
 {
   PEP_cmH2O_samples[PEP_cmH2O_samples_index] = Paw_cmH2O;
   PEP_cmH2O_samples_index = (PEP_cmH2O_samples_index + 1) % MAX_PEP_SAMPLES; 
 }
 
-float get_PEP_avg_cmH2O()
+static float get_PEP_avg_cmH2O()
 {
   float sum_PEP = 0;
   for(int i=0; i < MAX_PEP_SAMPLES; i++)
