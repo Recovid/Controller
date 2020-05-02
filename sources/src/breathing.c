@@ -1,3 +1,4 @@
+#include "common.h"
 #include "controller.h"
 #include "breathing.h"
 #include "platform.h"
@@ -11,6 +12,7 @@ static float EoI_ratio;
 static float FR_pm;           
 static float VTe_mL; 
 static float VTi_mL; 
+static float VMe_Lpm; 
 static float Pcrete_cmH2O; 
 static float Pplat_cmH2O; 
 static float PEP_cmH2O; 
@@ -219,6 +221,8 @@ void breathing_run(void *args) {
 	      PEP_cmH2O = get_PEP_avg_cmH2O();
               EoI_ratio =  (float)(t_ms-_cycle_start_ms)/(_state_start_ms-_cycle_start_ms);
               FR_pm     = 1./(((float)(t_ms-_cycle_start_ms))/1000/60);
+              VTe_mL = VTe_start_mL - read_Vol_mL();
+              VMe_Lpm   = (VTe_mL/1000) * FR_pm;
 
               xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
@@ -228,7 +232,6 @@ void breathing_run(void *args) {
 	  sample_PEP_cmH2O(read_Paw_cmH2O());
 	  wait_ms(PERIOD_BREATING_MS);
       }
-      VTe_mL = VTe_start_mL - read_Vol_mL();
 
 
 
@@ -370,7 +373,7 @@ float get_breathing_EoI_ratio()     { return EoI_ratio; }
 float get_breathing_FR_pm()         { return FR_pm; }
 float get_breathing_VTe_mL()        { return VTe_mL; }
 float get_breathing_VTi_mL()        { return VTi_mL; }
-float get_breathing_VMe_Lpm()       { return Pcrete_cmH2O; }
+float get_breathing_VMe_Lpm()       { return VMe_Lpm; }
 float get_breathing_Pcrete_cmH2O()  { return Pcrete_cmH2O; }
 float get_Pplat_cmH20()             { return Pplat_cmH2O; }
 float get_PEP_cmH2O()               { return PEP_cmH2O; }
