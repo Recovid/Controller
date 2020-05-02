@@ -9,10 +9,11 @@
 static float EoI_ratio;       
 static float FR_pm;           
 static float VTe_mL; 
+static float VTi_mL; 
 static float Pcrete_cmH2O; 
 static float Pplat_cmH2O; 
 static float PEP_cmH2O; 
-static float VTe_start=0.;
+static float VTe_start_mL=0.;
 
 
 
@@ -88,10 +89,6 @@ void breathing_run(void *args) {
       float    Pmax     = get_setting_Pmax_cmH2O();
       uint32_t Tplat    = get_setting_Tplat_ms  ();
 
-      float VTi=0.;
-      float VTe=0.;
-
-
       brth_printf("BRTH: T     : %ld\n", T);
       brth_printf("BRTH: VT    : %ld\n", (uint32_t)(VT*100));
       brth_printf("BRTH: VM    : %ld\n", (uint32_t)(VM*100));
@@ -150,7 +147,7 @@ void breathing_run(void *args) {
         }
         wait_ms(10);
       }
-      VTi= read_Vol_mL();
+      VTi_mL= read_Vol_mL();
       valve_exhale();
       while(Exhalation == _state) { 
           if ( T <= (get_time_ms() - _cycle_start_ms )) { 
@@ -167,7 +164,7 @@ void breathing_run(void *args) {
           }
         wait_ms(10);
       }
-      VTe = VTe_start - read_Vol_mL();
+      VTe_mL = VTe_start_mL - read_Vol_mL();
 
 
 
@@ -199,7 +196,7 @@ static void enter_state(BreathingState newState) {
       brth_printf("BRTH: Plateau\n");
       break;
     case Exhalation:
-      VTe_start = read_Vol_mL();
+      VTe_start_mL = read_Vol_mL();
       brthState =  BRTH_CYCLE_EXHALATION;
       brth_printf("BRTH: Exhalation\n");
       break;
@@ -308,6 +305,7 @@ static void enter_state(BreathingState newState) {
 float get_breathing_EoI_ratio()     { return EoI_ratio; }
 float get_breathing_FR_pm()         { return FR_pm; }
 float get_breathing_VTe_mL()        { return VTe_mL; }
+float get_breathing_VTi_mL()        { return VTi_mL; }
 float get_breathing_VMe_Lpm()       { return Pcrete_cmH2O; }
 float get_breathing_Pcrete_cmH2O()  { return Pcrete_cmH2O; }
 float get_Pplat_cmH20()             { return Pplat_cmH2O; }

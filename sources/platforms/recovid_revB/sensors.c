@@ -15,12 +15,11 @@
  * fonction de la lib Bosch.
  *
  */
+/*
+ * The sequence of reading is now REQ_SDP_MEASUREMENT->READ_SDP_MEASUREMENT-> READ_BMP280_STAGE_1 -> READ_BMP280_STAGE_2 -> READ_NPA_MEASUREMENT
+                                      |________________________________________<__________________________________________________|
 
-/* Trick : utilisation d'un masque pour timer la mesure de pression / température.
- * Permet de gérer une durée par puissance de 2. l'unité étant 4.8ms (période de mesure du SDP610)
  */
-#define BMP280_PERIOD 0xFFF  // une mesure toutes les 4.8 * 4095 = 19.656s
-
 typedef enum {
 	STOPPED,
 	STOPPING,
@@ -395,16 +394,11 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				last_sdp_t_us = sdp_t_us;
                 readSDP();
 			} else {
-                static uint16_t count = BMP280_PERIOD;
-                if ((count++ & BMP280_PERIOD) == BMP280_PERIOD)
-                    readBMP280_stage_1();
-                else
-                    readNPA();
+				readBMP280_stage_1();
             }
             break;
         }
         case READ_BMP280_STAGE_1: {
-            uint16_t x = BMP280_PERIOD;
             readBMP280_stage_2();
             break;
         }
