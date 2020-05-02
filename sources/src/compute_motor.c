@@ -3,6 +3,91 @@
 #include "platform.h"
 #include "compute_motor.h"
 
+void print_steps_in_time(float* total_steps_us, unsigned int nb_steps_time)
+{
+	printf("%d,%f\n", 0, total_steps_us[0]);
+	for(unsigned int j=1; j < nb_steps_time; j++)
+	{
+		printf("%d,%f,%f\n", j, total_steps_us[j], total_steps_us[j] - total_steps_us[j-1]);
+	}
+}
+
+unsigned int motor_steps_to_time(uint32_t* steps_t_us, unsigned int nb_steps, float* total_steps_ms)
+{
+	unsigned int t_total_us = 0;
+	unsigned int t_of_step_us[MAX_MOTOR_STEPS];
+	for(unsigned int i=0; i < nb_steps; i++)
+	{
+		t_of_step_us[i] = t_total_us;
+		t_total_us += steps_t_us[i];
+	}
+
+	unsigned int current_step=0;
+	unsigned int current_time;
+	float residue= 0.0;
+	float prev_residue= 0.0;
+	for(current_time=1; current_time < t_total_us/1000; current_time++)
+	{
+		while (current_time > (t_of_step_us[current_step] / 1000) )
+		{
+			current_step++;
+		}
+		residue = (current_time - (t_of_step_us[current_step] / 1000.f)) / (t_of_step_us[current_step] / 1000.f) ;
+		total_steps_ms[current_time] = (float) current_step + prev_residue + residue;
+		prev_residue = 1 - residue;
+	}
+	return current_time;
+}
+
+void sample_in_time_to_motor_steps_time(float* samples, 
+										unsigned int* samples_t_ms,
+										unsigned int nb_samples,
+										uint32_t* motor_steps,
+										unsigned int nb_steps,
+										float* sample_in_steps_time)
+{
+	unsigned int prev_time_us = 0;
+	unsigned int current_time_us = 0;
+	unsigned int prev_sample = 0;
+	unsigned int* samples_cumul_t_ms = malloc(nb_samples*sizeof(unsigned int));
+	for(unsigned int current_sample = 1; current_sample < nb_samples; current_sample++)
+	{
+		samples_cumul_t_ms[current_sample] = samples_cumul_t_ms[current_sample-1] + samples_t_ms[current_sample];
+	}
+
+	for(unsigned int current_step = 0; current_step < nb_steps; current_step++)
+	{
+		current_time_us= prev_time_us + motor_steps[current_step];
+		unsigned int current_sample;
+		for(current_sample=prev_sample; current_sample < nb_samples; current_sample++)
+		{
+			if( (samples_cumul_t_ms[current_sample]) == (current_time_us/1000))
+			{
+				prev_sample = current_sample;
+				break;
+			}
+		}
+		//We don't find a sample for this step
+		if(current_sample == nb_samples)
+		{
+			sample_in_steps_time[current_step] = sample_in_steps_time[current_step-1];
+		}
+		else {
+			sample_in_steps_time[current_step] = samples[current_sample];
+		}
+		prev_time_us = current_time_us;
+	}
+}
+
+
+void print_samples_in_steps(float* sample_in_steps, unsigned int nb_steps)
+{
+	for(unsigned int current_step=0; current_step < nb_steps; current_step++)
+	{
+		printf("step[%d] = %f\n", current_step, sample_in_steps[current_step]);
+	}
+}
+
 unsigned int compute_motor_press_christophe(
 										unsigned int step_t_ns_init, 
 										unsigned int acc_ns, 
