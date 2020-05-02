@@ -61,7 +61,7 @@ static void sample_Pplat_cmH2O( float Paw_cmH2O)
   Pplat_cmH2O_samples_index = (Pplat_cmH2O_samples_index + 1) % MAX_PPLAT_SAMPLES; 
 }
 
-static loat get_Pplat_avg_cmH2O()
+static float get_Pplat_avg_cmH2O()
 {
   float sum_Pplat = 0;
   for(int i=0; i < MAX_PPLAT_SAMPLES; i++)
