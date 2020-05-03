@@ -1,8 +1,7 @@
 # Controller Target
-* Board: STM32 Nucleo F303
-* Toolchain: https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads/7-2018-q2-update
+* Board: STM32 Nucleo F303 on top of a recovid_revB board
+* Please refer to the README in the sources directory for more details on the firmware and on how to contribute.
 
-NB: Controller project allows to test part of the code in simulated environments more or less close to the target based on C99 GCC 7 compiler
 
 # Controller Specifications
 Sensors, electro-valves and controller
