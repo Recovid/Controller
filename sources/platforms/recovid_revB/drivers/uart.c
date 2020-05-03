@@ -9,7 +9,6 @@
 
 #include "recovid_revB.h"
 #include "platform.h"
-#include "platform_config.h"
 
 #include "ifl_deque.h"
 #include "stm32f3xx_ll_usart.h"
@@ -19,8 +18,17 @@
 
 
 // --------------------------------------------------------------------------------------------------------------------
-// ----- local constant macros
+// ----- local defines
 // --------------------------------------------------------------------------------------------------------------------
+
+#define HMI_TX_BUFFER_SIZE                  (4096)
+#define HMI_RX_BUFFER_SIZE                  (1024)
+
+#define HMI_TX_DMA_BUFFER_SIZE              (512)
+#define HMI_RX_DMA_BUFFER_SIZE              (512)
+
+#define HMI_TX_SYNC_TIMEOUT_MS              (2000)
+#define HMI_RX_LINE_TIMEOUT                 (30)
 
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -55,6 +63,12 @@ static    uint8_t _dma_buffer_rx[HMI_RX_DMA_BUFFER_SIZE];
 
 static bool hal_uart_process_tx_data();
 static bool hal_uart_process_rx_data(idle_line_state_t idle_line_state);
+
+static void uart_ErrorCallback();
+static void uart_RxCpltCallback();
+static void uart_TxCpltCallback();
+
+
 
 // --------------------------------------------------------------------------------------------------------------------
 // ----- local functions
@@ -155,14 +169,7 @@ static bool hal_uart_process_tx_data()
 }
 
 
-
-
-// --------------------------------------------------------------------------------------------------------------------
-// ----- public functions
-// --------------------------------------------------------------------------------------------------------------------
-
-
-void uart_TxCpltCallback()
+static void uart_TxCpltCallback()
 {
     if (hal_uart_process_tx_data() != true)
     {
@@ -174,16 +181,26 @@ void uart_TxCpltCallback()
     }
 }
 
-void uart_RxCpltCallback()
+static void uart_RxCpltCallback()
 {
     hal_uart_process_rx_data(IDLE_LINE_NOT_DETECTED);
 }
 
-void uart_ErrorCallback()
+static void uart_ErrorCallback()
 {
-
-
+    if(LL_USART_IsActiveFlag_RTO(hmi_uart.Instance))
+    {
+        LL_USART_ClearFlag_RTO(hmi_uart.Instance);
+        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
+    }
 }
+
+// --------------------------------------------------------------------------------------------------------------------
+// ----- public functions
+// --------------------------------------------------------------------------------------------------------------------
+
+
+
 
 
 int uart_read_data(char * data, uint16_t data_size)
@@ -206,6 +223,7 @@ int uart_read_data(char * data, uint16_t data_size)
     }
     return count;
 }
+
 bool uart_write_data(const char * data, uint16_t data_size)
 {
     __disable_irq();
@@ -286,22 +304,4 @@ int uart_recv()
     return EOF;
 }
 
-
-
-
-/**
-  * @brief This function handles UART4 global interrupt / UART4 wake-up interrupt through EXTI line 34.
-  */
-__attribute__((used)) void UART4_IRQHandler(void)
-{
-    if(LL_USART_IsActiveFlag_RTO(hmi_uart.Instance))
-    {
-        LL_USART_ClearFlag_RTO(hmi_uart.Instance);
-        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
-    }
-
-    HAL_UART_IRQHandler(&hmi_uart);  /* USER CODE BEGIN UART4_IRQn 1 */
-
-  /* USER CODE END UART4_IRQn 1 */
-}
 

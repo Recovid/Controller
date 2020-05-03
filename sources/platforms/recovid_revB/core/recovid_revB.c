@@ -1,5 +1,5 @@
+#include "platform.h"
 #include "recovid_revB.h"
-#include "platform_config.h"
 
 
 I2C_HandleTypeDef hi2c1;
@@ -43,7 +43,6 @@ static void MX_TIM7_Init(void);
 #endif /* __GNUC__ */
 
 
-extern void controller_main();
 
 
 void main()
@@ -533,6 +532,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
     case BATT_FAULT_Pin       : batt_fault_irq(); break;
   }
 }
+
+
+
 
 /**
   * @brief  This function is executed in case of error occurrence.

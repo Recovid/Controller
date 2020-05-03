@@ -3,7 +3,9 @@
 #include "monitoring.h"
 #include "platform.h"
 #include "defaults.h"
+#include "config.h"
 
+#include "compute_motor.h"
 
 #include <math.h>
 
@@ -27,7 +29,7 @@ SemaphoreHandle_t dbgMutex;
 extern void breathing_run(void*);
 extern void hmi_run(void*);
 extern void monitoring_run(void *);
-void controller_run(void*);
+void        controller_run(void*);
 
 
 void controller_main()
@@ -266,7 +268,7 @@ int self_tests()
     check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
 
-    check(&test_bits, 4, init_motor());
+    check(&test_bits, 4, init_motor(MOTOR_HOME_STEP_US));
 //    ctrl_printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     // check(&test_bits, 4, motor_release());
     // while(is_motor_moving()) wait_ms(10);

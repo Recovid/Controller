@@ -4,27 +4,30 @@ add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
 add_library(recovid_revB OBJECT 
-    startup_stm32f303retx.s
-    system_stm32f3xx.c
-    syscalls.c
-    sysmem.c
-    recovid_revB.c
-    recovid_revB_hal_msp_tick.c
-    recovid_revB_hal_msp.c
-    recovid_revB_hal_it.c
-    time.c
-    uart.c
-    motor.c
-    motor_pep.c
-    sensors.c
-    indicators.c
-    pep_valve.c
-    gpio.c
-    bmp280.c
+    core/startup_stm32f303retx.s
+    core/system_stm32f3xx.c
+    core/syscalls.c
+    core/sysmem.c
+    core/recovid_revB.c
+    core/recovid_revB_hal_msp_tick.c
+    core/recovid_revB_hal_msp.c
+    core/recovid_revB_hal_it.c
+    drivers/time.c
+    drivers/uart.c
+    drivers/motor.c
+    drivers/motor_pep.c
+    drivers/sensors.c
+    drivers/indicators.c
+    drivers/pep_valve.c
+    drivers/gpio.c
+    drivers/bmp280.c
 )
 
 target_include_directories(recovid_revB PUBLIC 
-	${PLATFORM_DIR}
+    ${COMMON_INC}
+	${PLATFORM_DIR}/include
+	${PLATFORM_DIR}/core
+	${PLATFORM_DIR}/drivers
 	${PLATFORM_DIR}/HAL/STM32F3xx_HAL_Driver/Inc/
 	${PLATFORM_DIR}/HAL/CMSIS/Include
 	${PLATFORM_DIR}/HAL/CMSIS/Device/ST/STM32F3xx/Include/
@@ -42,7 +45,7 @@ target_sources(platform INTERFACE
 )
 
 target_include_directories(platform INTERFACE 
-    ${PLATFORM_INC_DIR} 
+    ${PLATFORM_DIR}/include 
     ${PLATFORM_DIR}/FreeRTOS/Source/include/
 	${PLATFORM_DIR}/FreeRTOS/Source/portable/GCC/ARM_CM4F/)
 

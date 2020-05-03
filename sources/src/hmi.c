@@ -3,6 +3,7 @@
 #include "breathing.h"
 #include "protocol.h"
 #include "platform.h"
+#include "config.h"
 
 
 void hmi_run(void *args) {

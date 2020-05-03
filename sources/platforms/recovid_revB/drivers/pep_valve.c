@@ -1,6 +1,8 @@
 #include "recovid_revB.h"
 #include "platform.h"
-#include "platform_config.h"
+
+
+
 
 bool init_valve() {
   return true;

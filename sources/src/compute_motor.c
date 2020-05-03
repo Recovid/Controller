@@ -1,6 +1,5 @@
-#include <stdint.h>
+#include "config.h"
 #include <inttypes.h>
-#include "platform.h"
 #include "compute_motor.h"
 
 unsigned int compute_motor_press_christophe(
