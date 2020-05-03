@@ -2,6 +2,15 @@
 
 Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) to get the correct toolchain and tools.
 
+
+## Optional featues
+
+There is 2 flags available to pass to cmake :
+
+ - `-DDISABLE_RASPI_WAIT=true` : The hmi output while start at reset time (instead of waiting the raspi to be up)
+ - `-DNO_RASPI_REBOOT=true` : disable the raspi reboot at reset (usefull when debugging)
+
+
 ## Using windows
 
 You need an additionary tool for flashing your device "STM32CubeProgrammer".
