@@ -1,5 +1,9 @@
 set(PLATFORM_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+if(NO_RASPI_REBOOT)
+    add_compile_definitions(NO_RASPI_REBOOT)
+endif()
+
 add_subdirectory(HAL)
 add_subdirectory(FreeRTOS)
 
