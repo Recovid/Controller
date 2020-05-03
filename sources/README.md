@@ -16,12 +16,12 @@ set "PATH=%PATH%;%STM32CubePath%\plugins\com.st.stm32cube.ide.mcu.externaltools.
 cmake  -DTARGET=recovid_revB -DCMAKE_BUILD_TYPE=Debug -G"Unix Makefiles"
 # make the binblob to flash
 make -j8
-make -j8 C_Controller.recovid_revB.elf.binary
+make -j8 Controller.recovid_revB.elf.binary
 
 #Flash IT
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -hardRst
 "C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -rdu
-"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w TON_BINAIRE C_Controller.recovid_revB.elf.binary --start
+"C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe" -c port=SWD -w  Controller.recovid_revB.elf.bin --start
 
 ````
 
