@@ -225,8 +225,7 @@ void breathing_run(void *args) {
               VMe_Lpm   = (VTe_mL/1000) * FR_pm;
 
               xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
-
-              // TODO regulation_pep();
+              regulation_pep();
               enter_state(Finished);
           }
 	  sample_PEP_cmH2O(read_Paw_cmH2O());
@@ -365,6 +364,15 @@ static void enter_state(BreathingState newState) {
 // 	return 1;
 // }
 
+
+void regulation_pep() {
+  float pep_objective = get_setting_PEP_cmH2O();
+  float current_pep = get_PEP_cmH2O();
+  int relative_pep = (pep_objective*10.f - current_pep*10.f);
+  if(abs(relative_pep) > 3) {
+    motor_pep_move( (int) ((float)relative_pep/MOTOR_TO_PEP_FACTOR));
+  }
+}
 
 
 

@@ -53,5 +53,6 @@
 #define MAX_PEP_SAMPLES               (100 / PERIOD_BREATING_MS) // moyenne glissante sur les 100ms dernieres de l'expi
 #define MAX_PPLAT_SAMPLES             (50  / PERIOD_BREATING_MS) // moyenne glissante sur les 50ms dernieres de plat
 
+#define MOTOR_TO_PEP_FACTOR (1.7)
 
 #endif

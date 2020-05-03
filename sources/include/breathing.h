@@ -11,6 +11,7 @@ float get_breathing_VMe_Lpm();
 float get_breathing_Pcrete_cmH2O();
 float get_Pplat_cmH20();
 float get_PEP_cmH2O();
+void regulation_pep();
 
 #endif
 
