@@ -17,6 +17,9 @@ if (NOT EXISTS ${TARGET_DIR})
     message(FATAL_ERROR "Target platform ${TARGET} not supported")
 endif()
 
+if(DISABLE_RASPI_WAIT)
+   add_compile_definitions(DISABLE_RASPI_WAIT)
+endif()
 
 SET(CMAKE_TOOLCHAIN_FILE ${TARGET_DIR}/Toolchain.cmake)
 
