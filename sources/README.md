@@ -39,6 +39,15 @@ Both scenarios need a proper install of [STM32CubeIDE](https://www.st.com/en/dev
 
 If you need to use UART4 instead of UART2 (real case scenario and not debug using USB port on Nucleo), you should pass an extra options to Cmake: "-DRASPI_CONNECTION=1"
 
+
+## Optional featues
+
+There is 2 flags available to pass to cmake :
+
+ - `-DDISABLE_RASPI_WAIT=true` : The hmi output while start at reset time (instead of waiting the raspi to be up)
+ - `-DNO_RASPI_REBOOT=true` : disable the raspi reboot at reset (usefull when debugging)
+
+
 ## Using windows
 
 You need an additionary tool for flashing your device "STM32CubeProgrammer".
