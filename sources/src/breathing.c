@@ -4,7 +4,7 @@
 #include "breathing.h"
 #include "platform.h"
 #include "platform_config.h"
-#include "sys/_stdint.h"
+#include "stdint.h"
 
 #include <compute_motor.h>
 #include <stdint.h>
@@ -28,6 +28,7 @@ static unsigned int Pplat_cmH2O_samples_index;
 static uint32_t Tslice; //Duration of a slice
 static float error_slice_samples[NB_SLICE+2];
 static uint32_t error_slice_t_end[NB_SLICE+2];
+static float set_point_per_slice[NB_SLICE]; 
 static uint32_t current_slice =0;
 static uint32_t current_slice_start_t_ms =0;
 static void init_sample_PEP_cmH2O()
@@ -116,6 +117,11 @@ void compute_error_slice_samples(float *_flow_samples,
                                  uint32_t *current_slice_start_t_ms,
                                  uint32_t *Tslice);
 
+void compute_set_point_per_slice(float flow_set_point,
+			         float* error_slice_samples,
+			         uint32_t* error_slice_t_end,
+			         float* set_point_per_slice,
+				 uint32_t nb_slices);
 
 // static float compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
 // static void adaptation(float target_flow_Lm, float* flow_samples, uint32_t nb_samples, float time_step_sec, float* A, float* B);
@@ -177,6 +183,8 @@ void breathing_run(void *args) {
       brth_printf("BRTH: Ti    : %ld\n", Ti);
       enter_state(Insufflation);
 
+
+
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
@@ -188,11 +196,19 @@ void breathing_run(void *args) {
 
       if(current_slice > 0)
       {
+	compute_set_point_per_slice(get_setting_Vmax_Lpm(),
+				  error_slice_samples,
+				  error_slice_t_end,
+			          set_point_per_slice,
+				  current_slice);
 	for(unsigned int i = 0; i < current_slice; i++)
 	{
 	  printf("Error %d = %d end at %"PRIu32"\n", i, (int) (100.f* error_slice_samples[i]), error_slice_t_end[i]);
 	}
-
+	for(unsigned int i = 0; i < current_slice-2; i++)
+	{
+	  printf("Set_point[%d] = %d\n", i, (int)(set_point_per_slice[i]*100.f));
+	}
       }
 
       unsigned int Ta = 80;	    //Duration of the acceleration phase (computed)
@@ -479,3 +495,25 @@ void compute_error_slice_samples(float *_flow_samples,
   *_flow_samples_count=0;
   *Tslice = new_Tslice;
 }
+
+void compute_set_point_per_slice(float flow_set_point,
+			         float* error_slice_samples,
+			         uint32_t* error_slice_t_end,
+			         float* set_point_per_slice,
+				 uint32_t nb_slices)
+{
+  float error_total = 0.0f;
+  for(unsigned int i = 0; i < nb_slices; i++)
+  {
+    error_total += error_slice_samples[i];
+  }
+  uint32_t t_corrected = error_slice_t_end[nb_slices-1] - error_slice_t_end[1];
+  float kp = 0.2;
+
+  float new_set_point_global = flow_set_point - ( (error_total/ t_corrected) * kp);
+  for(unsigned int i=0; i < nb_slices-2; i++)
+  {
+     set_point_per_slice[i] = new_set_point_global - error_slice_samples[i+1];
+  }
+}
+
