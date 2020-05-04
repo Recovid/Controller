@@ -45,7 +45,6 @@ enable_testing()
 # CFlags
 
 add_compile_options(
-    -fdiagnostics-color=always
     -Wall
     -Wextra
     -Wno-unused-parameter
