@@ -1,10 +1,13 @@
 #include "common.h"
+#include <inttypes.h>
 #include "controller.h"
 #include "breathing.h"
 #include "platform.h"
 #include "platform_config.h"
+#include "sys/_stdint.h"
 
 #include <compute_motor.h>
+#include <stdint.h>
 #include <math.h>
 
 
@@ -21,6 +24,12 @@ static unsigned int PEP_cmH2O_samples_index;
 static float Pplat_cmH2O_samples[MAX_PPLAT_SAMPLES]; 
 static unsigned int Pplat_cmH2O_samples_index; 
 
+#define NB_SLICE	(20)
+static uint32_t Tslice; //Duration of a slice
+static float error_slice_samples[NB_SLICE+2];
+static uint32_t error_slice_t_end[NB_SLICE+2];
+static uint32_t current_slice =0;
+static uint32_t current_slice_start_t_ms =0;
 static void init_sample_PEP_cmH2O()
 {
     //Samples PEP for a rolling average 
@@ -92,11 +101,20 @@ static uint32_t _steps;
 // static float A_calibrated;
 // static float B_calibrated;
 
-// #define MAX_FLOW_SAMPLES	        400
+#define MAX_FLOW_SAMPLES	        400
 // #define FLOW_SAMPLING_PERIOD_MS   5
-// static float 			_flow_samples[MAX_FLOW_SAMPLES];		//  used as buffer for flow analysis and motor command computing
-// static uint32_t 	_flow_samples_count;
+static float _flow_samples[MAX_FLOW_SAMPLES];		//  used as buffer for flow analysis and motor command computing
+static uint32_t _flow_samples_count;
 
+void compute_error_slice_samples(float *_flow_samples,
+                                 uint32_t* _flow_samples_count,
+                                 float flow_set_point,
+				 uint32_t new_Tslice,
+                                 float *error_slice_samples,
+                                 uint32_t *error_slice_t_end,
+                                 uint32_t *current_slice,
+                                 uint32_t *current_slice_start_t_ms,
+                                 uint32_t *Tslice);
 
 
 // static float compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
@@ -135,7 +153,6 @@ void breathing_run(void *args) {
     do  {
       brth_printf("BRTH: start cycle\n");
 
-      enter_state(Insufflation);
 
       // TODO: Take into account the time to compute adaptation for the FR calculation ??!!??
 
@@ -158,15 +175,30 @@ void breathing_run(void *args) {
       // Compute adaptation based on current settings and previous collected data if any.
       uint32_t Ti = T*1/3;  // TODO: Check how to calculate Tinsuflation
       brth_printf("BRTH: Ti    : %ld\n", Ti);
+      enter_state(Insufflation);
 
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
-	  uint32_t d = 300;
-	  unsigned int _steps = 4000;
-	  //compute_constant_motor_steps(d, _steps, _motor_steps_us);
-	  compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
-	  brth_printf("T_C = %d Patmo = %d\n", (int) (read_temp_degreeC()*100), (int) (read_Patmo_mbar()*100));
+      uint32_t d = 300;
+      unsigned int _steps = 4000;
+      //compute_constant_motor_steps(d, _steps, _motor_steps_us);
+      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
+      brth_printf("T_C = %d Patmo = %d\n", (int) (read_temp_degreeC()*100), (int) (read_Patmo_mbar()*100));
+
+      if(current_slice > 0)
+      {
+	for(unsigned int i = 0; i < current_slice; i++)
+	{
+	  printf("Error %d = %d end at %"PRIu32"\n", i, (int) (100.f* error_slice_samples[i]), error_slice_t_end[i]);
+	}
+
+      }
+
+      unsigned int Ta = 80;	    //Duration of the acceleration phase (computed)
+      Tslice = Ta;
+      current_slice = 0;
+      current_slice_start_t_ms = get_time_ms();
 
       // Start Inhalation
       valve_inhale();
@@ -174,32 +206,59 @@ void breathing_run(void *args) {
       reset_Vol_mL();
       brth_print("BRTH: Insuflation\n");      
       while(Insufflation == _state ) {
-          if (Pmax <= read_Paw_cmH2O()) {
-              brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
-              enter_state(Exhalation);
-              break;
-          } else if (VT <= read_Vol_mL()) {
-              brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-              enter_state(Plateau);
-              break;
-          } else 
-          if( Ti <= (get_time_ms() - _cycle_start_ms) ) {
+
+	  //if (Pmax <= read_Paw_cmH2O()) {
+          //    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
+          //    enter_state(Exhalation);
+          //    break;
+          //} else if (VT <= read_Vol_mL()) {
+          //    brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
+          //    enter_state(Plateau);
+          //    break;
+          //} else
+	  if( Ti <= (get_time_ms() - _cycle_start_ms) ) {
               brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - _cycle_start_ms));
               enter_state(Plateau);
               break;
           }
-          // Sample flow for later adaptation.
-          // if(_flow_samples_count<MAX_FLOW_SAMPLES) {
-          //   _flow_samples[_flow_samples_count] = read_Pdiff_Lpm()/60.;  // in sls
-          //   ++_flow_samples_count;          
-          // }
-          // wait_ms(FLOW_SAMPLING_PERIOD_MS);
-          Pcrete_cmH2O = MAX(Pcrete_cmH2O, read_Paw_cmH2O());
+	  //Sample flow for later adaptation.
+          if(_flow_samples_count<MAX_FLOW_SAMPLES) {
+            _flow_samples[_flow_samples_count] = read_Pdiff_Lpm();  // in sls
+            ++_flow_samples_count;
+          }
+
+          if(Tslice <= (get_time_ms() - current_slice_start_t_ms) + PERIOD_BREATING_MS)
+          {
+	    compute_error_slice_samples(_flow_samples,
+					&_flow_samples_count,
+					get_setting_Vmax_Lpm(),
+					(Ti-Ta)/NB_SLICE,
+					error_slice_samples,
+					error_slice_t_end,
+					&current_slice,
+					&current_slice_start_t_ms,
+					&Tslice);
+	  }
           wait_ms(PERIOD_BREATING_MS);
       }
+      compute_error_slice_samples(_flow_samples,
+	                          &_flow_samples_count,
+	                          get_setting_Vmax_Lpm(),
+	                          (Ti-Ta),
+	                          error_slice_samples,
+	                          error_slice_t_end,
+	                          &current_slice,
+	                          &current_slice_start_t_ms,
+	                          &Tslice);
+
       motor_release();
       while(Plateau == _state) {
-        if (Pmax <= read_Paw_cmH2O()) { 
+        if(_flow_samples_count<MAX_FLOW_SAMPLES) {
+          _flow_samples[_flow_samples_count] = read_Pdiff_Lpm()/60.;  // in sls
+          ++_flow_samples_count;
+        }
+
+	if (Pmax <= read_Paw_cmH2O()) {
             brth_print("BRTH: Paw > Pmax --> Exhalation\n");
             Pplat_cmH2O = get_Pplat_avg_cmH2O();
             enter_state(Exhalation);
@@ -211,8 +270,19 @@ void breathing_run(void *args) {
         sample_Pplat_cmH2O(read_Paw_cmH2O());
         Pcrete_cmH2O = MAX(Pcrete_cmH2O, read_Paw_cmH2O());
         wait_ms(PERIOD_BREATING_MS);
+
       }
       VTi_mL= read_Vol_mL();
+      compute_error_slice_samples(_flow_samples,
+					&_flow_samples_count,
+					get_setting_Vmax_Lpm(),
+					(Ti-Ta),
+					error_slice_samples,
+					error_slice_t_end,
+					&current_slice,
+					&current_slice_start_t_ms,
+					&Tslice);
+
       valve_exhale();
       while(Exhalation == _state) { 
           if ( T <= (get_time_ms() - _cycle_start_ms )) { 
@@ -225,7 +295,7 @@ void breathing_run(void *args) {
               VMe_Lpm   = (VTe_mL/1000) * FR_pm;
 
               xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
-              regulation_pep();
+              //regulation_pep();
               enter_state(Finished);
           }
 	  sample_PEP_cmH2O(read_Paw_cmH2O());
@@ -386,4 +456,26 @@ float get_breathing_Pcrete_cmH2O()  { return Pcrete_cmH2O; }
 float get_Pplat_cmH20()             { return Pplat_cmH2O; }
 float get_PEP_cmH2O()               { return PEP_cmH2O; }
 
-
+void compute_error_slice_samples(float *_flow_samples,
+                                 uint32_t *_flow_samples_count,
+                                 float flow_set_point,
+				 uint32_t new_Tslice,
+                                 float *error_slice_samples,
+                                 uint32_t *error_slice_t_end,
+                                 uint32_t *current_slice,
+                                 uint32_t *current_slice_start_t_ms,
+                                 uint32_t *Tslice)
+{
+  float error = 0.0;
+  for(unsigned int i=0; i < *_flow_samples_count; i++)
+  {
+      error += (_flow_samples[i] - flow_set_point) / *_flow_samples_count;
+  }
+  error_slice_samples[*current_slice] = error;
+  error_slice_t_end[*current_slice] = get_time_ms()-_cycle_start_ms;
+  *current_slice_start_t_ms = get_time_ms();
+  (*current_slice)++;
+  //Reset sampling per slice
+  *_flow_samples_count=0;
+  *Tslice = new_Tslice;
+}
