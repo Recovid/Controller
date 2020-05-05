@@ -1,6 +1,5 @@
 #include "recovid_revB.h"
 #include "platform.h"
-#include "platform_config.h"
 #include "bmp280.h"
 #include <string.h>
 
@@ -101,13 +100,13 @@ static bool initSDP610()
 	// TODO: Check if all sensors are responding.
 	for (int t = 1; t < 127; ++t) {
 		if(HAL_I2C_IsDeviceReady(_i2c, (uint16_t)(t<<1), 2, 2) == HAL_OK) {
-			dbg_printf("Found device at address: %02X\n", t);
+			//dbg_printf("Found device at address: %02X\n", t);
 		}
 
 	}
 	// First try to complete pending sdp rad request if any !!!
 	if (HAL_I2C_Master_Receive(_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000) != HAL_I2C_ERROR_NONE) {
-		printf("Tried to finished pending sdp read request... but nothing came...\n");
+		//dbg_printf("Tried to finished pending sdp read request... but nothing came...\n");
 	}
 
 	// Reset SDP
@@ -337,8 +336,8 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// TODO: Manage error
-				_sensor_state = STOPPED;
+				// skip
+				readSDP();
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
@@ -359,13 +358,13 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		case REQ_SDP_MEASUREMENT: {
 			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
 					// retry
-					HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req));
+					reqSDP();
 					break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-					// TODO: Manage error
-					_sensor_state = STOPPED;
-					break;
+				// skip
+				readSDP();
+				break;
 			}
 			readSDP();
 			break;
@@ -376,8 +375,8 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// TODO: Manage error
-				_sensor_state = STOPPED;
+				// Skip
+				readBMP280_stage_1();
 				break;
 			}
 			if (_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF) {
@@ -387,7 +386,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				_current_flow_slm = compute_corrected_flow(dp_raw);
       			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
 				last_sdp_t_us = sdp_t_us;
-                readSDP();
+        		readSDP();
 			} else {
 				readBMP280_stage_1();
             }

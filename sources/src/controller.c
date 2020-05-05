@@ -3,7 +3,9 @@
 #include "monitoring.h"
 #include "platform.h"
 #include "defaults.h"
+#include "config.h"
 
+#include "compute_motor.h"
 
 #include <math.h>
 
@@ -27,7 +29,7 @@ SemaphoreHandle_t dbgMutex;
 extern void breathing_run(void*);
 extern void hmi_run(void*);
 extern void monitoring_run(void *);
-void controller_run(void*);
+void        controller_run(void*);
 
 
 void controller_main()
@@ -121,7 +123,7 @@ void controller_run(void* args) {
   while(true) {
 
     // TODO: Implemente the actual startup process
-
+   
     ctrl_printf("CTRL: Waiting for failsafe signal\n");
     while(is_Failsafe_Enabled()) wait_ms(200);
     
@@ -134,6 +136,7 @@ void controller_run(void* args) {
 
     // Enable RPi  : Could be done in hmi.c when requested to start. 
     // However, since the RPi takes some time to boot, we start it here.
+    wait_ms(500);
     enable_Rpi(On);
     ctrl_printf("CTRL: Starting RPi\n");
 
@@ -224,7 +227,7 @@ bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 
 int self_tests()
 {
-    ctrl_printf("Start self tests");
+    ctrl_printf("Start self tests\n");
     int test_bits = 0xFFFFFFFF;
 
     // TODO test 'Arret imminent' ?
@@ -266,7 +269,7 @@ int self_tests()
     check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
 
-    check(&test_bits, 4, init_motor());
+    check(&test_bits, 4, init_motor(MOTOR_HOME_STEP_US));
 //    ctrl_printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     // check(&test_bits, 4, motor_release());
     // while(is_motor_moving()) wait_ms(10);

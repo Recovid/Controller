@@ -2,6 +2,18 @@
 #define __PLATFORM_H__
 
 #include "common.h"
+#include "platform_defs.h"
+
+
+
+#define BREATHING_TASK_STACK_SIZE   PLATFORM_BREATHING_TASK_STACK_SIZE
+#define MONITORING_TASK_STACK_SIZE  PLATFORM_MONITORING_TASK_STACK_SIZE
+#define CONTROLLER_TASK_STACK_SIZE  PLATFORM_CONTROLLER_TASK_STACK_SIZE
+#define HMI_TASK_STACK_SIZE         PLATFORM_HMI_TASK_STACK_SIZE
+
+
+
+extern void controller_main();
 
 
 
@@ -50,7 +62,7 @@ bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps);
 //! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_release();
+bool motor_release(uint32_t step_us);
 
 void motor_enable(bool ena);
 

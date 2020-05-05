@@ -37,7 +37,7 @@ add_library(hal OBJECT
     STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_utils.c
 )
 target_include_directories(hal PUBLIC
-	${PLATFORM_DIR}                     # for stm32f3xx_hal_conf.h
+	${PLATFORM_DIR}/core                # for stm32f3xx_hal_conf.h
 	CMSIS/Include/
     CMSIS/Device/ST/STM32F3xx/Include
 	STM32F3xx_HAL_Driver/Inc/

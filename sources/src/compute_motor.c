@@ -1,6 +1,5 @@
-#include <stdint.h>
+#include "config.h"
 #include <inttypes.h>
-#include "platform.h"
 #include "compute_motor.h"
 
 void print_steps_in_time(float* total_steps_us, unsigned int nb_steps_time)

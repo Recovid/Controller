@@ -3,6 +3,7 @@
 #include "breathing.h"
 #include "protocol.h"
 #include "platform.h"
+#include "config.h"
 
 
 void hmi_run(void *args) {
@@ -16,18 +17,18 @@ void hmi_run(void *args) {
   init_uart();
 
   while(true) {
-    hmi_printf("HMI: Standby\n");
+    hmi_printf("HMI : Standby\n");
     ctrlEvents= xEventGroupWaitBits(ctrlEventFlags, HMI_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
-    hmi_printf("HMI: Started\n");
+    hmi_printf("HMI : Started\n");
 
 
 
     // TODO: Clarify the synchronization sequence with the RaspberryPi !!!???
-#ifndef DISABLE_RASPI_WAIT
-   hmi_printf("HMI: Waiting 40s for RPi to start\n");
-   wait_ms(40000);             // Wait 30 seconds for the RPi to finish starting up
+#ifndef NO_RASPI_REBOOT    
+    hmi_printf("HMI: Waiting 40s for RPi to start\n");
+    wait_ms(40000);             // Wait 40 seconds for the RPi to finish starting up
 #endif
-   send_INIT(get_init_str());
+    send_INIT(get_init_str());
 
     uint32_t last_report_time= get_time_ms();
     bool update_brth_cycle_info=true;
@@ -37,7 +38,7 @@ void hmi_run(void *args) {
       if(25 <= (get_time_ms()-last_report_time)) {
 #ifdef DEBUG     
         ++dbg_idx;   
-        if(40 == dbg_idx) { dbg_idx=0; hmi_printf("updating hmi [%d %d %d]\n", (uint16_t )read_Paw_cmH2O(), (uint16_t )read_Pdiff_Lpm(), (uint16_t)read_Vol_mL()); }
+        if(40 == dbg_idx) { dbg_idx=0; hmi_printf("HMI : updating [%d %d %d]\n", (uint16_t )read_Paw_cmH2O(), (uint16_t )read_Pdiff_Lpm(), (uint16_t)read_Vol_mL()); }
 #endif
         send_DATA(read_Paw_cmH2O(), read_Pdiff_Lpm(), read_Vol_mL());
         last_report_time= get_time_ms();

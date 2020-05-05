@@ -2,7 +2,7 @@
 #include "monitoring.h"
 #include "breathing.h"
 #include "platform.h"
-
+#include "config.h"
 
 void monitoring_run(void *args) {
   UNUSED(args)
