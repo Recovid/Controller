@@ -21,6 +21,10 @@ SET(CMAKE_TOOLCHAIN_FILE ${TARGET_DIR}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
 
+if(NO_RASPI_REBOOT)
+   add_compile_definitions(NO_RASPI_REBOOT)
+endif()
+
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)

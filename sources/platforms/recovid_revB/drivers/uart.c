@@ -296,6 +296,10 @@ static void uart_RxCpltCallback()
 
 static void uart_ErrorCallback()
 {
+     hal_uart_process_rx_data(IDLE_LINE_DETECTED);
+    // TODO Check error code before blindly restarting DMA RX
+    // restart DMA RX
+    HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE);
 }
 
 

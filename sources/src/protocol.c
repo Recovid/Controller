@@ -343,7 +343,6 @@ void send_and_recv()
             frame[frameIdx] = c;
             frameIdx++;
         }
-        dbg_printf("%c",c);
     }
     /* don't need to close the char string, as all frame is always reinit to \0
      * and verification is done that there is no overflow during read.
@@ -363,11 +362,13 @@ void send_and_recv()
 
     if(state == FRAME_BAD) //sth bad happened. reinit
     {
+        hmi_printf("HMI : Error: %s\n", frame);
         state = FRAME_IN_PROGRESS;
         for(int i =0;i<MAX_FRAME+1;i++) frame[i] = '\0';
         frameIdx = 0;
     } else if(state == FRAME_COMPLETE)
     {
+        hmi_printf("HMI : OK   : %s\n", frame);
         uint16_t ignored_Tplat_ms;
         /* get a pointer in frame to get fields*/
         char const *pl;

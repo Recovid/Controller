@@ -136,6 +136,7 @@ void controller_run(void* args) {
 
     // Enable RPi  : Could be done in hmi.c when requested to start. 
     // However, since the RPi takes some time to boot, we start it here.
+    wait_ms(500);
     enable_Rpi(On);
     ctrl_printf("CTRL: Starting RPi\n");
 
@@ -150,10 +151,10 @@ void controller_run(void* args) {
 
     // Start breathing and monitoring and hmi
     ctrl_printf("CTRL: Starting breathing, monitoring and hmi tasks\n");
-    // xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
-    // wait_ms(100);
-    // xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
-    // wait_ms(100);
+    xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
+    wait_ms(100);
+    xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
+    wait_ms(100);
     xEventGroupSetBits(ctrlEventFlags, HMI_RUN_FLAG );
     wait_ms(100);
     
@@ -226,7 +227,7 @@ bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 
 int self_tests()
 {
-    ctrl_printf("Start self tests");
+    ctrl_printf("Start self tests\n");
     int test_bits = 0xFFFFFFFF;
 
     // TODO test 'Arret imminent' ?

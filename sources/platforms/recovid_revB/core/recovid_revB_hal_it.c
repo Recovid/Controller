@@ -244,19 +244,14 @@ __weak void uart_RxTimeoutCallback() {
   */
 void UART4_IRQHandler(void)
 {
-  /* USER CODE BEGIN UART4_IRQn 0 */
     // Intercept Timeout event before HAL to avoid aborting DMA Transfert.
-    if(LL_USART_IsActiveFlag_RTO(hmi_uart.Instance))
+    if(LL_USART_IsActiveFlag_RTO(huart4.Instance))
     {
         // Clear RTO flag so the HAL will not abort the DMA transfert
-        LL_USART_ClearFlag_RTO(hmi_uart.Instance);
+        LL_USART_ClearFlag_RTO(huart4.Instance);
         uart_RxTimeoutCallback();
     }
-  /* USER CODE END UART4_IRQn 0 */
-  HAL_UART_IRQHandler(&huart4);
-  /* USER CODE BEGIN UART4_IRQn 1 */
-
-  /* USER CODE END UART4_IRQn 1 */
+    HAL_UART_IRQHandler(&huart4);
 }
 
 /**
