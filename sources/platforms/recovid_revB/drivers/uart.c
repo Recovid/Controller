@@ -89,6 +89,7 @@ bool init_uart()
     // Enable RX timout
     LL_USART_EnableRxTimeout(hmi_uart.Instance);
     LL_USART_SetRxTimeout(hmi_uart.Instance, HMI_RX_LINE_TIMEOUT); // Wait DEFAULT_RX_LINE_TIMEOUT after last STOP Bit
+    LL_USART_ClearFlag_RTO(hmi_uart.Instance);
     LL_USART_EnableIT_RTO(hmi_uart.Instance);
 
     // Start asynchronous DMA rx process
@@ -182,10 +183,10 @@ int uart_recv()
 // ----- Private functions
 // --------------------------------------------------------------------------------------------------------------------
 
+static volatile uint16_t _last_size =  HMI_RX_DMA_BUFFER_SIZE ;
 
 static bool hal_uart_process_rx_data(idle_line_state_t idle_line_state)
 {
-    static uint16_t last_size = { HMI_RX_DMA_BUFFER_SIZE };
     uint16_t current_size = (uint16_t) __HAL_DMA_GET_COUNTER(&hmi_dma_rx);
     uint16_t length_to_read = 0;
     uint16_t start_read = 0;
@@ -198,17 +199,17 @@ static bool hal_uart_process_rx_data(idle_line_state_t idle_line_state)
         return true;
     }
 
-    start_read = (last_size < HMI_RX_DMA_BUFFER_SIZE) ? (uint16_t)(HMI_RX_DMA_BUFFER_SIZE - last_size) : 0;
+    start_read = (_last_size < HMI_RX_DMA_BUFFER_SIZE) ? (uint16_t)(HMI_RX_DMA_BUFFER_SIZE - _last_size) : 0;
 
     if(idle_line_state == IDLE_LINE_DETECTED)
     {
-        length_to_read = (last_size < HMI_RX_DMA_BUFFER_SIZE) ? (uint16_t)(last_size - current_size) : (uint16_t)(HMI_RX_DMA_BUFFER_SIZE - current_size);
-        last_size = current_size;
+        length_to_read = (_last_size < HMI_RX_DMA_BUFFER_SIZE) ? (uint16_t)(_last_size - current_size) : (uint16_t)(HMI_RX_DMA_BUFFER_SIZE - current_size);
+        _last_size = current_size;
     }
     else
     {
         length_to_read = (uint16_t)(HMI_RX_DMA_BUFFER_SIZE - start_read);
-        last_size = HMI_RX_DMA_BUFFER_SIZE;
+        _last_size = HMI_RX_DMA_BUFFER_SIZE;
     }
 
 
@@ -296,9 +297,13 @@ static void uart_RxCpltCallback()
 
 static void uart_ErrorCallback()
 {
-     hal_uart_process_rx_data(IDLE_LINE_DETECTED);
     // TODO Check error code before blindly restarting DMA RX
-    // restart DMA RX
+
+    // We should never get here !!!
+    // Anyway process what we have already received
+     hal_uart_process_rx_data(IDLE_LINE_DETECTED);
+    // and restart DMA RX
+    _last_size =  HMI_RX_DMA_BUFFER_SIZE;
     HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE);
 }
 

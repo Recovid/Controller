@@ -250,7 +250,13 @@ void UART4_IRQHandler(void)
         // Clear RTO flag so the HAL will not abort the DMA transfert
         LL_USART_ClearFlag_RTO(huart4.Instance);
         uart_RxTimeoutCallback();
-    }
+    } 
+
+    // Ignore Framing/Overrun/Noise Errors
+    LL_USART_ClearFlag_FE(hmi_uart.Instance);
+    LL_USART_ClearFlag_ORE(hmi_uart.Instance);
+    LL_USART_ClearFlag_NE(hmi_uart.Instance);
+
     HAL_UART_IRQHandler(&huart4);
 }
 
