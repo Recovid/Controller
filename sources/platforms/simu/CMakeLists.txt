@@ -43,6 +43,7 @@ add_library(simu OBJECT
 
 target_include_directories(simu PUBLIC 
     ${COMMON_INC}
+    ${PLATFORM_DIR}/include
 )
 
 
@@ -55,6 +56,7 @@ target_include_directories(simu PUBLIC
         ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 		${FREERTOS_INC_DIR_X86}
 		${PLATFORM_DIR}
+        ${PLATFORM_DIR}/include
 )
 
 add_library(platform INTERFACE )
@@ -67,6 +69,7 @@ target_sources(platform INTERFACE
 
 target_include_directories(platform INTERFACE
 	${PLATFORM_DIR}
+        ${PLATFORM_DIR}/include
     ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 	${FREERTOS_INC_DIR_X86}
 	)
