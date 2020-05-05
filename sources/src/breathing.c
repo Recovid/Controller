@@ -451,7 +451,7 @@ static void enter_state(BreathingState newState) {
 // }
 
 
-void regulation_pep() {
+static void regulation_pep() {
   float pep_objective = get_setting_PEP_cmH2O();
   float current_pep = get_PEP_cmH2O();
   int relative_pep = (pep_objective*10.f - current_pep*10.f);
