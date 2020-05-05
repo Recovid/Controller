@@ -65,7 +65,7 @@ extern UART_HandleTypeDef huart2;           // Dbg uart
 
 #define HMI_UART_DMA_TX_IRQ_PRIORITY        (1)
 #define HMI_UART_DMA_RX_IRQ_PRIORITY        (2)
-#define HMI_UART_IRQ_PRIORITY               (1)
+#define HMI_UART_IRQ_PRIORITY               (2)
 
 
 // System Peripheral's configuration

@@ -70,8 +70,116 @@ static void uart_TxCpltCallback();
 
 
 
+
 // --------------------------------------------------------------------------------------------------------------------
-// ----- local functions
+// ----- public functions
+// --------------------------------------------------------------------------------------------------------------------
+
+
+bool init_uart()
+{
+    IFL_DEQUE_INIT(&_uart_tx_buffer);
+    IFL_DEQUE_INIT(&_uart_rx_buffer);
+
+    // Register IT callbacks
+    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_RX_COMPLETE_CB_ID, uart_RxCpltCallback);
+    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_TX_COMPLETE_CB_ID, uart_TxCpltCallback);
+    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_ERROR_CB_ID, uart_ErrorCallback);
+
+    // Enable RX timout
+    LL_USART_EnableRxTimeout(hmi_uart.Instance);
+    LL_USART_SetRxTimeout(hmi_uart.Instance, HMI_RX_LINE_TIMEOUT); // Wait DEFAULT_RX_LINE_TIMEOUT after last STOP Bit
+    LL_USART_EnableIT_RTO(hmi_uart.Instance);
+
+    // Start asynchronous DMA rx process
+    if(HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE) != HAL_OK)
+    {
+        return false;
+    }
+
+    // Enable IT
+    HAL_NVIC_EnableIRQ(HMI_DMA_CHANNEL_RX_IRQn);
+    HAL_NVIC_EnableIRQ(HMI_DMA_CHANNEL_TX_IRQn);
+    HAL_NVIC_EnableIRQ(HMI_UART_IRQn);
+
+    return true;
+}
+
+int uart_read_data(char * data, uint16_t data_size)
+{
+    uint16_t count = 0;
+
+    if(!IFL_DEQUE_EMPTY(&_uart_rx_buffer))
+    {
+        __disable_irq();
+        while (!IFL_DEQUE_EMPTY(&_uart_rx_buffer) && (count < data_size))
+        {
+            uint8_t* ch = NULL;
+            IFL_DEQUE_FRONT(&_uart_rx_buffer, ch);
+            IFL_DEQUE_POP_FRONT(&_uart_rx_buffer);
+            data[count] = *ch;
+            count++;
+        }
+        __enable_irq();
+
+    }
+    return count;
+}
+
+bool uart_write_data(const char * data, uint16_t data_size)
+{
+    __disable_irq();
+
+    // append to deque buffer
+    for (uint16_t i = 0; i < data_size; i++)
+    {
+        IFL_DEQUE_PUSH_BACK(&_uart_tx_buffer, &data[i]);
+        if(IFL_DEQUE_FULL(&_uart_tx_buffer))
+        {
+            // TODO Check implem
+            __enable_irq();
+            return false;
+        }
+    }
+
+    if (hal_uart_process_tx_data() != true)
+    {
+        __enable_irq();
+        return false;
+    }
+    else
+    {
+        // new data has been sent to processing: continue...
+    }
+
+    __enable_irq();
+
+    return true;
+}
+
+
+bool uart_send(const char* frame)
+{
+
+    return uart_write_data(frame, strlen(frame));
+}
+
+int uart_recv()
+{
+    char blocking_read = 0;
+
+    int t_s = uart_read_data(&blocking_read, sizeof(char));;
+
+    if (t_s > 0) {
+
+        return blocking_read;
+    }
+    return EOF;
+}
+
+
+// --------------------------------------------------------------------------------------------------------------------
+// ----- Private functions
 // --------------------------------------------------------------------------------------------------------------------
 
 
@@ -188,120 +296,11 @@ static void uart_RxCpltCallback()
 
 static void uart_ErrorCallback()
 {
-    if(LL_USART_IsActiveFlag_RTO(hmi_uart.Instance))
-    {
-        LL_USART_ClearFlag_RTO(hmi_uart.Instance);
-        hal_uart_process_rx_data(IDLE_LINE_DETECTED);
-    }
 }
 
-// --------------------------------------------------------------------------------------------------------------------
-// ----- public functions
-// --------------------------------------------------------------------------------------------------------------------
 
-
-
-
-
-int uart_read_data(char * data, uint16_t data_size)
+// Implement UART4 IRQ receive timeout callback
+__attribute((used)) void uart_RxTimeoutCallback()
 {
-    uint16_t count = 0;
-
-    if(!IFL_DEQUE_EMPTY(&_uart_rx_buffer))
-    {
-        __disable_irq();
-        while (!IFL_DEQUE_EMPTY(&_uart_rx_buffer) && (count < data_size))
-        {
-            uint8_t* ch = NULL;
-            IFL_DEQUE_FRONT(&_uart_rx_buffer, ch);
-            IFL_DEQUE_POP_FRONT(&_uart_rx_buffer);
-            data[count] = *ch;
-            count++;
-        }
-        __enable_irq();
-
-    }
-    return count;
+    hal_uart_process_rx_data(IDLE_LINE_DETECTED);
 }
-
-bool uart_write_data(const char * data, uint16_t data_size)
-{
-    __disable_irq();
-
-    // append to deque buffer
-    for (uint16_t i = 0; i < data_size; i++)
-    {
-        IFL_DEQUE_PUSH_BACK(&_uart_tx_buffer, &data[i]);
-        if(IFL_DEQUE_FULL(&_uart_tx_buffer))
-        {
-            // TODO Check implem
-            __enable_irq();
-            return false;
-        }
-    }
-
-    if (hal_uart_process_tx_data() != true)
-    {
-        __enable_irq();
-        return false;
-    }
-    else
-    {
-        // new data has been sent to processing: continue...
-    }
-
-    __enable_irq();
-
-    return true;
-}
-
-
-bool init_uart()
-{
-    IFL_DEQUE_INIT(&_uart_tx_buffer);
-    IFL_DEQUE_INIT(&_uart_rx_buffer);
-
-    // Register IT callbacks
-    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_RX_COMPLETE_CB_ID, uart_RxCpltCallback);
-    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_TX_COMPLETE_CB_ID, uart_TxCpltCallback);
-    HAL_UART_RegisterCallback(&hmi_uart, HAL_UART_ERROR_CB_ID, uart_ErrorCallback);
-
-    // Enable RX timout
-    LL_USART_EnableRxTimeout(hmi_uart.Instance);
-    LL_USART_SetRxTimeout(hmi_uart.Instance, HMI_RX_LINE_TIMEOUT); // Wait DEFAULT_RX_LINE_TIMEOUT after last STOP Bit
-    LL_USART_EnableIT_RTO(hmi_uart.Instance);
-
-    // Start asynchronous DMA rx process
-    if(HAL_UART_Receive_DMA(&hmi_uart,  _dma_buffer_rx, HMI_RX_DMA_BUFFER_SIZE) != HAL_OK)
-    {
-        return false;
-    }
-
-    // Enable IT
-    HAL_NVIC_EnableIRQ(HMI_DMA_CHANNEL_RX_IRQn);
-    HAL_NVIC_EnableIRQ(HMI_DMA_CHANNEL_TX_IRQn);
-    HAL_NVIC_EnableIRQ(HMI_UART_IRQn);
-
-    return true;
-}
-
-bool uart_send(const char* frame)
-{
-
-    return uart_write_data(frame, strlen(frame));
-}
-
-int uart_recv()
-{
-    char blocking_read = 0;
-
-    int t_s = uart_read_data(&blocking_read, sizeof(char));;
-
-    if (t_s > 0) {
-
-        return blocking_read;
-    }
-    return EOF;
-}
-
-

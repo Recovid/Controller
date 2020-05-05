@@ -123,7 +123,7 @@ void controller_run(void* args) {
   while(true) {
 
     // TODO: Implemente the actual startup process
-
+   
     ctrl_printf("CTRL: Waiting for failsafe signal\n");
     while(is_Failsafe_Enabled()) wait_ms(200);
     
@@ -150,10 +150,10 @@ void controller_run(void* args) {
 
     // Start breathing and monitoring and hmi
     ctrl_printf("CTRL: Starting breathing, monitoring and hmi tasks\n");
-    xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
-    wait_ms(100);
-    xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
-    wait_ms(100);
+    // xEventGroupSetBits(ctrlEventFlags, MONITORING_RUN_FLAG );
+    // wait_ms(100);
+    // xEventGroupSetBits(ctrlEventFlags, BREATHING_RUN_FLAG );
+    // wait_ms(100);
     xEventGroupSetBits(ctrlEventFlags, HMI_RUN_FLAG );
     wait_ms(100);
     

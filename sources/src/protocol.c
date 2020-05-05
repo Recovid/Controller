@@ -343,6 +343,7 @@ void send_and_recv()
             frame[frameIdx] = c;
             frameIdx++;
         }
+        dbg_printf("%c",c);
     }
     /* don't need to close the char string, as all frame is always reinit to \0
      * and verification is done that there is no overflow during read.

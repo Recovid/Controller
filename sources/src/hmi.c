@@ -25,8 +25,8 @@ void hmi_run(void *args) {
 
     // TODO: Clarify the synchronization sequence with the RaspberryPi !!!???
    hmi_printf("HMI: Waiting 40s for RPi to start\n");
-    wait_ms(40000);             // Wait 30 seconds for the RPi to finish starting up
-    send_INIT(get_init_str());
+    // wait_ms(40000);             // Wait 40 seconds for the RPi to finish starting up
+    // send_INIT(get_init_str());
 
     uint32_t last_report_time= get_time_ms();
     bool update_brth_cycle_info=true;
