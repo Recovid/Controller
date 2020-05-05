@@ -13,21 +13,13 @@
 #error Not enough heap to create all tasks and events
 #endif
 
-
-// BAVU MOTOR platform specific defines
-
-#define MOTOR_STEPS_PER_REV                   (4000)  
-#define MOTOR_MAX_REV                         (1.2)   
-#define MOTOR_MAX_STEPS                       ((uint32_t)(MOTOR_STEPS_PER_REV*MOTOR_MAX_REV))
-
+#define MOTOR_PEP_PEP_TO_MM_FACTOR            (1.7)   // PEP to mm factor
 #define MOTOR_CORRECTION_USTEPS               (                          4)
 #define MOTOR_HOME_STEP_US                    (400*MOTOR_CORRECTION_USTEPS)
 #define MOTOR_RELEASE_STEP_US                 (300*MOTOR_CORRECTION_USTEPS)
 
-
 // MOTOR PEP platform specific defines
 
 #define MOTOR_PEP_PEP_TO_MM_FACTOR            (1.7)   // PEP to mm factor
-
 
 #endif
