@@ -53,9 +53,10 @@ static uint32_t       g_motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it
 //----------------------------------------------------------
 // Private functions prototypes
 //----------------------------------------------------------
+static void   regulation_pep();
 static void   init_sample_PEP_cmH2O();
 static void   sample_PEP_cmH2O( float Paw_cmH2O);
-static float   get_PEP_avg_cmH2O();
+static float  get_PEP_avg_cmH2O();
 static void   init_sample_Pplat_cmH2O();
 static void   sample_Pplat_cmH2O( float Paw_cmH2O);
 static float  get_Pplat_avg_cmH2O();
@@ -182,7 +183,7 @@ void breathing_run(void *args) {
 
               xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
-              // TODO regulation_pep();
+              regulation_pep();
               enter_state(Finished);
           }
 	      sample_PEP_cmH2O(read_Paw_cmH2O());
@@ -243,6 +244,15 @@ float get_PEP_cmH2O()               { return g_PEP_cmH2O; }
 //----------------------------------------------------------
 // Private functions
 //----------------------------------------------------------
+
+static void regulation_pep() {
+  float pep_objective = get_setting_PEP_cmH2O();      // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
+  float current_pep = get_PEP_cmH2O();
+  int relative_pep = (pep_objective*10.f - current_pep*10.f);
+  if(abs(relative_pep) > 3) {
+    motor_pep_move( (int) ((float)relative_pep/MOTOR_PEP_PEP_TO_MM_FACTOR));
+  }
+}
 
 static void init_sample_PEP_cmH2O()
 {
