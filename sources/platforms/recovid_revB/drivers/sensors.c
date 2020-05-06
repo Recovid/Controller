@@ -64,6 +64,9 @@ static volatile float buffer_RPaw_cmH2O[4]	={0};
 static volatile float paw_max = 0;
 static volatile float vol_brut = 0;
 static volatile float vol_max = 0;
+static volatile	uint16_t last_flow_t_us;
+
+#define FLOW_SAMPLE_DELTA 20000
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
@@ -327,8 +330,11 @@ float compute_corrected_pressure(uint16_t read)
 }
 
 //! \warning TODO compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
-float compute_corrected_flow(int16_t read, uint16_t dt_time)
+float compute_corrected_flow(int16_t read)
 {
+    uint16_t current_time = (uint16_t)get_time_us();
+    uint16_t dt_time = current_time - last_flow_t_us;
+    last_flow_t_us = current_time;
     buffer_flow_slm[3]=buffer_flow_slm[2];
     buffer_flow_slm[2]=buffer_flow_slm[1];
     buffer_flow_slm[1]=buffer_flow_slm[0];
@@ -438,10 +444,14 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				uint16_t sdp_t_us = (uint16_t)get_time_us();
 				uint16_t sdp_dt_us = (uint16_t)sdp_t_us - last_sdp_t_us;
 				int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-				_current_flow_slm = compute_corrected_flow(dp_raw, sdp_dt_us);
-      			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
-				last_sdp_t_us = sdp_t_us;
-        		readSDP();
+
+				if(sdp_dt_us> FLOW_SAMPLE_DELTA)
+				{
+				    _current_flow_slm = compute_corrected_flow(dp_raw);
+      			            _current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
+				    last_sdp_t_us = sdp_t_us;
+				}
+        		        readSDP();
 			} else {
 				readBMP280_stage_1();
             }
