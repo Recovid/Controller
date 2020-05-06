@@ -292,11 +292,11 @@ int self_tests()
     //check(&test_bits, 3, valve_exhale()); // start pos
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
-    check(&test_bits, 8, init_motor_pep());
-    motor_pep_home();
-    while(!is_motor_pep_home()) wait_ms(10);
-    motor_pep_move(10);
-    while(is_motor_pep_moving()) wait_ms(10);
+    //check(&test_bits, 8, init_motor_pep());
+    //motor_pep_home();
+    //while(!is_motor_pep_home()) wait_ms(10);
+    //motor_pep_move(10);
+    //while(is_motor_pep_moving()) wait_ms(10);
     // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;
