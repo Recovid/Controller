@@ -123,7 +123,6 @@ void controller_run(void* args) {
   while(true) {
 
     // TODO: Implemente the actual startup process
-   
     ctrl_printf("CTRL: Waiting for failsafe signal\n");
     while(is_Failsafe_Enabled()) wait_ms(200);
     
@@ -136,7 +135,6 @@ void controller_run(void* args) {
 
     // Enable RPi  : Could be done in hmi.c when requested to start. 
     // However, since the RPi takes some time to boot, we start it here.
-    wait_ms(500);
     enable_Rpi(On);
     ctrl_printf("CTRL: Starting RPi\n");
 
@@ -227,7 +225,7 @@ bool sensor_test(float(*sensor)(), float min, float max, float maxstddev)
 
 int self_tests()
 {
-    ctrl_printf("Start self tests\n");
+    ctrl_printf("CTRL: Start self tests\n");
     int test_bits = 0xFFFFFFFF;
 
     // TODO test 'Arret imminent' ?
@@ -244,18 +242,19 @@ int self_tests()
     // check(&test_bits, 1, buzzer_high      (On )); wait_ms(1000);
     // check(&test_bits, 1, buzzer_high      (Off)); // start pos
 
-    ctrl_printf("Red light\n");
+    ctrl_printf("CTRL: Red light\n");
     check(&test_bits, 2, light_red   (On )); wait_ms(1000);
     check(&test_bits, 2, light_red   (Off)); // start pos
 
-    ctrl_printf("Yellow light\n");
+    ctrl_printf("CTRL: Yellow light\n");
     check(&test_bits,  9, light_yellow(On )); wait_ms(1000);
     check(&test_bits, 10, light_yellow(Off)); // start pos
 
-    ctrl_printf("Green light\n");
+    ctrl_printf("CTRL: Green light\n");
     check(&test_bits,  9, light_green(On )); wait_ms(1000);
     check(&test_bits, 10, light_green(Off)); // start pos
 
+    ctrl_printf("CTRL: Start sensors\n");
     check(&test_bits, 5, init_sensors());
     check(&test_bits, 11, sensors_start());
 
@@ -266,9 +265,11 @@ int self_tests()
 //    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); ctrl_printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
 
 
+    ctrl_printf("CTRL: Init valve\n");
     check(&test_bits, 3, init_valve());
     check(&test_bits, 3, valve_exhale());
 
+    ctrl_printf("CTRL: Init motor\n");
     check(&test_bits, 4, init_motor(MOTOR_HOME_STEP_US));
 //    ctrl_printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     // check(&test_bits, 4, motor_release());
@@ -276,7 +277,7 @@ int self_tests()
 
     // check(&test_bits, 4, motor_stop());
 //    ctrl_printf("Release Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-    check(&test_bits, 3, valve_inhale());
+//    check(&test_bits, 3, valve_inhale());
 //    ctrl_printf("Inhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
     // motor_press_constant(400, 1000);
@@ -297,6 +298,12 @@ int self_tests()
     //while(!is_motor_pep_home()) wait_ms(10);
     //motor_pep_move(10);
     //while(is_motor_pep_moving()) wait_ms(10);
+    ctrl_printf("CTRL: Init pep motor\n");
+    check(&test_bits, 8, init_motor_pep());
+    motor_pep_home();
+    while(!is_motor_pep_home()) wait_ms(10);
+    motor_pep_move(10);
+    while(is_motor_pep_moving()) wait_ms(10);
     // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;

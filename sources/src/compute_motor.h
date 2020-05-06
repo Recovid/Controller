@@ -1,7 +1,7 @@
 #ifndef __COMPUTE_MOTOR_H__
 #define __COMPUTE_MOTOR_H__
 
-#include "platform_defs.h"
+#include "platform.h"
 
 
 

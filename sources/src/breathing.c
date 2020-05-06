@@ -262,23 +262,29 @@ void breathing_run(void *args) {
       g_previous_nb_steps = g_current_nb_steps;
       reset_Vol_mL();
       brth_print("BRTH: Insuflation\n");      
-      while(Insufflation == g_state ) {
-          if (Pmax <= read_Paw_cmH2O()) {
-              brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
-              enter_state(Exhalation);
-              break;
-          } else if (VT <= read_Vol_mL()) {
-              brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-              enter_state(Plateau);
-              break;
-          } else 
-          if( Ti <= (get_time_ms() - g_cycle_start_ms) ) {
-              brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - g_cycle_start_ms));
-              enter_state(Plateau);
-              break;
-          }
-          //Sample flow for later adaptation.
-          if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
+      while (Insufflation == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
+        if (Pmax <= read_Paw_cmH2O())
+        {
+          brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
+          enter_state(Exhalation);
+          break;
+        }
+        else if (VT <= read_Vol_mL())
+        {
+          brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
+          enter_state(Plateau);
+          break;
+        }
+        else if (Ti <= (get_time_ms() - g_cycle_start_ms))
+        {
+          brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - g_cycle_start_ms));
+          enter_state(Plateau);
+          break;
+        }
+	if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
             g_flow_samples[g_flow_samples_count] = read_Pdiff_Lpm();  // in sls
             ++g_flow_samples_count;
           }
@@ -295,146 +301,155 @@ void breathing_run(void *args) {
                                         &g_current_slice_start_t_ms,
                                         &g_Tslice);
           }
-          g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
-          wait_ms(PERIOD_BREATING_MS);
       }
       motor_release(MOTOR_RELEASE_STEP_US);
-      while(Plateau == g_state) {
-        if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
+      while (Plateau == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        sample_Pplat_cmH2O(read_Paw_cmH2O());
+        g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
+        if (Pmax <= read_Paw_cmH2O())
+        {
+          brth_print("BRTH: Paw > Pmax --> Exhalation\n");
+          g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
+          enter_state(Exhalation);
+        }
+        else if (is_command_Tpins_expired() && (Tplat <= (get_time_ms() - g_state_start_ms)))
+        {
+          brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
+          g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
+          enter_state(Exhalation);
+        }
+	if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
           g_flow_samples[g_flow_samples_count] = read_Pdiff_Lpm()/60.;  // in sls
           ++g_flow_samples_count;
         }
-
-        if (Pmax <= read_Paw_cmH2O()) { 
-            brth_print("BRTH: Paw > Pmax --> Exhalation\n");
-            g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
-            enter_state(Exhalation);
-        } else if ( is_command_Tpins_expired() && (Tplat <= (get_time_ms() - g_state_start_ms)) ) {
-            brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
-            g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
-            enter_state(Exhalation);
-        }
-        sample_Pplat_cmH2O(read_Paw_cmH2O());
-        g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
-        wait_ms(PERIOD_BREATING_MS);
       }
       compute_error_slice_samples(g_flow_samples,
-                                  &g_flow_samples_count,
-                                  get_setting_Vmax_Lpm(),
-                                  (Ti-Ta)/NB_SLICE,
-                                  g_error_slice_samples,
-                                  g_t_end_of_slice_us,
-                                  &g_current_nb_slices,
-                                  &g_current_slice_start_t_ms,
-                                  &g_Tslice);
-      g_VTi_mL= read_Vol_mL();
+                           &g_flow_samples_count,
+                           get_setting_Vmax_Lpm(),
+                           (Ti-Ta)/NB_SLICE,
+                           g_error_slice_samples,
+                           g_t_end_of_slice_us,
+                           &g_current_nb_slices,
+                           &g_current_slice_start_t_ms,
+                           &g_Tslice);
+ 
+
+      g_VTi_mL = read_Vol_mL();
       valve_exhale();
-      float VTe_start_mL=0.;
-      while(Exhalation == g_state) { 
-          if ( T <= (get_time_ms() - g_cycle_start_ms )) { 
-              uint32_t t_ms = get_time_ms();
+      float VTe_start_mL = 0.;
+      while (Exhalation == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        sample_PEP_cmH2O(read_Paw_cmH2O());
+        if( !is_command_Tpexp_expired() ) {
+          valve_inhale();
+        } 
+        else 
+        {
+          valve_exhale();
+          if (T <= (get_time_ms() - g_cycle_start_ms))
+          {
+            brth_print("BRTH: Tpexp expired && (T <= dt)\n");
+            uint32_t t_ms = get_time_ms();
 
-              g_PEP_cmH2O = get_PEP_avg_cmH2O();
-              g_EoI_ratio =  (float)(t_ms-g_cycle_start_ms)/(g_state_start_ms-g_cycle_start_ms);
-              g_FR_pm     = 1./(((float)(t_ms-g_cycle_start_ms))/1000/60);
-              g_VTe_mL = VTe_start_mL - read_Vol_mL();
-              g_VMe_Lpm   = (g_VTe_mL/1000) * g_FR_pm;
+            g_PEP_cmH2O = get_PEP_avg_cmH2O();
+            g_EoI_ratio = (float)(t_ms - g_cycle_start_ms) / (g_state_start_ms - g_cycle_start_ms);
+            g_FR_pm = 1. / (((float)(t_ms - g_cycle_start_ms)) / 1000 / 60);
+            g_VTe_mL = VTe_start_mL - read_Vol_mL();
+            g_VMe_Lpm = (g_VTe_mL / 1000) * g_FR_pm;
 
-              xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
+            xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
-              regulation_pep();
-              enter_state(Finished);
+            regulation_pep();
+            enter_state(Finished);
           }
-          sample_PEP_cmH2O(read_Paw_cmH2O());
-          wait_ms(PERIOD_BREATING_MS);
+        }
       }
 
-      events= xEventGroupGetBits(ctrlEventFlags);
-    } while ( ( events & BREATHING_RUN_FLAG ) != 0 );
+      events = xEventGroupGetBits(ctrlEventFlags);
+    } while ((events & BREATHING_RUN_FLAG) != 0);
 
-    brth_printf("BRTH: Stopping\n");      
+    brth_printf("BRTH: Stopping\n");
 
     wait_ms(200);
     xEventGroupSetBits(ctrlEventFlags, BREATHING_STOPPED_FLAG);
-
   }
 }
 
-static void enter_state(BreathingState newState) {
-  g_state= newState;
+static void enter_state(BreathingState newState)
+{
+  g_state = newState;
   g_state_start_ms = get_time_ms();
-  EventBits_t brthState =0;
-  switch(g_state) {
-    case Insufflation:
-      g_cycle_start_ms = get_time_ms();
-      brthState =  BRTH_CYCLE_INSUFLATION;
-      brth_printf("BRTH: Insuflation\n");
-      break;
-    case Plateau:
-      brthState =  BRTH_CYCLE_PLATEAU;
-      brth_printf("BRTH: Plateau\n");
-      break;
-    case Exhalation:
-      brthState =  BRTH_CYCLE_EXHALATION;
-      brth_printf("BRTH: Exhalation\n");
-      break;
-    case Finished:
-      brthState =  BRTH_CYCLE_FINISHED;
-      brth_printf("BRTH: Finished\n");
-      break;
+  EventBits_t brthState = 0;
+  switch (g_state)
+  {
+  case Insufflation:
+    g_cycle_start_ms = get_time_ms();
+    brthState = BRTH_CYCLE_INSUFLATION;
+    brth_printf("BRTH: Insuflation\n");
+    break;
+  case Plateau:
+    brthState = BRTH_CYCLE_PLATEAU;
+    brth_printf("BRTH: Plateau\n");
+    break;
+  case Exhalation:
+    brthState = BRTH_CYCLE_EXHALATION;
+    brth_printf("BRTH: Exhalation\n");
+    break;
+  case Finished:
+    brthState = BRTH_CYCLE_FINISHED;
+    brth_printf("BRTH: Finished\n");
+    break;
   }
   // Inform system about current state
-  xEventGroupClearBits(brthCycleState, (BRTH_CYCLE_INSUFLATION | BRTH_CYCLE_PLATEAU | BRTH_CYCLE_EXHALATION | BRTH_CYCLE_FINISHED) );
+  xEventGroupClearBits(brthCycleState, (BRTH_CYCLE_INSUFLATION | BRTH_CYCLE_PLATEAU | BRTH_CYCLE_EXHALATION | BRTH_CYCLE_FINISHED));
   xEventGroupSetBits(brthCycleState, brthState);
 }
 
-
-float get_breathing_EoI_ratio()     { return g_EoI_ratio; }
-float get_breathing_FR_pm()         { return g_FR_pm; }
-float get_breathing_VTe_mL()        { return g_VTe_mL; }
-float get_breathing_VTi_mL()        { return g_VTi_mL; }
-float get_breathing_VMe_Lpm()       { return g_VMe_Lpm; }
-float get_breathing_Pcrete_cmH2O()  { return g_Pcrete_cmH2O; }
-float get_Pplat_cmH20()             { return g_Pplat_cmH2O; }
-float get_PEP_cmH2O()               { return g_PEP_cmH2O; }
-
-
+float get_breathing_EoI_ratio() { return g_EoI_ratio; }
+float get_breathing_FR_pm() { return g_FR_pm; }
+float get_breathing_VTe_mL() { return g_VTe_mL; }
+float get_breathing_VTi_mL() { return g_VTi_mL; }
+float get_breathing_VMe_Lpm() { return g_VMe_Lpm; }
+float get_breathing_Pcrete_cmH2O() { return g_Pcrete_cmH2O; }
+float get_Pplat_cmH20() { return g_Pplat_cmH2O; }
+float get_PEP_cmH2O() { return g_PEP_cmH2O; }
 
 //----------------------------------------------------------
 // Private functions
 //----------------------------------------------------------
 
-static void regulation_pep() {
-  float pep_objective = get_setting_PEP_cmH2O();      // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
-  float current_pep = get_PEP_cmH2O();
-  //Do not do regulation if the current pep is irrelevant
-  if(current_pep < 0.0f)
-    return;
-  int relative_pep = (pep_objective*10.f - current_pep*10.f);
-  if(abs(relative_pep) > 3) {
-    motor_pep_move( (int) ((float)relative_pep/MOTOR_PEP_PEP_TO_MM_FACTOR));
+static void regulation_pep()
+{
+  float pep_objective = get_setting_PEP_cmH2O(); // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
+  float current_pep = get_PEP_avg_cmH2O();
+  int relative_pep = (pep_objective * 10.f - current_pep * 10.f);
+  if (abs(relative_pep) > 3)
+  {
+    motor_pep_move((int)((float)relative_pep / MOTOR_PEP_PEP_TO_MM_FACTOR));
   }
 }
 
 static void init_sample_PEP_cmH2O()
 {
-    //Samples PEP for a rolling average 
+  //Samples PEP for a rolling average
   g_PEP_cmH2O_samples_index = 0;
-  for(int i = 0; i < MAX_PEP_SAMPLES; i++)
+  for (int i = 0; i < MAX_PEP_SAMPLES; i++)
     g_PEP_cmH2O_samples[i] = 0;
-
 }
 
-static void sample_PEP_cmH2O( float Paw_cmH2O)
+static void sample_PEP_cmH2O(float Paw_cmH2O)
 {
   g_PEP_cmH2O_samples[g_PEP_cmH2O_samples_index] = Paw_cmH2O;
-  g_PEP_cmH2O_samples_index = (g_PEP_cmH2O_samples_index + 1) % MAX_PEP_SAMPLES; 
+  g_PEP_cmH2O_samples_index = (g_PEP_cmH2O_samples_index + 1) % MAX_PEP_SAMPLES;
 }
 
 static float get_PEP_avg_cmH2O()
 {
   float sum_PEP = 0;
-  for(int i=0; i < MAX_PEP_SAMPLES; i++)
+  for (int i = 0; i < MAX_PEP_SAMPLES; i++)
   {
     sum_PEP += g_PEP_cmH2O_samples[i];
   }
@@ -443,23 +458,22 @@ static float get_PEP_avg_cmH2O()
 
 static void init_sample_Pplat_cmH2O()
 {
-    //Samples Pplat for a rolling average 
+  //Samples Pplat for a rolling average
   g_Pplat_cmH2O_samples_index = 0;
-  for(int i = 0; i < MAX_PPLAT_SAMPLES; i++)
+  for (int i = 0; i < MAX_PPLAT_SAMPLES; i++)
     g_Pplat_cmH2O_samples[i] = 0;
-
 }
 
-static void sample_Pplat_cmH2O( float Paw_cmH2O)
+static void sample_Pplat_cmH2O(float Paw_cmH2O)
 {
   g_Pplat_cmH2O_samples[g_Pplat_cmH2O_samples_index] = Paw_cmH2O;
-  g_Pplat_cmH2O_samples_index = (g_Pplat_cmH2O_samples_index + 1) % MAX_PPLAT_SAMPLES; 
+  g_Pplat_cmH2O_samples_index = (g_Pplat_cmH2O_samples_index + 1) % MAX_PPLAT_SAMPLES;
 }
 
 static float get_Pplat_avg_cmH2O()
 {
   float sum_Pplat = 0;
-  for(int i=0; i < MAX_PPLAT_SAMPLES; i++)
+  for (int i = 0; i < MAX_PPLAT_SAMPLES; i++)
   {
     sum_Pplat += g_Pplat_cmH2O_samples[i];
   }
