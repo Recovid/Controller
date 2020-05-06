@@ -2,6 +2,8 @@
 #include "platform.h"
 #include "bmp280.h"
 #include <string.h>
+#include <float.h>
+#include <math.h>
 
 /*
  * Notes concernant l'utilisation du bmp280.
@@ -56,6 +58,12 @@ static volatile	uint16_t last_sdp_t_us;
 static volatile	uint16_t last_npa_t_us;
 volatile sensors_state_t _sensor_state;
 
+static volatile float buffer_flow_slm[4]	={0};
+static volatile float buffer_Paw_cmH2O[4]	={0};
+static volatile float buffer_RPaw_cmH2O[4]	={0};
+static volatile float paw_max = 0;
+static volatile float vol_brut = 0;
+static volatile float vol_max = 0;
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
@@ -235,6 +243,9 @@ float read_Vol_mL() {
  //! reset current integrated volume to 0
 void reset_Vol_mL() {
 	_current_vol_mL = 0;
+	paw_max 	= 0;
+	vol_brut 	= 0;
+	vol_max 	= 0;
 }
 static void readSDP() {
 	_sensor_state = READ_SDP_MEASUREMENT;
@@ -316,9 +327,53 @@ float compute_corrected_pressure(uint16_t read)
 }
 
 //! \warning TODO compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
-float compute_corrected_flow(int16_t read)
+float compute_corrected_flow(int16_t read, uint16_t dt_time)
 {
-    return -(float) read / 105.f; // V1 Calibration
+    buffer_flow_slm[3]=buffer_flow_slm[2];
+    buffer_flow_slm[2]=buffer_flow_slm[1];
+    buffer_flow_slm[1]=buffer_flow_slm[0];
+    buffer_Paw_cmH2O[3]=buffer_Paw_cmH2O[2];
+    buffer_Paw_cmH2O[2]=buffer_Paw_cmH2O[1];
+    buffer_Paw_cmH2O[1]=buffer_Paw_cmH2O[0];
+    buffer_RPaw_cmH2O[3]=buffer_RPaw_cmH2O[2];
+    buffer_RPaw_cmH2O[2]=buffer_RPaw_cmH2O[1];
+    buffer_RPaw_cmH2O[1]=buffer_RPaw_cmH2O[0];
+
+    buffer_Paw_cmH2O[0]=_current_Paw_cmH2O; 
+    buffer_RPaw_cmH2O[0]=sqrtf(buffer_Paw_cmH2O[0]);
+    buffer_flow_slm[0]=-(float) read / 105.f;
+
+    float sum = buffer_flow_slm[0] + buffer_flow_slm[1] + buffer_flow_slm[2] + buffer_flow_slm[3];
+    float acc = ( buffer_flow_slm[0] - buffer_flow_slm[3] ) /4;
+    paw_max = MAX(paw_max, buffer_Paw_cmH2O[0]);
+    float pv = paw_max / MAX(vol_max,10);
+    vol_brut+=buffer_flow_slm[0]*((float)dt_time/1000);
+    vol_max = MAX(vol_max, vol_brut);
+    float pneumo=0;
+    if ((sum<-0.10) && (pv<=1))
+	pneumo=-0.2 + (0.86)*buffer_flow_slm[2] + (-3.13)*buffer_RPaw_cmH2O[0] + (0.58)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1))
+	pneumo=3.2 + (0.89)*buffer_flow_slm[2] + (-0.44)*buffer_RPaw_cmH2O[0] + (-0.01)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (1<pv))
+	pneumo=2.1 + (0.91)*buffer_flow_slm[2] + (0.26)*buffer_RPaw_cmH2O[0] + (-0.07)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (pv<=1) && (acc<-13))
+	pneumo=158.5 + (0.93)*buffer_flow_slm[2] + (-59.25)*buffer_RPaw_cmH2O[0] + (5.18)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (pv<=1) && (5<acc))
+	pneumo=13.5 + (-4.23)*buffer_flow_slm[2] + (33.99)*buffer_RPaw_cmH2O[0] + (-40.40)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1) && (5<acc))
+	pneumo=172.8 + (0.76)*buffer_flow_slm[2] + (-154.49)*buffer_RPaw_cmH2O[0] + (35.21)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1) && (acc<-13))
+	pneumo=28.1 + (0.46)*buffer_flow_slm[2] + (3.43)*buffer_RPaw_cmH2O[0] + (-0.62)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv))
+	pneumo=-0.2 + (0.71)*buffer_flow_slm[2] + (-5.61)*buffer_RPaw_cmH2O[0] + (0.71)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv) && (acc<-13))
+	pneumo=198.9 + (-0.49)*buffer_flow_slm[2] + (-187.62)*buffer_RPaw_cmH2O[0] + (22.02)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv) && (5<acc))
+	pneumo=14.0 + (0.00)*buffer_flow_slm[2] + (-20.87)*buffer_RPaw_cmH2O[0] + (-0.88)*buffer_Paw_cmH2O[0];
+    else pneumo=buffer_flow_slm[0];
+
+
+    return pneumo; // V1 Calibration
 }
 
 
@@ -383,7 +438,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				uint16_t sdp_t_us = (uint16_t)get_time_us();
 				uint16_t sdp_dt_us = (uint16_t)sdp_t_us - last_sdp_t_us;
 				int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-				_current_flow_slm = compute_corrected_flow(dp_raw);
+				_current_flow_slm = compute_corrected_flow(dp_raw, sdp_dt_us);
       			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
 				last_sdp_t_us = sdp_t_us;
         		readSDP();
