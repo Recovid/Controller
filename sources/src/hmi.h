@@ -4,4 +4,8 @@
 #include "common.h"
 
 
+// HMI FreeRTOS stuff
+bool hmi_init();
+
+
 #endif

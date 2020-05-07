@@ -13,12 +13,15 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+#include "platform_defs.h"
+
+
 #define configUSE_PREEMPTION					1
 #define configUSE_IDLE_HOOK						0
 #define configUSE_TICK_HOOK						0
 #define configTICK_RATE_HZ				( ( portTickType ) 1000 )
-#define configMINIMAL_STACK_SIZE		( ( unsigned portSHORT ) 64 ) /* This can be made smaller if required. */
-#define configTOTAL_HEAP_SIZE			( ( size_t ) ( 64 * 1024 ) )
+#define configMINIMAL_STACK_SIZE		( ( unsigned portSHORT ) PLATFORM_MINIMAL_STACK_SIZE ) /* This can be made smaller if required. */
+#define configTOTAL_HEAP_SIZE			( ( size_t ) ( PLATFORM_FREERTOS_HEAP_SIZE ) )
 #define configMAX_TASK_NAME_LEN			( 16 )
 #define configUSE_TRACE_FACILITY    	0
 #define configUSE_16_BIT_TICKS      	0
@@ -37,9 +40,9 @@
 
 /* Software timer related configuration options. */
 #define configUSE_TIMERS						1
-#define configTIMER_TASK_PRIORITY				( configMAX_PRIORITIES - 1 )
+#define configTIMER_TASK_PRIORITY				( PLATFORM_TIMER_TASK_PRIORITY )
 #define configTIMER_QUEUE_LENGTH				20
-#define configTIMER_TASK_STACK_DEPTH			( configMINIMAL_STACK_SIZE * 2 )
+#define configTIMER_TASK_STACK_DEPTH			( PLATFORM_TIMER_TASK_STACK_SIZE )
 
 #define configMAX_PRIORITIES		( 10 )
 

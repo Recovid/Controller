@@ -4,5 +4,6 @@
 #include "common.h"
 
 
+bool monitoring_init();
 
 #endif

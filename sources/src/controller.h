@@ -3,6 +3,21 @@
 
 #include "common.h"
 
+// FreeRTOS tasks, timers and events
+
+#define BREATHING_RUN_FLAG        (1 << 0)
+#define MONITORING_RUN_FLAG       (1 << 1)
+#define HMI_RUN_FLAG              (1 << 2)
+
+#define BREATHING_STOPPED_FLAG    (1 << 4)
+#define MONITORING_STOPPED_FLAG   (1 << 5)
+#define HMI_STOPPED_FLAG          (1 << 6)
+
+extern EventGroupHandle_t   g_controllerEvents;
+
+bool controller_init();
+
+
 
 
 //! set the desired setting value.
@@ -132,48 +147,6 @@ void set_command_soft_reset();
 
 
 
-
-// FreeRTOS tasks definitions
-
-#define TASK_PRIORITY_LOW            8
-#define TASK_PRIORITY_BELOW_NORMAL   16
-#define TASK_PRIORITY_NORMAL         24
-#define TASK_PRIORITY_ABOVE_NORMAL   32
-#define TASK_PRIORITY_HIGH           40
-
-
-
-#define BREATHING_TASK_PRIORITY     (TASK_PRIORITY_HIGH)
-#define MONITORING_TASK_PRIORITY    (TASK_PRIORITY_HIGH+1)
-#define CONTROLLER_TASK_PRIORITY    (TASK_PRIORITY_NORMAL)
-#define HMI_TASK_PRIORITY           (TASK_PRIORITY_BELOW_NORMAL)
-
-extern TaskHandle_t breathingTaskHandle;
-extern TaskHandle_t monitoringTaskHandle;
-extern TaskHandle_t controllerTaskHandle;
-extern TaskHandle_t hmiTaskHandle;
-
-
-
-#define BREATHING_RUN_FLAG        (1 << 0)
-#define MONITORING_RUN_FLAG       (1 << 1)
-#define HMI_RUN_FLAG              (1 << 2)
-
-#define BREATHING_STOPPED_FLAG    (1 << 4)
-#define MONITORING_STOPPED_FLAG   (1 << 5)
-#define HMI_STOPPED_FLAG          (1 << 6)
-
-extern EventGroupHandle_t ctrlEventFlags;
-
-
-
-#define BRTH_CYCLE_INSUFLATION    (1 << 0)
-#define BRTH_CYCLE_PLATEAU        (1 << 1)
-#define BRTH_CYCLE_EXHALATION     (1 << 2)
-#define BRTH_CYCLE_FINISHED       (1 << 3)
-#define BRTH_RESULT_UPDATED       (1 << 7)      // To inform Controller that the breathing info have been updated
-
-extern EventGroupHandle_t brthCycleState;
 
 
 #endif

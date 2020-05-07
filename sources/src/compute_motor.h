@@ -4,7 +4,7 @@
 
 
 
-#define MOTOR_CORRECTION_USTEPS (                                   1   )
+#define MOTOR_CORRECTION_USTEPS (                                   4   )
 #define MOTOR_STEP_TIME_INIT    (      400* ( MOTOR_CORRECTION_USTEPS)  )
 #define MOTOR_ACC_STEPS         (        2* ( MOTOR_CORRECTION_USTEPS)  )
 #define MOTOR_ACC_COEF          ( MOTOR_STEP_TIME_INIT/ MOTOR_ACC_STEPS )

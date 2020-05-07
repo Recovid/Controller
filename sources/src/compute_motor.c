@@ -55,9 +55,9 @@ unsigned int compute_motor_press_christophe(
 
 unsigned int compute_constant_motor_steps(uint32_t step_t_us, unsigned int nb_steps, uint32_t* steps_t_us)
 {
-    const uint32_t max_steps = MIN(nb_steps, MAX_MOTOR_STEPS);
+    const uint32_t max_steps = MIN(nb_steps, MOTOR_MAX_STEPS);
 	unsigned int total_time = 0;
-    for(unsigned int i=0; i< MAX_MOTOR_STEPS; ++i) {
+    for(unsigned int i=0; i< MOTOR_MAX_STEPS; ++i) {
 		if(i < max_steps) {
 			   int pente_acc = (MOTOR_STEP_TIME_INIT) - ((MOTOR_ACC_COEF)*i);
 				if(pente_acc > 0)
