@@ -21,9 +21,9 @@
 #define PERIOD_BREATING_MS            (10)
 #define MAX_PEP_SAMPLES               (100 / PERIOD_BREATING_MS) // moyenne glissante sur les 100ms dernieres de l'expi
 #define MAX_PPLAT_SAMPLES             (50  / PERIOD_BREATING_MS) // moyenne glissante sur les 50ms dernieres de plat
-#define NB_SLICE                      (20)
+#define NB_SLICE                      (30)
 #define MAX_FLOW_SAMPLES              (400)
-
+#define DEPHASAGE_MS		      (30)
 
 //----------------------------------------------------------
 // Private typedefs
@@ -35,6 +35,11 @@ typedef enum { Insufflation, Plateau, Exhalation, Finished } BreathingState;
 //----------------------------------------------------------
 // Private variables
 //----------------------------------------------------------
+static const uint32_t T_omegamax_ms      = 200;
+static const float Ax                    = 0.000204;
+static const float Px                    = 2.1505;
+static const float k_phi                 = 0.7; //limit de survitesse motor
+static const uint32_t NORMALISATION_STEP = 140;
 
 static float          g_EoI_ratio;       
 static float          g_FR_pm;           
@@ -54,26 +59,30 @@ static BreathingState g_state;
 
 static uint32_t       g_state_start_ms; 
 static uint32_t       g_cycle_start_ms;
+static uint32_t       g_cycle_counter = 0;
+
 static uint32_t       g_motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it configurable with a define. This represent a physical limit a the system.
 
-static uint32_t       g_Tslice; //Duration of a slice
+static uint32_t       g_Tslice_ms; //Duration of a slice
 static float          g_error_slice_samples[NB_SLICE+2];
 static uint32_t       g_t_end_of_slice_us[NB_SLICE+2];
 
 //Set point
-static float          g_set_point_per_slice[2][NB_SLICE];
+static float	      g_global_flow_set_point;
+static float          g_set_point_per_slice[2][NB_SLICE+2];
 static float*         g_current_set_point_per_slice  = g_set_point_per_slice[0];
 static float*         g_previous_set_point_per_slice = g_set_point_per_slice[1];
 
 //V per slice
-static float          g_V_per_slice[2][NB_SLICE];
+static float          g_V_per_slice[2][NB_SLICE+2];
 static float*         g_current_V_per_slice  = g_V_per_slice[0];
 static float*         g_previous_V_per_slice = g_V_per_slice[1];
 
 //NB steps per slice
-static uint32_t       g_nb_steps_per_slice[2][NB_SLICE];
-static uint32_t*      g_current_nb_steps_per_slices  = g_nb_steps_per_slice[0];
-static uint32_t*      g_previous_nb_steps_per_slices = g_nb_steps_per_slice[1];
+                      
+static uint32_t       g_step_idx_end_of_slice[2][NB_SLICE+2];
+static uint32_t*      g_current_step_idx_end_of_slice  = g_step_idx_end_of_slice[0];
+static uint32_t*      g_previous_step_idx_end_of_slice = g_step_idx_end_of_slice[1];
 
 //Nb total steps
 static uint32_t        g_current_nb_steps         = 0;
@@ -82,13 +91,13 @@ static uint32_t        g_previous_nb_steps        = 0;
 static uint32_t        g_current_nb_slices        = 0;
 static uint32_t        g_previous_nb_slices       = 0;
 
-static uint32_t        g_current_slice_start_t_ms = 0;
+static uint32_t        g_theorical_current_slice_end_t_ms = 0;
 
 
 
 static float           g_flow_samples[MAX_FLOW_SAMPLES]; //  used as buffer for flow analysis and motor command computing
+static uint32_t        g_flow_samples_t_ms[MAX_FLOW_SAMPLES]; //  used as buffer for flow analysis and motor command computing
 static uint32_t        g_flow_samples_count;
-
 //----------------------------------------------------------
 // Private functions prototypes
 //----------------------------------------------------------
@@ -102,33 +111,35 @@ static float  get_Pplat_avg_cmH2O();
 static void   enter_state(BreathingState newState);
 static void   compute_error_slice_samples(float*    flow_samples,              //input:     Samples of flow array
                                           uint32_t* flow_samples_count,        //input:     size of samples array
-                                          float     flow_set_point,             //input:     Flow set point
-                                          uint32_t  new_Tslice,                 //input:     Duration of the future slice
+                                          float*    flow_set_point,             //input:     Flow set point
+                                          uint32_t  new_Tslice_ms,              //input:     Duration of the future slice
                                           float     *error_slice_samples,       //ouput:     error during each slice
                                           uint32_t  *t_end_of_slice_us,         //output:    Computed time of end of the slice array (Only one is updated)
                                           uint32_t  *slice_idx,                 //in/output: Current slice (will be incremented)
-                                          uint32_t  *slice_start_t_ms,          //output:    Start time of the next slice
-                                          uint32_t  *Tslice);                   //output:    Duration of the next slice
+                                          uint32_t  *slice_theorical_end_t_ms,          //output:    Start time of the next slice
+                                          uint32_t  *Tslice_ms);                //output:    Duration of the next slice
 
-static void   compute_set_point_per_slice(float     flow_set_point,             //input: Global set point
-                                          float*    error_slice_samples,        //input: Error per slices array
-                                          uint32_t* t_end_of_slice_us,             //input: Endtime of slcie array
-                                          uint32_t  nb_slices,                  //input: nb slices within arrays
-                                          float*    set_point_per_slice);       //output: new setpoint per slice array
+//static void compute_set_point_per_slice(float*     flow_set_point,              //input: Global set point
+//					float     vol_set_point,               //input: vol set point
+//					float 	  Vti_mL,                      //Measured Volume
+//                                        float*    error_slice_samples,         //input: Error per slices array
+//                                        uint32_t* previous_t_end_of_slice_us,  //input: Endtime of slcie array
+//                                        uint32_t  nb_slices,                   //input: nb slices within arrays
+//                                        float*    set_point_per_slice);        //output: new setpoint per slice array
+//
 
-
-static void   apply_correction(float*    set_point_per_slice,                   //input:  set point per slice array
-                               uint32_t* t_end_of_slice_us,                        //input:  t_end_of_slice of the end of the slice array
+static void   apply_correction(uint32_t* t_end_of_slice_us,                     //input:  t_end_of_slice of the end of the slice array
                                float*    previous_set_point_per_slice,          //input:  Previous set point per slice array
                                float*    previous_V_per_slice,                  //input:  Previous mean speed per slice array
                                uint32_t* previous_nb_steps_at_this_slice,       //input:  Previous cycle nb steps in this slice
                                uint32_t  previous_nb_steps,                     //input:  Previous nb total steps during cycle
                                float     Pcrete_previous_cycle,                 //input:  Pcrete Recorded during previous cycle
+			       float*    error_slice_samples,                   //input: Error per slices array
                                uint32_t  nb_slices,                             //input:  Nb slices within array
-                               uint32_t  Ti,                                    //input:  Time of inhalation
+                               uint32_t  Ti_ms,                                 //input:  Time of inhalation
                                float*    V_per_slice,                           //output: mean speed per slice array
                                uint32_t* nb_steps_per_slice,                    //output: nb steps per slice array
-                               uint32_t* t_motor_step_us,                      //output: motor steps array
+                               uint32_t* t_motor_step_us,                       //output: motor steps array
                                uint32_t* current_nb_steps);                     //output: nb steps within array
 
 
@@ -139,7 +150,7 @@ void compute_seed( float     flow_set_point_initial_Lmin, //input:  spec v8 20-6
                    float*    flow_set_point_per_slice,    //output: flowsp per slice 
                    float*    V_per_slice,                 //output: V per slice
                    uint32_t* t_end_of_slice_us,           //output: T end of slice array
-                   uint32_t* nb_steps_per_slices,         //output: Nb steps of slice array 
+                   uint32_t* step_idx_end_of_slice,       //output: Step idx at the end of the slice 
                    uint32_t* t_motor_step_us,             //output: Array of steps time [MAX_MOTOR_STEPS]
                    uint32_t* nb_steps);                   //output: nb_steps
 		
@@ -187,77 +198,92 @@ void breathing_run(void *args) {
       brth_printf("BRTH: Tplat : %lu\n", Tplat);
 
       // Compute adaptation based on current settings and previous collected data if any.
-      uint32_t Ti = T*1/3;  // TODO: Check how to calculate Tinsuflation
-      brth_printf("BRTH: Ti    : %ld\n", Ti);
+      uint32_t Ti_ms = (get_setting_VT_mL()*(60*1000/1000))/get_setting_Vmax_Lpm(); //T*1/3;  // TODO: Check how to calculate Tinsuflation
+      brth_printf("BRTH: Ti_ms    : %ld\n", Ti_ms);
       //Is there any slicing done ?
+      uint32_t Ta_us;
       if(g_current_nb_slices == 0) //NO
       {
 
-        compute_seed( get_setting_Vmax_Lpm(), //input:  spec v8 20-60   L/min
+	g_global_flow_set_point = get_setting_Vmax_Lpm();
+        compute_seed( g_global_flow_set_point, //input:  spec v8 20-60   L/min
                       get_setting_VT_mL(),    //input:  spec v8 100-600 mL
                       NB_SLICE,                      //input:  ex 1 à 20 (k)
-                      (get_setting_VT_mL()*(60*1000000/1000))/get_setting_Vmax_Lpm(),       //input:  temps d'insuflation moteur arrete in us (Ti est en ms)
+                      (get_setting_VT_mL()*(60*1000000/1000))/get_setting_Vmax_Lpm(),       //input:  temps d'insuflation moteur arrete in us )
                       g_current_set_point_per_slice, //output: flowsp per slice 
                       g_current_V_per_slice,         //output: V per slice
                       g_t_end_of_slice_us,           //output: T end of slice array
-                      g_current_nb_steps_per_slices, //output: Nb steps of slice array 
+                      g_current_step_idx_end_of_slice,
                       g_motor_steps_us,              //output: Array of steps time [MAX_MOTOR_STEPS]
                       &g_current_nb_steps);          //output: nb_steps
+
+	Ta_us = g_t_end_of_slice_us[0];  //Duration of the acceleration phase (computed)
       }
       //YES
-      //if(g_current_nb_slices > 0)
-      //{
-      //  compute_set_point_per_slice(get_setting_Vmax_Lpm(),
-      //                              g_error_slice_samples,
-      //                              g_t_end_of_slice_us,
-      //                              g_current_nb_slices,
-      //                              g_current_set_point_per_slice);
-      //  //for(unsigned int i = 0; i < g_current_nb_slices-2; i++)
-      //  //{
-      //  //  printf("Set_point[%d] = %d\n", i, (int)(g_current_set_point_per_slice[i]*100.f));
-      //  //}
+      if(g_current_nb_slices > 0)
+      {
+        //compute_set_point_per_slice(&g_global_flow_set_point,
+	//			    get_setting_VT_mL(),
+	//			    get_breathing_VTi_mL(),
+        //                            g_error_slice_samples,
+        //                            g_t_end_of_slice_us,
+        //                            g_current_nb_slices,
+        //                            g_current_set_point_per_slice);
+        //for(unsigned int i = 0; i < g_current_nb_slices-2; i++)
+        //{
+        //  printf("Set_point[%d] = %d\n", i, (int)(g_current_set_point_per_slice[i]*100.f));
+        //}
 
+        apply_correction(g_t_end_of_slice_us,                     //input:  t_end_of_slice of the end of the slice array
+                         g_previous_set_point_per_slice,          //input:  Previous set point per slice array
+                         g_previous_V_per_slice,                  //input:  Previous mean speed per slice array
+                         g_previous_step_idx_end_of_slice,        //input:  Previous Step idx at the end of slice  
+                         g_previous_nb_steps,                     //input:  Previous nb total steps during cycle
+                         get_breathing_Pcrete_cmH2O(),            //input:  Pcrete Recorded during previous cycle
+			 g_error_slice_samples,                   //input: Error per slices array
+                         g_current_nb_slices,                     //input:  Nb slices within array
+                         Ti_ms,                                   //input:  Time of inhalation
+                         g_current_V_per_slice,                   //output: mean speed per slice array
+                         g_current_step_idx_end_of_slice,         //output: New Step idx at the end of slice 
+                         g_motor_steps_us,                        //output: motor steps array
+                         &g_current_nb_steps);                    //output: nb steps within array
 
-      //  apply_correction(g_current_set_point_per_slice,           //input:  set point per slice array
-      //                   g_t_end_of_slice_us,                     //input:  t_end_of_slice of the end of the slice array
-      //                   g_previous_set_point_per_slice,          //input:  Previous set point per slice array
-      //                   g_previous_V_per_slice,                  //input:  Previous mean speed per slice array
-      //                   g_previous_nb_steps_per_slices,          //input:  Previous cycle nb steps in this slice
-      //                   g_previous_nb_steps,                     //input:  Previous nb total steps during cycle
-      //                   get_breathing_Pcrete_cmH2O(),            //input:  Pcrete Recorded during previous cycle
-      //                   g_current_nb_slices,                     //input:  Nb slices within array
-      //                   Ti,                                      //input:  Time of inhalation
-      //                   g_current_V_per_slice,                   //output: mean speed per slice array
-      //                   g_current_nb_steps_per_slices,           //output: nb steps per slice array
-      //                   g_motor_steps_us,                        //output: motor steps array
-      //                   &g_current_nb_steps);                    //output: nb steps within array
-
-      //  //print_steps(g_motor_steps_us, MAX_MOTOR_STEPS);
+	uint32_t k = 0;
+	//for(uint32_t i = 0; i < g_current_nb_steps; i++)
+	//{
+	//  if(i >g_current_step_idx_end_of_slice[k])
+	//    k++;
+	//  printf("%d;%d;%d\n", i, g_motor_steps_us[i],k);
+	//}
+        //for(unsigned int i = 0; i < nb_slices; i++)
+        //{
+        //  printf("Error %d = %d end at %"PRIu32"\n", i, (int) (100.f* error_slice_samples[i]), previous_t_end_of_slice_us[i]);
+        //}
+      }
+      //if(g_cycle_counter == 20)
       //  while(true);
-      //  //for(unsigned int i = 0; i < nb_slices; i++)
-      //  //{
-      //  //  printf("Error %d = %d end at %"PRIu32"\n", i, (int) (100.f* error_slice_samples[i]), previous_t_end_of_slice_us[i]);
-      //  //}
-      //}
+
       //Swap set_point_per_slice, V_per_slice and nb_steps_per_slice between current and previous buffer
-      float* tmp_set_point_per_slice    = g_previous_set_point_per_slice;
-      float* tmp_V_per_slice            = g_previous_V_per_slice;
-      uint32_t* tmp_nb_steps_per_slices = g_previous_nb_steps_per_slices;
-      g_previous_set_point_per_slice    = g_current_set_point_per_slice;
-      g_previous_V_per_slice            = g_current_V_per_slice;
-      g_current_set_point_per_slice     = tmp_set_point_per_slice;
-      g_current_V_per_slice             = tmp_V_per_slice;
-      g_current_nb_steps_per_slices     = tmp_nb_steps_per_slices;
-      g_previous_nb_slices              = g_current_nb_slices;
-      g_current_nb_slices               = 0;
+      float* tmp_set_point_per_slice      = g_previous_set_point_per_slice;
+      float* tmp_V_per_slice              = g_previous_V_per_slice;
+      uint32_t* tmp_step_idx_end_of_slice = g_previous_step_idx_end_of_slice;
+      g_previous_set_point_per_slice      = g_current_set_point_per_slice;
+      g_previous_V_per_slice              = g_current_V_per_slice;
+      g_previous_step_idx_end_of_slice    = g_current_step_idx_end_of_slice;
+      g_current_set_point_per_slice       = tmp_set_point_per_slice;
+      g_current_V_per_slice               = tmp_V_per_slice;
+      g_current_step_idx_end_of_slice     = tmp_step_idx_end_of_slice;
+      g_previous_nb_slices                = g_current_nb_slices;
+      g_current_nb_slices                 = 0;
 
-      unsigned int Ta = 80;  //Duration of the acceleration phase (computed)
-      g_Tslice = Ta;
-      g_current_slice_start_t_ms = get_time_ms();
+  
+      uint32_t Ta_ms = Ta_us / 1000;
+      g_Tslice_ms = Ta_ms;
       enter_state(Insufflation);
-
+      g_theorical_current_slice_end_t_ms = (get_time_ms() - g_cycle_start_ms)  + Ta_ms;
       // Start Inhalation
       valve_inhale();
+      
       motor_press(g_motor_steps_us, g_current_nb_steps);
       g_previous_nb_steps = g_current_nb_steps;
       reset_Vol_mL();
@@ -266,41 +292,44 @@ void breathing_run(void *args) {
       {
         wait_ms(PERIOD_BREATING_MS);
         g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
-        if (Pmax <= read_Paw_cmH2O())
-        {
-          brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
-          enter_state(Exhalation);
-          break;
-        }
-        else if (VT <= read_Vol_mL())
-        {
-          brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-          enter_state(Plateau);
-          break;
-        }
-        else if (Ti <= (get_time_ms() - g_cycle_start_ms))
+        //if (Pmax <= read_Paw_cmH2O())
+        //{
+        //  brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
+        //  enter_state(Exhalation);
+        //  break;
+        //}
+        //else if (VT <= read_Vol_mL())
+        //{
+        //  brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
+        //  enter_state(Plateau);
+        //  break;
+        //}
+        //else 
+	if (Ti_ms <= (get_time_ms() - g_cycle_start_ms))
         {
           brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - g_cycle_start_ms));
           enter_state(Plateau);
           break;
         }
-	if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
+	if(g_flow_samples_count<MAX_FLOW_SAMPLES && DEPHASAGE_MS <= ((get_time_ms() - g_cycle_start_ms))) {
             g_flow_samples[g_flow_samples_count] = read_Pdiff_Lpm();  // in sls
+	    g_flow_samples_t_ms[g_flow_samples_count] = get_time_ms() - g_cycle_start_ms;  // in ms
             ++g_flow_samples_count;
           }
 
-          if(g_Tslice <= (get_time_ms() - g_current_slice_start_t_ms) + PERIOD_BREATING_MS)
-          {
-            compute_error_slice_samples(g_flow_samples,
-                                        &g_flow_samples_count,
-                                        get_setting_Vmax_Lpm(),
-                                        (Ti-Ta)/NB_SLICE,
-                                        g_error_slice_samples,
-                                        g_t_end_of_slice_us,
-                                        &g_current_nb_slices,
-                                        &g_current_slice_start_t_ms,
-                                        &g_Tslice);
-          }
+	if( g_theorical_current_slice_end_t_ms + DEPHASAGE_MS <= (get_time_ms() - g_cycle_start_ms) + PERIOD_BREATING_MS )
+	{
+	  compute_error_slice_samples(g_flow_samples,
+	      &g_flow_samples_count,
+	      g_previous_set_point_per_slice,
+	      (Ti_ms-Ta_ms)/NB_SLICE,
+	      g_error_slice_samples,
+	      g_t_end_of_slice_us,
+	      &g_current_nb_slices,
+	      &g_theorical_current_slice_end_t_ms,
+	      &g_Tslice_ms);
+	  //printf("Error tranche %d = %d%\n",g_current_nb_slices-1, ((int)(g_error_slice_samples[g_current_nb_slices-1] * 100.f)));
+	}
       }
       motor_release(MOTOR_RELEASE_STEP_US);
       while (Plateau == g_state)
@@ -321,23 +350,38 @@ void breathing_run(void *args) {
           enter_state(Exhalation);
         }
 	if(g_flow_samples_count<MAX_FLOW_SAMPLES) {
-          g_flow_samples[g_flow_samples_count] = read_Pdiff_Lpm()/60.;  // in sls
+          g_flow_samples[g_flow_samples_count] = read_Pdiff_Lpm();  // in sls
+          g_flow_samples_t_ms[g_flow_samples_count] = get_time_ms() - g_cycle_start_ms;  // in ms
           ++g_flow_samples_count;
         }
       }
       compute_error_slice_samples(g_flow_samples,
                            &g_flow_samples_count,
-                           get_setting_Vmax_Lpm(),
-                           (Ti-Ta)/NB_SLICE,
+        		   g_previous_set_point_per_slice,
+                           (Ti_ms-Ta_ms)/NB_SLICE,
                            g_error_slice_samples,
                            g_t_end_of_slice_us,
                            &g_current_nb_slices,
-                           &g_current_slice_start_t_ms,
-                           &g_Tslice);
- 
-
+                           &g_theorical_current_slice_end_t_ms,
+                           &g_Tslice_ms);
+      //printf("Error last tranche %d = %d%\n",g_current_nb_slices-1, ((int)(g_error_slice_samples[g_current_nb_slices-1] * 100.f)));
       g_VTi_mL = read_Vol_mL();
+      printf("VTI = %d\n", (int) g_VTi_mL);
+
+      for(uint32_t i=0; i < g_flow_samples_count; i++)
+      {
+	  printf("@%ld : %dmL/s\n", g_flow_samples_t_ms[i], (int) (g_flow_samples[i]*1000.f));
+      //    printf("@%d : %dmL/m\n", g_flow_samples_t_ms[i], (int) (g_flow_samples[i]*1000.f));
+      }
+      for(uint32_t i=0; i < g_flow_samples_count; i++)
+      {
+	g_flow_samples_t_ms[i] = 0;
+        g_flow_samples[i] = 0.0f;
+      }
+      g_flow_samples_count = 0;
+
       valve_exhale();
+      
       float VTe_start_mL = 0.;
       while (Exhalation == g_state)
       {
@@ -362,12 +406,13 @@ void breathing_run(void *args) {
 
             xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
-            regulation_pep();
+            //regulation_pep();
             enter_state(Finished);
           }
         }
       }
 
+      g_cycle_counter++;
       events = xEventGroupGetBits(ctrlEventFlags);
     } while ((events & BREATHING_RUN_FLAG) != 0);
 
@@ -480,55 +525,71 @@ static float get_Pplat_avg_cmH2O()
   return (sum_Pplat / MAX_PPLAT_SAMPLES);
 }
 
-static void compute_error_slice_samples(float* flow_samples,          //input:     Samples of flow array
-                                        uint32_t* flow_samples_count, //input:     size of samples array
-                                        float     flow_set_point,      //input:     Flow set point
-                                        uint32_t  new_Tslice,          //input:     Duration of the future slice
+static void compute_error_slice_samples(float*    flow_samples,        //input:     Samples of flow array
+                                        uint32_t* flow_samples_count,  //input:     size of samples array
+                                        float*    flow_set_point,      //input:     Flow set point
+                                        uint32_t  new_Tslice_ms,       //input:     Duration of the future slice
                                         float*    error_slice_samples, //ouput:     error during each slice
                                         uint32_t  *t_end_of_slice_us,  //output:    Computed time of end of the slice array (Only one is updated)
                                         uint32_t  *slice_idx,          //in/output: Current slice (will be incremented)
-                                        uint32_t  *slice_start_t_ms,   //output:    Start time of the next slice
-                                        uint32_t  *Tslice)             //output:    Duration of the next slice
+                                        uint32_t  *slice_theorical_end_t_ms,   //output:    Start time of the next slice
+                                        uint32_t  *Tslice_ms)          //output:    Duration of the next slice
 {
   float error = 0.0;
+  //float mean_flow = 0.0;
+
   for(unsigned int i=0; i < *flow_samples_count; i++)
   {
-      error += (flow_samples[i] - flow_set_point) / *flow_samples_count;
+      error += (flow_samples[i] - flow_set_point[*slice_idx]) / *flow_samples_count;
+      //mean_flow = (flow_samples[i]) / *flow_samples_count;
   }
-  error_slice_samples[*slice_idx] = error;
-  t_end_of_slice_us[*slice_idx] = get_time_ms()-g_cycle_start_ms;
-  *slice_start_t_ms = get_time_ms();
+  printf("error before div [%ld] = %d\n", *slice_idx, (int) error);
+
+
+  //printf("Mean flow %d = %d\n", *slice_idx, (int) mean_flow);
+  if(TEST_FLT_EQUALS(flow_set_point[*slice_idx], 0.f))
+    error_slice_samples[*slice_idx] = 0;
+  else
+    error_slice_samples[*slice_idx] = error/(flow_set_point[*slice_idx]);
+
+  t_end_of_slice_us[*slice_idx] = (get_time_ms() - g_cycle_start_ms) * 1000;
+  *slice_theorical_end_t_ms = *slice_theorical_end_t_ms + new_Tslice_ms;
+  //printf("End of %d will be at %dms\n",  *slice_idx+1, *slice_theorical_end_t_ms);
   (*slice_idx)++;
   //Reset sampling per slice
   *flow_samples_count=0;
-  *Tslice = new_Tslice;
+  *Tslice_ms = new_Tslice_ms;
 }
 
-static void compute_set_point_per_slice(float     flow_set_point,
-                                        float*    error_slice_samples,
-                                        uint32_t* previous_t_end_of_slice_us,
-                                        uint32_t  nb_slices,
-                                        float*    set_point_per_slice)
-{
-  float error_total = 0.0f;
-  for(unsigned int i = 0; i < nb_slices+2; i++)
-  {
-    error_total += error_slice_samples[i];
-  }
-  uint32_t t_corrected = previous_t_end_of_slice_us[nb_slices] - previous_t_end_of_slice_us[0];
-  float kp = 0.2;
+//static void compute_set_point_per_slice(float*    global_flow_set_point,
+//					float     vol_set_point,
+//					float 	  Vti_mL,
+//                                        float*    error_slice_samples,
+//                                        uint32_t* previous_t_end_of_slice_us,
+//                                        uint32_t* step_idx_end_of_slice_us,
+//                                        uint32_t  nb_slices,
+//                                        float*    set_point_per_slice)
+//{
+//  float kg = 0.2f;
+//  float kl = 0.2f;
+//  //printf("VTarget %d vs Vrealisé = %d\n", (int) vol_set_point, (int) Vti_mL);
+//  float error_global = (Vti_mL - vol_set_point) / vol_set_point;
+//  float new_global_flow_set_point = *global_flow_set_point * ( (1 - (kg * error_global)));
+//
+//  //printf("OLD Global = %d vs  NEW %d\n", (int) *global_flow_set_point,  (int) new_global_flow_set_point);
+//  for(unsigned int i=1; i < nb_slices; i++)
+//  {
+//    //printf("Error %d = %d%\n",i, ( (int) ((error_slice_samples[i]) * 100.f)));
+//    float new_local_set_point = new_global_flow_set_point *  (1.f - (kl*error_slice_samples[i]));
+//    //printf("set point %d NEW %d\n", i, (int) new_local_set_point);
+//    set_point_per_slice[i] = new_local_set_point;
+//  }
+//  *global_flow_set_point = new_global_flow_set_point;
+//}
 
-  float new_set_point_global = flow_set_point - ( (error_total/ t_corrected) * kp);
-  for(unsigned int i=1; i < nb_slices+1; i++)
-  {
-     set_point_per_slice[i] = new_set_point_global - error_slice_samples[i];
-     printf("per slice = %d\n", (int) set_point_per_slice[i]);
-  }
-}
-
-static float abaque(uint32_t current_step)
+static float abaque(uint32_t step)
 {
-  return (current_step/MAX_MOTOR_STEPS)*4; //Output between 0.0 and 4.0
+  return (pow(step, Px-1)) / (pow(NORMALISATION_STEP, Px-1));
 }
 
 static void compute_SaMaxSdMax(uint32_t previous_nb_steps_at_this_slice,
@@ -539,141 +600,263 @@ static void compute_SaMaxSdMax(uint32_t previous_nb_steps_at_this_slice,
 {
   if(SaMax != NULL)
   {
-    *SaMax = 45000;
+    *SaMax = 30000.f;
   }
   if(SdMax != NULL)
   {
-    *SdMax = 45000;
+    *SdMax = -30000.f;
   }
 }
 
 
+uint32_t T_minobj(uint32_t current_step, uint32_t flow_set_point_Lpm)
+{
+  float flow_set_point_Lpm_f = flow_set_point_Lpm;
+  return ( (uint32_t) (k_phi *(1000.f*Ax*Px*powf(current_step,Px-1)) / (flow_set_point_Lpm_f/60.f)));
+}
 
-
-static void apply_correction(float*    set_point_per_slice,                   //input:  set point per slice array
-                             uint32_t* t_end_of_slice_us,                        //input:  t_end_of_slice_us of the end of the slice array
+static void apply_correction(uint32_t* t_end_of_slice_us,                     //input:  t_end_of_slice_us of the end of the slice array
                              float*    previous_set_point_per_slice,          //input:  Previous set point per slice array
-                             float*    previous_V_per_slice,                  //input:  Previous mean speed per slice array
-                             uint32_t* previous_nb_steps_at_this_slice,       //input:  Previous cycle nb steps in this slice
+                             float*    previous_VM_per_slice,                 //input:  Previous mean speed per slice array
+                             uint32_t* previous_step_idx_end_of_slice,       //input:  Previous cycle nb steps in this slice
                              uint32_t  previous_nb_steps,                     //input:  Previous nb total steps during cycle
                              float     Pcrete_previous_cycle,                 //input:  Pcrete Recorded during previous cycle
-                             uint32_t  nb_slices,                             //input:  Nb slices within array
-                             uint32_t  Ti,                                    //input:  Time of inhalation
-                             float*    V_per_slice,                           //output: mean speed per slice array
-                             uint32_t* nb_steps_per_slice,                    //output: nb steps per slice array
-                             uint32_t* t_motor_step_us,                      //output: motor steps array
-                             uint32_t* nb_steps)                      //output: nb steps within array
+			     float*    error_slice_samples,		      //input:  Error splice samples
+			     uint32_t  nb_slices,                             //input:  Nb slices within array
+                             uint32_t  Ti_ms,                                 //input:  Time of inhalation
+                             float*    VM_per_slice,                          //output: mean speed per slice array
+                             uint32_t* step_idx_end_of_slice,       //output: nb steps p
+                             uint32_t* t_motor_step_us,                       //output: motor steps array
+                             uint32_t* nb_steps)                              //output: nb steps within array
 {
   float Sa[NB_SLICE+2];//Acceleration per slice
+  uint32_t t_M_us[NB_SLICE+2];//mean time of slice k
   uint32_t steps_offset_per_slice[NB_SLICE+2];
-  float SaMax, SdMax;
-  for(uint32_t k = 0; k < nb_slices+2; k++)
-  {
-    printf("V[%d] = %d\n", k, (int) (previous_V_per_slice[k])); 
-  }
 
-  V_per_slice[0] = previous_V_per_slice[0]; //V0 du seed
+  float SaMax, SdMax;
+
+  VM_per_slice[0] = previous_VM_per_slice[0]; //V0 du seed
+  //printf("VM[%d] = %d\n", 0, (int)VM_per_slice[0]); 
+  float kg = 0.30f;
+  float kl = 0.20f;
+  float error_global = ( get_breathing_VTi_mL() - get_setting_VT_mL()) / get_setting_VT_mL();
+  printf("Error global = (%d - %d)/factor = %d\n", (int) get_breathing_VTi_mL(), (int) get_setting_VT_mL(), (int) (error_global * 100.f));
   for(int k = 1; k < NB_SLICE+1;k++)
   {
-    printf("Prev V_per_slice[%d] = %d\n", k, ((int)previous_V_per_slice[k]));
-    printf("set point current [%d] = %d\n", k, ((int)set_point_per_slice[k]));
-    printf("prev set point current [%d] = %d\n", k, ((int)previous_set_point_per_slice[k]));
-    V_per_slice[k] = previous_V_per_slice[k] * (set_point_per_slice[k]/previous_set_point_per_slice[k]) * 1.f/abaque(k);
+
+    //printf("Set point %d\n", (int) set_point_per_slice[k]);
+    //printf("Previous Set point %d\n", (int) previous_set_point_per_slice[k]);
+    //printf("Set point ration %d\n", (int) (100.f * (set_point_per_slice[k]/previous_set_point_per_slice[k])));
+    //printf("Previous VM[%d] = %d\n", k, (int) previous_VM_per_slice[k]); 
+    //printf("Set point ration *Previous VM %d\n", (int) (previous_VM_per_slice[k] * (set_point_per_slice[k]/previous_set_point_per_slice[k])));
+    //printf("d[%d] = %d\n",k, (t_end_of_slice_us[k]-t_end_of_slice_us[k-1])/1000);
+    float correctif = (((error_global*kg)+(error_slice_samples[k]*kl))/abaque(g_previous_step_idx_end_of_slice[k-1]));
+    if (fabs(correctif) > 0.2f)
+    {
+      if(correctif > 0.0f)
+      {
+	correctif = 0.2;
+      }
+      else {
+	correctif = -0.2;
+      }
+    }
+    correctif = (1 - correctif);
+    printf("correction = %d\n",  (int) (correctif*100.f) );
+    VM_per_slice[k] = previous_VM_per_slice[k] * (correctif) ;
+    t_M_us[k]       = t_end_of_slice_us[k-1] + 0.5*(t_end_of_slice_us[k] - t_end_of_slice_us[k-1]);
+    //printf("VM-1[%d] = %d, VM[%d] = %d  \n", k, (int)previous_VM_per_slice[k], k, (int) VM_per_slice[k]); 
+    //printf("TM[%d] = %d\n", k, (int)t_M_us[k]); 
+  }
+  compute_SaMaxSdMax(previous_step_idx_end_of_slice[0], previous_nb_steps, Pcrete_previous_cycle, &Sa[0], NULL);
+  
+  
+  
+  uint32_t t_accumulated_steps = 0;
+  uint32_t current_step = 1;
+  //Pour la tranche 0
+  uint32_t k=0;
+  float V_cur = 0;
+  while(V_cur < VM_per_slice[1])
+  {
+    t_motor_step_us[current_step-1] = 1000000 /(sqrtf(2*current_step*Sa[0]));
+    t_accumulated_steps += t_motor_step_us[current_step-1];
+    V_cur = 1000000.f/t_motor_step_us[current_step-1];
+    if(t_accumulated_steps > t_end_of_slice_us[1]) {
+      break;
+    }
+    current_step++;
   }
 
-  compute_SaMaxSdMax(previous_nb_steps_at_this_slice[0], previous_nb_steps, Pcrete_previous_cycle, &Sa[0], NULL);
-  for(unsigned int k = 1; k < nb_slices+1; k++)
+  if(t_accumulated_steps < t_end_of_slice_us[0])
   {
-    Sa[k] = (V_per_slice[k] + V_per_slice[k-1])/2 * (t_end_of_slice_us[k] - t_end_of_slice_us[k-1]);
-    compute_SaMaxSdMax(previous_nb_steps_at_this_slice[0], previous_nb_steps, Pcrete_previous_cycle, &SaMax, &SdMax);
+    t_end_of_slice_us[0] = t_accumulated_steps;
+    uint32_t t_step_constant = t_motor_step_us[current_step -2];
+    while(t_accumulated_steps < t_M_us[1])
+    {
+      t_motor_step_us[current_step-1] = t_step_constant; 
+      t_accumulated_steps += t_step_constant;
+    }
+  }
+  else if(t_accumulated_steps <= t_M_us[1])
+  {
+    t_end_of_slice_us[0] = t_accumulated_steps;
+    uint32_t t_step_constant = t_motor_step_us[current_step -1];
+    while(t_accumulated_steps < t_M_us[1])
+    {
+      printf("ICI 3\n");
+      t_motor_step_us[current_step-1] = t_step_constant; 
+      t_accumulated_steps += t_step_constant;
+    }
+  }
+  else if(t_M_us[1] <= t_accumulated_steps && t_accumulated_steps < t_end_of_slice_us[1])
+  {
+    t_end_of_slice_us[0] = t_accumulated_steps;
+    t_M_us[1]            = (t_end_of_slice_us[1] + t_end_of_slice_us[0]) / 2;
+    uint32_t t_step_constant = t_motor_step_us[current_step -1];
+    while(t_accumulated_steps < t_M_us[1])
+    {
+      printf("ICI 2\n");
+      t_motor_step_us[current_step-1] = t_step_constant; 
+      t_accumulated_steps += t_step_constant;
+    }
+  }
+  else if(t_accumulated_steps > t_end_of_slice_us[1])
+  {
+    t_end_of_slice_us[0] = t_accumulated_steps;
+    t_M_us[1]            = t_accumulated_steps;
+    printf("ICI 1\n");
+    t_end_of_slice_us[1] = t_accumulated_steps;
+  }
 
+  k++;
+  //printf("%d;%d;%d; %d vs %d\n", current_step, t_motor_step_us[current_step],k,t_accumulated_steps, t_end_of_slice_us[k]);
+  //printf("%d;%d;%d\n", current_step, t_motor_step_us[current_step],k,t_accumulated_steps, t_end_of_slice_us[k]);
+  //printf("VF_0 %d tpF0 %d\n", (int) VF_per_slice[0], t_motor_step_us[j-2]); 
+  
+  printf("Sa[%ld] = %d\n", 0, (int)Sa[0]);
+  //Pour les autres tranches
+  for(; k < nb_slices-1; k++)
+  {
+
+    printf("VM_per_slice[%d] = %d\n", k, (int) VM_per_slice[k]);
+    printf("VM_per_slice[%d] = %d\n", k-1, (int) VM_per_slice[k-1]);
+    printf("TM_per_slice[%d] = %d\n", k, (int) t_M_us[k]);
+    printf("TM_per_slice[%d] = %d\n", k-1, (int) t_M_us[k-1]);
+    Sa[k] = 1000000*(VM_per_slice[k] - VM_per_slice[k-1]) / (t_M_us[k] - t_M_us[k-1]);
+    printf("Sa[%ld] = %d\n", k, (int)Sa[k]);
+
+    compute_SaMaxSdMax(previous_step_idx_end_of_slice[0], previous_nb_steps, Pcrete_previous_cycle, &SaMax, &SdMax);
     if(! TEST_FLT_EQUALS(Sa[k], 0.f) )
     {
       if(Sa[k] > 0) {
-        Sa[k] = MAX(SaMax, Sa[k]);
+        Sa[k] = MIN(SaMax, Sa[k]);
       }
       else { //Sa is actually a Sd (deceleration)
         Sa[k] = MAX(SdMax, Sa[k]);
       }
     }
-  }
-
-  uint32_t t_accumulated_steps = 0;
-  uint32_t current_step = 0;
-  //Pour la tranche 0
-  nb_steps_per_slice[0] = 1/2*t_end_of_slice_us[0]*t_end_of_slice_us[0]/Sa[0];
-  for(uint32_t j = 1; j < nb_steps_per_slice[0]+1; j++)
-  {
-    t_motor_step_us[j-1] = 1000000 /(sqrtf(2*j*Sa[j]));
-    t_accumulated_steps+=t_motor_step_us[j-1];
-    current_step++;
-  }
-
-  //Pour les autres tranches
-  uint32_t k;
-  for(k = 1; k < nb_slices; k++)
-  {
+    else {
+      //Beware of slice 1 => V[0] is not a mean speed TODO
+      VM_per_slice[k] = VM_per_slice[k-1];
+    }
+    //printf("VM_per_slice[%ld] = %d VM_per_slice[%ld] = %d\n", k, (int) VM_per_slice[k], k-1, (int)VM_per_slice[k-1]);
+    //printf("TM_per_slice[%d] = %d TM_per_slice[%d] = %d\n", k, (int) t_M_us[k], k-1, (int)t_M_us[k-1]);
+    printf("Sa[%ld] = %d\n", k, (int)Sa[k]);
+        
     if(TEST_EQUALS(Sa[k], 0))
     {
       //We will apply the mean speed
-      nb_steps_per_slice[k] = ((V_per_slice[k] - V_per_slice[k-1])/2) * (t_end_of_slice_us[k] - t_end_of_slice_us[k-1]);
       steps_offset_per_slice[k] = 1;
     }
     else {
-      nb_steps_per_slice[k]   = ((V_per_slice[k]*V_per_slice[k])-(V_per_slice[k-1]*V_per_slice[k-1])) / (2*Sa[k]);
-      steps_offset_per_slice[k] = (V_per_slice[k-1]*V_per_slice[k-1])/(2*Sa[k]);
+      float VMpow2;
+      VMpow2 = (VM_per_slice[k-1]*VM_per_slice[k-1]);
+      float Sax2 = (2. * Sa[k]);
+      float offset = fabs(VMpow2 / Sax2);
+      steps_offset_per_slice[k] = (int) offset;
+      //printf("off [%d] = %d Sa[%d] = %d\n", k, steps_offset_per_slice[k],k, (int) Sa[k]);	
     }
-
-    for(uint32_t j = steps_offset_per_slice[k]; j < nb_steps_per_slice[k] + steps_offset_per_slice[k]; j++)
+    for(uint32_t j = 0; t_accumulated_steps < t_end_of_slice_us[k]; j++, current_step++)
     {
       if(! TEST_FLT_EQUALS(Sa[k], 0.f) )
       {
-        t_motor_step_us[current_step] = 1000000 / ( sqrt(2 * j * fabs(Sa[k])) );
+        if(Sa[k] > 0.f)
+        {
+          t_motor_step_us[current_step] = 1000000 / ( sqrt(2 * ( j + steps_offset_per_slice[k]) * Sa[k]) );
+        }
+        else {
+          t_motor_step_us[current_step] = 1000000 / ( sqrt(2 * (steps_offset_per_slice[k] -j) * fabs(Sa[k])));
+        }
       }
       else { //Acceleration is 0. so speed is constant for all the slice
         //Mean speed
-        t_motor_step_us[current_step] = 1000000 / V_per_slice[k];
+        t_motor_step_us[current_step] = 1000000 / VM_per_slice[k];
       }
-      t_accumulated_steps += t_motor_step_us[current_step];
-      current_step++;
+      //printf("T_omegamax_ms = %d\n", T_omegamax_ms);
+      //printf("Tminobj(%d, %d) = %d\n", current_step, get_setting_Vmax_Lpm(), T_minobj(current_step, get_setting_Vmax_Lpm())); 
+      //printf("T_cmp(%d) = %d\n", current_step,t_motor_step_us[current_step]); 
+      t_motor_step_us[current_step] = MAX(T_omegamax_ms,  MAX(T_minobj(current_step, get_setting_Vmax_Lpm()), t_motor_step_us[current_step]));
+
+      //if(t_motor_step_us[current_step] <   && t_motor_step_us[current_step] < 10000)
+      //{
+      //  printf("VM[%d] = %d VM[%d] = %d\n", k, (int) VM_per_slice[k], k-1, (int) VM_per_slice[k-1]);
+      //  printf("Sa[%d] = %d j = %d steps_offset_per_slice[%d] = %d\n", k, (int) Sa[k], j, k, steps_offset_per_slice[k]);
+      //  printf("K = %d j = %d t_motor_step_us[%d] = %d\n", k, j, current_step, t_motor_step_us[current_step]);
+      //  while(true) {};
+      //}
+
+      t_accumulated_steps = t_accumulated_steps + t_motor_step_us[current_step];
+      //
       //We computed steps until the Ti
-      if(t_accumulated_steps > Ti)
+      //printf("%d;%d;%d; %d vs %d\n", current_step, t_motor_step_us[current_step],k,t_accumulated_steps, t_end_of_slice_us[k]);
+      //printf("%d;%d;%d;\n", current_step, t_motor_step_us[current_step],k);
+      if(t_accumulated_steps > Ti_ms*1000)
       {
         break;
       }
     }
+
+    printf("t_end_of_slice_us[%d] = %d\n", k,(int)  t_end_of_slice_us[k]);
+    printf("VM-1[%d] = %d, VM_computed [%d] = %d  VM_real [%d] = %d\n", k, (int)previous_VM_per_slice[k], 
+									k, (int) VM_per_slice[k],
+									k, (int) (1000000.f/t_motor_step_us[current_step-1])); 
+
+    VM_per_slice[k] = 1000000.f/t_motor_step_us[current_step-1];
+    //printf("VM [%ld] = %d\n", k, (int) VM_per_slice[k]);
+    step_idx_end_of_slice[k] = current_step - 1; 
+    //
+    //
     //We computed steps until the Ti
     //This event should occurs only on the last slice
     //This code maybe useless
-    if(t_accumulated_steps > Ti)
+    if(t_accumulated_steps > Ti_ms*1000)
     {
       break;
     }
   }
 
-  //Pour la dernier tranche
-  uint32_t steps_end = current_step-1;
-  float Sd;
-  compute_SaMaxSdMax(previous_nb_steps_at_this_slice[k], previous_nb_steps, Pcrete_previous_cycle, NULL, &Sd);
-  uint32_t nb_step_end = 1000000/(t_motor_step_us[steps_end]*t_motor_step_us[steps_end] * 2 * Sd);
-  //uint32_t t_stop = (1/(t_motor_step_us[steps_end])) * (1/Sd);
-  current_step -= nb_step_end;
-  uint32_t new_step_end = current_step + nb_step_end;
-  for(nb_steps_per_slice; current_step < new_step_end; current_step++)
+  float VMpow2;
+  const float final_deceleration = 300000.f;
+  VMpow2 = (VM_per_slice[k-1]*VM_per_slice[k-1]);
+  float Sax2 = (2. * final_deceleration);
+  float offset = fabs(VMpow2 / Sax2);
+  for(uint32_t j = 1; t_accumulated_steps < t_end_of_slice_us[k]; j++, current_step++)
   {
-    //Remove the previously computed time
-    t_accumulated_steps -= t_motor_step_us[current_step];
-    t_motor_step_us[current_step] = (1000000) / ( sqrtf(2*(new_step_end-current_step) * Sd) );
+    t_motor_step_us[current_step] = 1000000 / ( sqrt(2 * (offset -j) * fabs(final_deceleration)));
     t_accumulated_steps += t_motor_step_us[current_step];
+    //printf("%d;%d;%d; %d vs %d\n", current_step, t_motor_step_us[current_step],k,t_accumulated_steps, t_end_of_slice_us[k]);
+    //printf("%d;%d;%d\n", current_step, t_motor_step_us[current_step],k,t_accumulated_steps, t_end_of_slice_us[k]);
   }
-
+  step_idx_end_of_slice[k] = current_step - 1; 
+  *nb_steps = step_idx_end_of_slice[k]; 
   //uint32_t t_acc=0;
   //k = 0;
-  //for(uint32_t i=0; i < steps_end && i < 1250; i++)
+  //for(uint32_t i=0; i < steps_end; i++)
   //{
   //  t_acc += t_motor_step_us[i];
   //  if (t_acc > t_end_of_slice_us[k]) k++;
-  //  printf("%d;%d;%d\n", i, t_motor_step_us[i],k);
+  //  printf("%d;%d;%d;%d;%d\n", i, t_motor_step_us[i],k,t_acc,t_end_of_slice_us[k]);
   //}
 
 }
@@ -701,9 +884,9 @@ void compute_seed( float     flow_set_point_initial_Lmin, //input:  spec v8 20-6
                    uint32_t  nb_slices,                   //input:  ex 1 à 20 (k)
                    uint32_t  Ti_us,                       //input:  temps d'insuflation moteur arrete
                    float*    flow_set_point_per_slice,    //output: flowsp per slice 
-                   float*    V_per_slice,                 //output: V per slice
+                   float*    VM_per_slice,                 //output: V per slice
                    uint32_t* t_end_of_slice_us,           //output: T end of slice array
-                   uint32_t* nb_steps_per_slices,         //output: Nb steps of slice array 
+                   uint32_t* step_idx_end_of_slice,         //output: Nb steps of slice array 
                    uint32_t* t_motor_step_us,             //output: Array of steps time [MAX_MOTOR_STEPS]
                    uint32_t* nb_steps)                    //output: nb_steps
 {											
@@ -711,151 +894,102 @@ void compute_seed( float     flow_set_point_initial_Lmin, //input:  spec v8 20-6
   const uint32_t Vmax_tour_par_min    = 250;        //Vmax_tour_par_min
   const uint32_t pas_par_tour_mot     = 1000;       //pas_par_tour_mot
   const uint32_t Sa_pas_par_s2        = 45000;      //Sa_pas_par_s²,
-  
-  uint32_t step_t_minQK_ns            = 380000;     //step_t_minQK_ns pour 600 l/min **** paramétrer la courbe en fonction du débit
   const uint32_t speed_down_t_ns      = 250;        //speed_down_t_ns,
   const uint32_t nb_steps_down_offset = 280;        //npas_down_offset pour 60Lmin/!\ à tester pour les autres débits
   const uint32_t speed_down_t2_ps     = 1150;       //speed_down_t2_us, /!\ pour 60mL à tester pour les autres débits
   const uint32_t Sd_pas_par_s2        = 300000;     //Sd_pas_par_s²,
-  const float Ax                      = 6.14942f;
-  const float Bx                      = 1/32.f;
-  const float Px                      = 1.38486488f;
-  const float corr_obj_vol            = 0.9f;
-  const float corr_obj_flow           = 0.9f;
-	
-  //paraméter les paramètres conservatoires du BAVU Volume fonction de nb_steps_stop
-  // a vide, mesure Adrien VmL=6,14942*(nbpas/32)^1,38486488
-  
-  //mesure Christophe pour C50 R05 PEP 0 = undershoot 1.37 pour 600mL (990 à 1090 pas au lieu de 874)
-  //uint32_t nb_steps_stop = (uint32_t) (pow((set_point_volume_mL*corr_obj_vol/Ax),(1/Px))/Bx); //conservatoire 2x (Adrien à vide vs C50R5 et corr_obj
-  uint32_t  nb_steps_stop = UINT32_MAX;
-  //correction débit cible approximative
-  step_t_minQK_ns = (uint32_t) (((float) step_t_minQK_ns) * flow_set_point_initial_Lmin /60.f / corr_obj_flow);
-  //Estimation grossière de t0 à 95% l'accélération pour speeddown_t_ns
-  //traiter les corrections sur les 3 variables de décélération TODO christophe
-  
-  //Calcul accélération initiale et tranches de temps et débits cibles (facile)
-  //t_end_of_slice_us[0] = (1000000000.f / step_t_minQK_ns*Sa_pas_par_s2); // approximé au prorata de temps de pas mini de l'expérience
-  
-  t_end_of_slice_us[0] = (uint32_t) 40000;
+  const float AxC50R5                 = 0.000204 ;  //constante courbe Vol(mL) de pas
+  const float PxC50R5                 = 2.1605 ;    //puissance sur le numéro de pas Vol (pas)
+  const float k_vol                   = 0.9f;       // We target 90% of the target volume for the seed
+  const float k_debit                 = 1.f;         // 1 = we target the correct volume
+  uint32_t t_pente_acc, t_debit_constant, t_pente_dec;
+  uint32_t minimal_step_t_ns          = T_omegamax_ms * 1000;     //step_t_minQK_ns pour 600 l/min **** paramétrer la courbe en fonction du débit
+  uint32_t step_total_us              = 0;
+  uint32_t Vmax_pas_par_s             = ( (float) Vmax_tour_par_min / 60.f) * pas_par_tour_mot;
+  uint32_t t_min_vmax_us              = 1000000/ Vmax_pas_par_s;
+  uint32_t npas_acc                   = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sa_pas_par_s2);
+  uint32_t npas_dec                   = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sd_pas_par_s2);
+  uint32_t npas_stop                  = (uint32_t) powf(((set_point_volume_mL * k_vol)/AxC50R5), 1.f/PxC50R5);
 
+  uint32_t max_steps                  = MIN(npas_stop, MAX_MOTOR_STEPS);
 
-  flow_set_point_per_slice[0] = flow_set_point_initial_Lmin;
-  for (uint32_t k = 1 ; k < nb_slices + 1; k++)
-  {
-    t_end_of_slice_us[k] = t_end_of_slice_us[0] + ((Ti_us - t_end_of_slice_us[0])/nb_slices) *k;
-    flow_set_point_per_slice[k] = flow_set_point_initial_Lmin;
-  }
-  t_end_of_slice_us[nb_slices] = Ti_us; //evite les erreurs d'arrondi
-  flow_set_point_per_slice[nb_slices+1] = 0;
-
-  //table des pas
-  uint32_t step_total_us = 0;
-  const uint32_t max_steps = MIN(nb_steps_stop, MAX_MOTOR_STEPS); //sécurité au cas ou
-  unsigned int pente_acc, flow_constant;
-  unsigned int Vmax_pas_par_s = (Vmax_tour_par_min / 60) * pas_par_tour_mot;
-  unsigned int step_t_min_vmax_us = 1000000/ Vmax_pas_par_s;
-  unsigned int npas_acc = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sa_pas_par_s2);
-  unsigned int npas_dec = (Vmax_pas_par_s*Vmax_pas_par_s)/(2*Sd_pas_par_s2);
-  //variables float intermédiaires
-  float flow_constant_f;
+  //variabnpas_accles float intermédiaires
+  float t_debit_constant_f;
+  float n_pas_f ;
+  float debit_cible_Ls                = flow_set_point_initial_Lmin/60.f;
   //fin variables float intermédiaires
+
   
   uint32_t k = 0; 
-  uint32_t total_steps_t_us = 0;
   uint32_t total_nb_steps   = 0;
-  for(uint32_t step = 1; step <= max_steps && total_nb_steps < Ti_us; step++)
+  uint32_t t_end_acc = 0;
+
+  for(unsigned int n_pas = 1; n_pas <= max_steps; n_pas++)
   {
-  	//NB: Pas acceleration pas tout à fait tranche 0
-  	///Initialiser k=0
-  	///initialiser un t_accumulated_steps à 0
-  	///initialiser un Vmoy_accumule (resetté partranche)
-  	if(step <= npas_acc) {
-  		pente_acc = 1000000/sqrt(2*step*Sa_pas_par_s2);
-  	}
-  	else {
-  		pente_acc = step_t_min_vmax_us;
-  	}
-  
-  	//Pas QK
-  	if(step<nb_steps_stop)
-  	{
-  		float step_f = (float) step ;
-  		flow_constant_f = ( (step_t_minQK_ns/1000.f)+
-						    ((step_f-nb_steps_down_offset)*speed_down_t_ns/1000.f)+
-						    (speed_down_t2_ps*(step_f-nb_steps_down_offset)*(step_f-nb_steps_down_offset))/1000000.f);
-  		flow_constant = (unsigned int) flow_constant_f;
-  	}
-  	else {
-  		flow_constant = step_t_min_vmax_us;
-  	}
-
-  	t_motor_step_us[step-1] = MAX(pente_acc, flow_constant);
-	//If end of slice reached
-	if(step_total_us < t_end_of_slice_us[k] 
-			&& t_end_of_slice_us[k] <= step_total_us + t_motor_step_us[step-1])
-	{
-		//We've done the last slice => we have to correct it
-		if(k == nb_slices) {
-		  uint32_t steps_end = step-1;
-		  float Sd;
-		  compute_SaMaxSdMax(nb_steps_per_slices[k], step_total_us, 0.f, NULL, &Sd);
-
-
-		  uint32_t tsquare = t_motor_step_us[steps_end]*t_motor_step_us[steps_end];
-		  //printf("Tsqaure = %d\n", tsquare);
-		  uint32_t deno = ( (tsquare/1000) * 2 * (Sd/1000) );
-		  //printf("deno = %d\n", deno);
-
-		  uint32_t nb_step_end = (uint32_t) 1000000.f/deno;
-		  //printf("NB step end = %d\n", nb_step_end);
-		  //uint32_t t_stop = (1/(t_motor_step_us[steps_end])) * (1/Sd);
-		  uint32_t current_step = (step-1) - nb_step_end;
-		  uint32_t new_step_end = current_step + nb_step_end;
-		  
-		  for(; current_step < new_step_end; current_step++)
-		  {
-		    //Remove the previously computed time
-		    step_total_us -= t_motor_step_us[current_step];
-		   
-		    uint32_t pre_sqrt1 =  2*(new_step_end-current_step) ;
-		    uint32_t pre_sqrt =   pre_sqrt1 * Sd;
-		    uint32_t new_t_motor_step_us = (1000000) / ( sqrtf(pre_sqrt) );
-		    //printf("%d old %d vs new %d\n", current_step, t_motor_step_us[current_step], new_t_motor_step_us);
-		    t_motor_step_us[current_step] = new_t_motor_step_us;
-		    step_total_us += t_motor_step_us[current_step];
-		  } 
-		}
-
-		t_end_of_slice_us[k] = step_total_us;
-		nb_steps_per_slices[k] = step-1 - total_nb_steps;
-		V_per_slice[k] = 0;
-		for(uint32_t j = total_nb_steps; j < (step-1); j++)
-		{
-		  V_per_slice[k] += (1000000.f/t_motor_step_us[j]) / (nb_steps_per_slices[k]);
-		}
-		
-		total_nb_steps += nb_steps_per_slices[k];
-		k++;
+	if(n_pas <= npas_acc) {
+	  t_pente_acc = 1000000/sqrt(2*n_pas*Sa_pas_par_s2);
 	}
-	step_total_us += t_motor_step_us[step-1];
-  }
-  *nb_steps = total_nb_steps;
-  k = 0;
-  uint32_t t_accumulated_steps = 0;
-  //for(uint32_t i=0; i < *nb_steps && i < max_steps; i++)
-  //{
-  //  t_accumulated_steps += t_motor_step_us[i];
-  //  if (t_accumulated_steps > t_end_of_slice_us[k]) k++;
-  //  printf("%d;%d;%d\n", i, t_motor_step_us[i],k);
-  //}
-  for(uint32_t k = 0; k < nb_slices+2; k++)
-  {
-    printf("0V[%d] = %d\n", k, (int) (V_per_slice[k])); 
-  }
-};
-//il faudrait tester que step_total_us est <= Ti, sinon refaire la "fin"
+	else {
+	  if(t_end_acc == 0)
+	  {
+	    t_end_acc = step_total_us;
+	  }
+	  t_pente_acc = t_min_vmax_us;
+	}
+	
+	//Pas QK
+	if(n_pas<npas_stop)
+	{
+		n_pas_f = (float) n_pas ;
+		t_debit_constant_f=1000.f*AxC50R5*PxC50R5/debit_cible_Ls*k_debit*(powf (n_pas_f, PxC50R5-1.f)) ;
+		if(t_debit_constant_f < t_min_vmax_us)
+		{
+			t_debit_constant = t_min_vmax_us; //plafond vitesse moteur atteint
+		}
+		else {
+			t_debit_constant = (unsigned int) t_debit_constant_f;
+		}
+	}
+	else {
+		t_debit_constant = t_min_vmax_us;
+	}
 
-//voir précédemment ou refaire le calcul de la table des pas "fin de tranche", basée sur le temps à partir de la table de pas moteur
-//voir précédemment ou faire le calcul de la table des vitesse moyennes (accumuler le temps de la tranche et diviser
+	//Pas décélération
+	if( n_pas>=npas_stop-npas_dec && n_pas<=npas_stop) {
+		t_pente_dec = (1000000/sqrt(2*(npas_stop+1-n_pas)*Sd_pas_par_s2));
+	}
+	else {
+		t_pente_dec = t_min_vmax_us;
+	}
+	t_motor_step_us[n_pas-1] = MAX(t_pente_acc, MAX(t_debit_constant, t_pente_dec));
+	total_nb_steps++;
+	step_total_us += t_motor_step_us[n_pas-1];
+  }
+
+  //Compute t end of slice and VM per slice
+  uint32_t Ti = step_total_us;
+  uint32_t t_slice = (Ti - t_end_acc) / NB_SLICE;
+  k = 0;
+  float VM_acc = 0.0;
+  uint32_t t_acc;
+  uint32_t step_start_of_slice;
+  for(uint32_t j = 0; j < total_nb_steps; j++)
+  {
+    if(t_acc > (t_end_acc + k*t_slice) )
+    {
+      VM_per_slice[k] = VM_acc /   ( (float)  (j - step_start_of_slice));
+      flow_set_point_per_slice[k] = flow_set_point_initial_Lmin;
+      step_idx_end_of_slice[k] = j-1;
+      step_start_of_slice = j;
+      k++;
+      VM_acc = 0;
+    }
+    t_end_of_slice_us[k] += t_motor_step_us[j];
+    VM_acc += 1000000/t_motor_step_us[j];
+    t_acc += t_motor_step_us[j];
+  }
+  flow_set_point_per_slice[0] = 0;
+  flow_set_point_per_slice[NB_SLICE+1] = 0;
+  *nb_steps = total_nb_steps;
+};
 
