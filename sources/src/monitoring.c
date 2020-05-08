@@ -17,7 +17,6 @@
 //----------------------------------------------------------
 // Private variables
 //----------------------------------------------------------
-static TaskHandle_t     monitoringTask;
 
 //----------------------------------------------------------
 // Private functions prototypes
@@ -27,6 +26,7 @@ static void monitoring_run(void *args);
 //----------------------------------------------------------
 // Public variables
 //----------------------------------------------------------
+TaskHandle_t     g_monitoringTask;
 
 //----------------------------------------------------------
 // Public functions
@@ -37,7 +37,7 @@ bool monitoring_init() {
     printf("MNTR: Initializing\n");
 #endif
 
-    if (xTaskCreate(monitoring_run, "Monitoring", MONITORING_TASK_STACK_SIZE, NULL, MONITORING_TASK_PRIORITY, &monitoringTask) != pdTRUE)
+    if (xTaskCreate(monitoring_run, "Monitoring", MONITORING_TASK_STACK_SIZE, NULL, MONITORING_TASK_PRIORITY, &g_monitoringTask) != pdTRUE)
     {
 #ifdef DEBUG
         printf("MNTR: Unable to create monitoringTask\n");

@@ -14,6 +14,7 @@
 #define HMI_STOPPED_FLAG          (1 << 6)
 
 extern EventGroupHandle_t   g_controllerEvents;
+extern TaskHandle_t         g_controllerTask;
 
 bool controller_init();
 

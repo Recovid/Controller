@@ -17,7 +17,6 @@
 //----------------------------------------------------------
 // Private variables
 //----------------------------------------------------------
-static TaskHandle_t hmiTask;
 
 //----------------------------------------------------------
 // Private functions prototypes
@@ -27,6 +26,7 @@ static void hmi_run(void *args);
 //----------------------------------------------------------
 // Public variables
 //----------------------------------------------------------
+TaskHandle_t g_hmiTask;
 
 //----------------------------------------------------------
 // Public functions
@@ -37,7 +37,7 @@ bool hmi_init()
 #ifdef DEBUG
     printf("HMI : Initializing\n");
 #endif
-    if (xTaskCreate(hmi_run, "HMI", HMI_TASK_STACK_SIZE, NULL, HMI_TASK_PRIORITY, &hmiTask) != pdTRUE)
+    if (xTaskCreate(hmi_run, "HMI", HMI_TASK_STACK_SIZE, NULL, HMI_TASK_PRIORITY, &g_hmiTask) != pdTRUE)
     {
 #ifdef DEBUG
         printf("HMI : Unable to create HMI Task\n");

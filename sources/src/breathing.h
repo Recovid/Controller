@@ -15,7 +15,8 @@
 #define BRTH_CYCLE_UPDATED          (1 << 7)      // To inform Controller that the breathing info have been updated
 
 extern EventGroupHandle_t   g_breathingEvents;
-
+extern TaskHandle_t         g_breathingTask;
+extern TimerHandle_t        g_samplingTimer;
 bool breathing_init();
 
 

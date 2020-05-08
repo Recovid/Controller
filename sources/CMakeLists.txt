@@ -7,6 +7,9 @@ if( NOT TARGET )
     set(TARGET recovid_revB) # default target
 endif()
 
+if (NOT ADAPTATION )
+    set(ADAPTATION sam)
+endif()
 
 set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(COMMON_INC  ${PROJECT_DIR}/include)
@@ -82,7 +85,7 @@ set(SOURCES
    src/controller.c
    src/hmi.c
    src/protocol.c
-   src/compute_motor.c
+   src/${ADAPTATION}/adaptation.c
 )
 
 include_directories(

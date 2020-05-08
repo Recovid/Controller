@@ -20,13 +20,13 @@
 
 
 // platform specific FreeRTOS stack size
-#define PLATFORM_FREERTOS_HEAP_SIZE          (35*1024)    // in bytes
-#define PLATFORM_BREATHING_TASK_STACK_SIZE   (2048)       // in word
-#define PLATFORM_MONITORING_TASK_STACK_SIZE  (1536)       // in word
-#define PLATFORM_CONTROLLER_TASK_STACK_SIZE  (1536)       // in word
-#define PLATFORM_HMI_TASK_STACK_SIZE         (2048)       // in word
+#define PLATFORM_FREERTOS_HEAP_SIZE          (14*1024)    // in bytes
+#define PLATFORM_BREATHING_TASK_STACK_SIZE   (512)       // in word
+#define PLATFORM_MONITORING_TASK_STACK_SIZE  (512)       // in word
+#define PLATFORM_CONTROLLER_TASK_STACK_SIZE  (512)       // in word
+#define PLATFORM_HMI_TASK_STACK_SIZE         (512)       // in word
 #define PLATFORM_TIMER_TASK_STACK_SIZE       (512)        // in word
-#define PLATFORM_MINIMAL_STACK_SIZE          (128)        // in word  
+#define PLATFORM_MINIMAL_STACK_SIZE          (512)        // in word  
 
 #define TOTAL_STACK_SIZE            (PLATFORM_BREATHING_TASK_STACK_SIZE + \
                                      PLATFORM_MONITORING_TASK_STACK_SIZE + \

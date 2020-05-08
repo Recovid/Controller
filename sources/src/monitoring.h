@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+extern TaskHandle_t     g_monitoringTask;
 
 bool monitoring_init();
 

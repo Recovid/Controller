@@ -21,8 +21,6 @@
 //----------------------------------------------------------
 // Private variables
 //----------------------------------------------------------
-static TaskHandle_t controllerTask;
-
 
 // ------------------------------------------------------------------------------------------------
 //! Settings
@@ -78,7 +76,8 @@ static void controller_run(void *args);
 #ifdef DEBUG
 SemaphoreHandle_t dbgMutex;
 #endif
-EventGroupHandle_t g_controllerEvents;
+EventGroupHandle_t  g_controllerEvents;
+TaskHandle_t        g_controllerTask;
 
 //----------------------------------------------------------
 // Public functions
@@ -142,7 +141,7 @@ bool controller_init() {
 #endif
         return false;
     }
-    if (xTaskCreate(controller_run, "Controller", CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &controllerTask) != pdTRUE)
+    if (xTaskCreate(controller_run, "Controller", CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &g_controllerTask) != pdTRUE)
     {
 #ifdef DEBUG
         printf("CTRL: Unable to create controllerTask\n");
@@ -208,11 +207,31 @@ static void controller_run(void *args)
         xEventGroupSetBits(g_controllerEvents, HMI_RUN_FLAG);
         wait_ms(100);
 
+#ifdef DEBUG_CONTROLLER
+        uint16_t dbg_cnt=0;
+#endif
+
         while (!is_Failsafe_Enabled())
         {
             // TODO Implement controller logic
             // check monitoring process
             // check breathing process
+#ifdef DEBUG_CONTROLLER
+            if(++dbg_cnt==250) {
+                uint32_t watermark_controller= uxTaskGetStackHighWaterMark(g_controllerTask);
+                uint32_t watermark_breathing = uxTaskGetStackHighWaterMark(g_breathingTask);
+                uint32_t watermark_monitoring= uxTaskGetStackHighWaterMark(g_monitoringTask);
+                uint32_t watermark_hmi       = uxTaskGetStackHighWaterMark(g_hmiTask);
+                ctrl_printf("-------------------------------------------\n");
+                ctrl_printf("CTRL: watermark controller: %lu\n", (CONTROLLER_TASK_STACK_SIZE - watermark_controller));
+                ctrl_printf("CTRL: watermark breathing : %lu\n", (BREATHING_TASK_STACK_SIZE - watermark_breathing));
+                ctrl_printf("CTRL: watermark monitoring: %lu\n", (MONITORING_TASK_STACK_SIZE - watermark_monitoring));
+                ctrl_printf("CTRL: watermark hmi       : %lu\n", (HMI_TASK_STACK_SIZE - watermark_hmi));
+                ctrl_printf("-------------------------------------------\n");
+                dbg_cnt=0;
+            }
+#endif
+
 
             wait_ms(20);
         }
@@ -354,10 +373,14 @@ static int self_tests()
     check(&test_bits, 8, init_motor_pep());
     motor_pep_home();
     while (!is_motor_pep_home())
+    {
         wait_ms(10);
-    motor_pep_move(10);
-    while (is_motor_pep_moving())
+    }    
+    motor_pep_move(40);
+    while (is_motor_pep_moving()) 
+    {
         wait_ms(10);
+    }
     // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;
@@ -485,48 +508,48 @@ uint16_t get_command_Tpbip_ms() { return command_Tpbip_ms; }
 
 uint16_t set_command_Tpins_ms(uint16_t ms)
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     command_Tpins_timestamp = get_time_ms();
     command_Tpins_ms = ms;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return ms;
 }
 uint16_t set_command_Tpexp_ms(uint16_t ms)
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     command_Tpexp_timestamp = get_time_ms();
     command_Tpexp_ms = ms;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return ms;
 }
 uint16_t set_command_Tpbip_ms(uint16_t ms)
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     command_Tpbip_timestamp = get_time_ms();
     command_Tpbip_ms = ms;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return ms;
 }
 
 bool is_command_Tpins_expired()
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     bool val = command_Tpins_ms < get_time_ms() - command_Tpins_timestamp;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return val;
 }
 bool is_command_Tpexp_expired()
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     bool val = command_Tpexp_ms < get_time_ms() - command_Tpexp_timestamp;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return val;
 }
 bool is_command_Tpbip_expired()
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     bool val = command_Tpbip_ms < get_time_ms() - command_Tpbip_timestamp;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return val;
 }
 

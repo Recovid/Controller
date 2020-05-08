@@ -5,7 +5,7 @@
 #include "breathing.h"
 #include "platform.h"
 
-//#include <compute_motor.h>
+#include <adaptation.h>
 #include <math.h>
 #include <string.h>
 
@@ -71,8 +71,6 @@ static volatile uint16_t    g_Pdiff_Lpm_sample_count;
 static uint32_t g_motor_steps_us[MOTOR_MAX_STEPS] ; 
 
 
-static TaskHandle_t    g_breathingTask;
-static TimerHandle_t   g_samplingTimer;
 
 
 //----------------------------------------------------------
@@ -96,6 +94,8 @@ static void breathing_run(void *args);
 // Public variables
 //----------------------------------------------------------
 EventGroupHandle_t  g_breathingEvents;
+TaskHandle_t        g_breathingTask;
+TimerHandle_t       g_samplingTimer;
 
 //----------------------------------------------------------
 // Public functions
@@ -114,7 +114,7 @@ bool breathing_init() {
         return false;
     }
 
-    g_samplingTimer = xTimerCreate("SamplingTimer", 5 / portTICK_PERIOD_MS, pdTRUE, 0, samplingCallback);
+    g_samplingTimer = xTimerCreate("SamplingTimer", SAMPLING_PERIOD_MS / portTICK_PERIOD_MS, pdTRUE, 0, samplingCallback);
     if ( NULL == g_samplingTimer)
     {
 #ifdef DEBUG
@@ -195,7 +195,7 @@ static void breathing_run(void *args)
             signal_state(Insuflation);
 
             // Get current controller settings
-            portENTER_CRITICAL();
+            taskENTER_CRITICAL();
             g_setting_T = get_setting_T_ms();
             g_setting_VT = get_setting_VT_mL();
             g_setting_VM = get_setting_Vmax_Lpm();
@@ -203,7 +203,7 @@ static void breathing_run(void *args)
             g_setting_Tinspi_ms = get_setting_Tinspi_ms(); // Computed based on cycle period T and I/E ratio
             g_setting_Tinsu_ms = get_setting_Tinsu_ms();   // Théoritical Insuflation's time based on volume and theoritical flow
             g_setting_Texp_ms = get_setting_Texp_ms();     // Computed based on cycle period T and I/E ratio
-            portEXIT_CRITICAL();
+            taskEXIT_CRITICAL();
 
             brth_printf("BRTH: T     : %lu\n", g_setting_T);
             brth_printf("BRTH: VT    : %lu\n", (uint32_t)(g_setting_VT ));
@@ -218,11 +218,9 @@ static void breathing_run(void *args)
             // Compute adaptation based on current settings and previous collected data if any.
             //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
             //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
-            for(int i = 0; i<MOTOR_MAX_STEPS; ++i) {
-                g_motor_steps_us[i] = 800;
-            }
 
-            brth_printf("Init\n");
+            uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
+
             // Init Paw samples
             init_Paw_cmH2O_sampling();
 
@@ -231,17 +229,13 @@ static void breathing_run(void *args)
 
             valve_inhale();
             reset_Vol_mL();
-            brth_printf("press\n");
-            motor_press(g_motor_steps_us, 1200);
+            motor_press(g_motor_steps_us, nb_steps);
 
-            brth_printf("timer\n");
             // start Sampling (Paw and Pdiff)
             if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
             {
-                brth_printf("timer error\n");
                 // TODO : What should we do? Raise an alarm ??
             }
-            brth_printf("do\n");
             // Insuflation state: do
             // Pdiff and Paw sampling will be done by the samplingTimer in background
             do
@@ -266,6 +260,7 @@ static void breathing_run(void *args)
             } while (Insuflation == next_state);
             
             // Insuflation state: onExit
+            motor_stop();
             motor_release(MOTOR_RELEASE_STEP_US);
 
 
@@ -450,36 +445,36 @@ static void regulation_pep()
 
 static void init_Paw_cmH2O_sampling()
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     memset((void*)g_Paw_cmH2O_samples, 0, sizeof(g_Paw_cmH2O_samples));
     g_Paw_cmH2O_sample_count = 0;
     g_Paw_cmH2O_sample_idx = 0;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
 }
 
 static void init_Pdiff_Lpm_sampling()
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     memset((void*)g_Pdiff_Lpm_samples, 0, sizeof(g_Pdiff_Lpm_samples));
     g_Pdiff_Lpm_sample_count= 0;
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
 }
 
 static float get_avg_Paw_cmH2O(uint16_t count)
 {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     float sum = 0.;
     count = MIN(count, g_Paw_cmH2O_sample_count);
     for (uint16_t i = 1; i <= count; i++)
     {
         sum += g_Paw_cmH2O_samples[ (MAX_PAW_SAMPLES + g_Paw_cmH2O_sample_idx + i - count ) % MAX_PAW_SAMPLES ];
     }
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
     return count == 0 ? 0 : sum/count;
 }
 
 static void samplingCallback(TimerHandle_t timer) {
-    portENTER_CRITICAL();
+    taskENTER_CRITICAL();
     // sample Paw
     g_Paw_cmH2O_samples[g_Paw_cmH2O_sample_idx]= read_Paw_cmH2O();
     g_Paw_cmH2O_sample_idx = (g_Paw_cmH2O_sample_idx + 1) % MAX_PAW_SAMPLES;
@@ -497,5 +492,5 @@ static void samplingCallback(TimerHandle_t timer) {
         }
     }
 
-    portEXIT_CRITICAL();
+    taskEXIT_CRITICAL();
 }
