@@ -57,6 +57,8 @@ static volatile float _current_vol_mL;
 static volatile	uint16_t last_sdp_t_us;
 static volatile	uint16_t last_npa_t_us;
 volatile sensors_state_t _sensor_state;
+			
+				
 
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
@@ -328,6 +330,18 @@ float compute_corrected_flow(int16_t read)
     return -(float) read / 105.f; // V1 Calibration
 }
 
+void		hardfault_CRASH_ME(
+		// string 		message_err /// WIP code fatal error
+){
+	// #error	"not_in_production !!!!"
+	brth_printf( "hardfault_CRASH_ME\n\r" );
+	
+	// ALARM_fatale( message_err ); /// WIP
+	
+	uint8_t* 	BytePtr = (uint8_t)0x20002000;
+					*BytePtr = 0x5a;        //generate hardfault IRQ		
+	return; /// jamais
+}
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 	switch (_sensor_state) {
@@ -390,8 +404,48 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				uint16_t sdp_t_us = (uint16_t)get_time_us();
 				uint16_t sdp_dt_us = (uint16_t)sdp_t_us - last_sdp_t_us;
 				int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
+				
+				static uint32_t 	Ancien_maintenant = 0;
+				uint32_t				maintenant = get_time_ms();
+				
+				if(
+							is_running_sampling_temps_moteur 		== 	true /// on souhaite l'acquisition en IT
+					&&	maintenant 													>= 	TIMER_debut_sampling_temps_moteur
+					&&	maintenant 													<= 	TIMER_fin_sampling_temps_moteur
+					&&	maintenant 													>= 	Ancien_maintenant + 6 /// frequence echantillongae periodique todo !!
+				){
+					
+					if( 
+						index_TAB_dp_raw_temps_moteur < (int32_t)( NBR_VALEURS_TAB_debits_temps_moteur * DIVISEUR_NBR_VALEURS_SAMPLED )
+					){
+						/// on accumule les samples
+						accumule_TAB_dp_raw_temps_moteur 				+= dp_raw;
+						accumule_TAB_TIMECODE_temps_moteur 		+= maintenant;
+						denom_TAB_dp_raw_temps_moteur++;
+						
+						/// on ecrase 
+						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].dp_raw 							= dp_raw; /// accumule_TAB_dp_raw_temps_moteur 			/ denom_TAB_dp_raw_temps_moteur;
+						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].Paw = round( _current_Paw_cmH2O ); /// on ecrase a chaque fois car on cherche le max... pas grave
+						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].timecode_sample_MS 	= accumule_TAB_TIMECODE_temps_moteur 	/ denom_TAB_dp_raw_temps_moteur;
+						index_TAB_dp_raw_temps_moteur++;
+						
+						if( ( index_TAB_dp_raw_temps_moteur % DIVISEUR_NBR_VALEURS_SAMPLED ) == 0 ){ 
+							/// MAJ pour future valeur
+							denom_TAB_dp_raw_temps_moteur = 0;
+							accumule_TAB_dp_raw_temps_moteur = 0;
+							accumule_TAB_TIMECODE_temps_moteur = 0;
+						}
+						
+					} else {
+						/// crash !!! WIP : attention virer en prod !!!!
+						index_TAB_dp_raw_temps_moteur++; /// sera detected ds breathing pr generer un crash proprement ;)
+						// brth_printf( "CRASH TAB_dp_raw_temps_moteur %i", index_TAB_dp_raw_temps_moteur );
+						// hardfault_CRASH_ME();
+					}
+				}
+
 				_current_flow_slm = compute_corrected_flow(dp_raw);
-      			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
+      			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000); /// frequence echantillongae periodique todo !!
 				last_sdp_t_us = sdp_t_us;
                 readSDP();
 			} else {

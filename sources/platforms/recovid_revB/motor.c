@@ -108,6 +108,9 @@ bool init_motor()
 
 static void period_elapsed_callback(TIM_HandleTypeDef *tim)
 {
+  // light_yellow(On );
+  // light_green(On );
+  // light_red(On );
   motor_stop();
 }
 

@@ -288,13 +288,15 @@ int self_tests()
     //check(&test_bits, 4, motor_stop());
     //check(&test_bits, 3, valve_exhale()); // start pos
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-
+	
+	#if	0
     check(&test_bits, 8, init_motor_pep());
     motor_pep_home();
     while(!is_motor_pep_home()) wait_ms(10);
     motor_pep_move(10);
     while(is_motor_pep_moving()) wait_ms(10);
     // TODO check(&test_bits, 8, motor_pep_...
+	#endif
 
     return test_bits;
 }
@@ -411,7 +413,10 @@ float set_setting_VMmin_Lpm(float desired) {
 
 
 
-float get_setting_FR_pm       () { return setting_FR_pm           ; }
+float get_setting_FR_pm       () { 
+	// return 5;
+	return setting_FR_pm;
+}
 float get_setting_VT_mL       () { return setting_VT_mL           ; }
 
 float get_setting_Vmax_Lpm    () { return setting_Vmax_Lpm        ; }

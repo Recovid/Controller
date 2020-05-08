@@ -119,6 +119,59 @@ bool is_Pdiff_ok();
 bool is_Paw_ok();
 bool is_Patmo_ok();
 
+
+/// ajouts Adrien
+/// ajouts Adrien		WIP : a deplacer
+/// ajouts Adrien
+
+		void		hardfault_CRASH_ME();
+
+		typedef struct  {
+			uint8_t		CALIB_nbr_echant;
+			uint32_t	CALIB_duree_sgt_US;
+			float			CALIB_result_volume_segment;
+			uint32_t	CALIB_US_avt_motor_full_speed;
+			float			debit_slm_en_cours;
+			
+			float			PID_ERREUR_Debit;
+			float			PID_i_factor;
+			bool			max_error_checked;
+			
+			bool			PID_tunable_sgt;
+			bool			MODE_Panique;
+			bool			is_vitesse_max_SEGMENT; ///						= false;
+			bool			is_accel_max_SEGMENT; ///						= false;
+		} mesure_volume;
+		
+		#define						NBR_SEGMENTS_CALIBRATION												64 /// WIP on aurait due faire +, en fait ca passe en RAM
+		mesure_volume		TAB_volume_slm_calib[ NBR_SEGMENTS_CALIBRATION ];
+
+		#define		NBR_VALEURS_TAB_debits_temps_moteur		750 /// besoin de marge pour Ti tres long a gros volumes : il y a de la RAM a gagner ici : essayer avec Ti max : WIP : faire freq variable
+		#define		DIVISEUR_NBR_VALEURS_SAMPLED				2 /// WIP : faire freq variable
+
+		typedef struct  {
+					int16_t	dp_raw;
+					int16_t	Paw; /// WIP : pr calculer le time slicing de debit : low res surement suffisante !!!
+					uint32_t	timecode_sample_MS;
+		} samples_debit;
+		
+		/// WIP : a placer en archi apres validation fonctionnement complet
+		volatile int32_t							index_TAB_dp_raw_temps_moteur;
+		volatile int64_t							accumule_TAB_dp_raw_temps_moteur;
+		volatile uint64_t						accumule_TAB_TIMECODE_temps_moteur;
+		volatile int16_t							denom_TAB_dp_raw_temps_moteur;
+		volatile samples_debit			TAB_dp_raw_temps_moteur[ NBR_VALEURS_TAB_debits_temps_moteur  ]; /// 200 Hz : resta a calculer : _current_flow_slm = compute_corrected_flow(dp_raw);
+		volatile uint64_t						TIMER_debut_sampling_temps_moteur;
+		volatile uint32_t						timecode_ms_full_speed;
+		volatile uint64_t						TIMER_fin_accel_moteur_ms;
+		volatile uint64_t						TIMER_fin_sampling_temps_moteur;
+		volatile bool								is_running_sampling_temps_moteur;
+		
+/// ajouts Adrien
+/// ajouts Adrien
+/// ajouts Adrien
+
+
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
 float read_Pdiff_Lpm();
 

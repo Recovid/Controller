@@ -15,13 +15,13 @@
 #define MOTOR_PRESS_DIR                     GPIO_PIN_RESET
 #define MOTOR_RELEASE_DIR                   GPIO_PIN_SET
 
-#define MOTOR_CORRECTION_USTEPS (                                                                 1)
-#define MOTOR_STEP_TIME_INIT    (                                  400/ ( MOTOR_CORRECTION_USTEPS) )
-#define MOTOR_ACC_STEPS         (                                    2/ ( MOTOR_CORRECTION_USTEPS) )
-#define MOTOR_ACC_COEF          (MOTOR_STEP_TIME_INIT/ MOTOR_ACC_STEPS/ ( MOTOR_CORRECTION_USTEPS) )
-#define MOTOR_RELEASE_STEP_US   (                                  300/ ( MOTOR_CORRECTION_USTEPS) )
-#define MOTOR_HOME_STEP_US      (                                  400/ ( MOTOR_CORRECTION_USTEPS) )
-#define MAX_MOTOR_STEPS         (                                 4800/ ( MOTOR_CORRECTION_USTEPS) )
+#define MOTOR_CORRECTION_USTEPS (                                                                 4)
+#define MOTOR_STEP_TIME_INIT    (                                       400* ( MOTOR_CORRECTION_USTEPS) )
+#define MOTOR_ACC_STEPS         (                                             2* ( MOTOR_CORRECTION_USTEPS) )
+#define MOTOR_ACC_COEF          (                          MOTOR_STEP_TIME_INIT/ MOTOR_ACC_STEPS )
+#define MOTOR_RELEASE_STEP_US   (                                  300* ( MOTOR_CORRECTION_USTEPS) )
+#define MOTOR_HOME_STEP_US      (                                  400* ( MOTOR_CORRECTION_USTEPS) )
+#define MAX_MOTOR_STEPS         (                                 4750/ ( MOTOR_CORRECTION_USTEPS) )
 
 
 
@@ -41,12 +41,12 @@
 
 
 
-#define HMI_TX_BUFFER_SIZE            (4096)
-#define HMI_TX_DMA_BUFFER_SIZE        (512)
-#define HMI_TX_SYNC_TIMEOUT_MS        (2000)
-#define HMI_RX_BUFFER_SIZE            (1024)
-#define HMI_RX_DMA_BUFFER_SIZE        (512)
-#define HMI_RX_LINE_TIMEOUT           (30)
+#define HMI_TX_BUFFER_SIZE            			(4096) /// 4096
+#define HMI_TX_DMA_BUFFER_SIZE        	(512)
+#define HMI_TX_SYNC_TIMEOUT_MS        	(2000)
+#define HMI_RX_BUFFER_SIZE            			(1024)
+#define HMI_RX_DMA_BUFFER_SIZE       	(512)
+#define HMI_RX_LINE_TIMEOUT          			(30)
 
 
 

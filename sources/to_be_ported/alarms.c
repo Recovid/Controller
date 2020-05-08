@@ -276,6 +276,7 @@ void monitor_battery()
 
 void blink_LEDs(int level)
 {
+	return;
     static const uint32_t CYCLE_DUR_MS = 10000;
 
     static bool redOn = false;
@@ -287,8 +288,8 @@ void blink_LEDs(int level)
             redOn = false;
         }
         if (yellowOn) {
-            light_yellow(Off);
-            yellowOn = false;
+            // light_yellow(Off);
+            // yellowOn = false;
         }
         return;
     }
