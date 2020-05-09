@@ -12,9 +12,7 @@
 
 
 #ifdef DEBUG
-#define DEBUG_CONTROLLER
-#define DEBUG_BREATHING
-//#define DEBUG_MONITOR
+#define DEBUG_CALIBRATION
 //#define DEBUG_HMI
 #endif
 

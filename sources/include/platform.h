@@ -6,24 +6,7 @@
 
 
 
-#define BREATHING_TASK_STACK_SIZE   PLATFORM_BREATHING_TASK_STACK_SIZE
-#define MONITORING_TASK_STACK_SIZE  PLATFORM_MONITORING_TASK_STACK_SIZE
-#define CONTROLLER_TASK_STACK_SIZE  PLATFORM_CONTROLLER_TASK_STACK_SIZE
-#define HMI_TASK_STACK_SIZE         PLATFORM_HMI_TASK_STACK_SIZE
-#define TIMER_TASK_STACK_SIZE       PLATFORM_TIMER_TASK_STACK_SIZE
 
-#define BREATHING_TASK_PRIORITY     PLATFORM_BREATHING_TASK_PRIORITY
-#define MONITORING_TASK_PRIORITY    PLATFORM_MONITORING_TASK_PRIORITY
-#define CONTROLLER_TASK_PRIORITY    PLATFORM_CONTROLLER_TASK_PRIORITY
-#define HMI_TASK_PRIORITY           PLATFORM_HMI_TASK_PRIORITY
-#define TIMER_TASK_PRIORITY         PLATFORM_TIMER_TASK_PRIORITY
-
-
-
-
-extern void controller_main();
-
-extern 
 
 uint32_t get_time_ms();
 
@@ -67,10 +50,9 @@ bool is_motor_ok();
 bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps);
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
-//! \param before_t_ms (in) timestamp before which motor should be in position to press BAVU again
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
-bool motor_release();
+bool motor_release(uint32_t step_us);
 
 void motor_enable(bool ena);
 

@@ -1,4 +1,4 @@
-#include "platform.h"
+#include "application.h"
 #include "recovid_revB.h"
 #include "stm32f3xx_ll_usart.h"
 
@@ -61,9 +61,9 @@ void main()
   MX_TIM3_Init();
   MX_TIM7_Init();
 
-  // Start the controller
+  // Start the application
   // This function should never returns
-  controller_main();
+  application_main();
 
   Error_Handler();
 }

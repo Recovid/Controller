@@ -25,12 +25,16 @@
 #define MAX_PDIFF_SAMPLES       (2000 / SAMPLING_PERIOD_MS)
 
 
+#define CALIBRATION_STEP_US    (MOTOR_MIN_STEP_US*2)
+
+
 //----------------------------------------------------------
 // Private typedefs
 //----------------------------------------------------------
 
 typedef enum
 {
+    None,
     Insuflation,
     Plateau,
     Exhalation
@@ -65,7 +69,7 @@ static volatile uint16_t    g_Paw_cmH2O_sample_idx;
 static float                g_Pdiff_Lpm_samples[MAX_PDIFF_SAMPLES];
 static volatile uint16_t    g_Pdiff_Lpm_sample_count;
 
-
+static volatile BreathingState g_state;
 
 
 static uint32_t g_motor_steps_us[MOTOR_MAX_STEPS] ; 
@@ -89,6 +93,8 @@ static void signal_pexp(bool pause);
 
 static void samplingCallback(TimerHandle_t xTimer);
 static void breathing_run(void *args);
+
+static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibration_step_us);
 
 //----------------------------------------------------------
 // Public variables
@@ -131,6 +137,9 @@ bool breathing_init() {
         return false;
     }
 
+
+    signal_state(None);
+
 #ifdef DEBUG
     printf("BRTH: Initialized\n");
 #endif
@@ -159,11 +168,19 @@ static void breathing_run(void *args)
 
     while (true)
     {
+        signal_state(None);
         brth_printf("BRTH: Standby\n");
         events = xEventGroupWaitBits(g_controllerEvents, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY);
         brth_printf("BRTH: Started\n");
 
         motor_enable(true);
+
+#if 0
+        brth_printf("BRTH: Calibration...\n");
+        float A,B;
+        calibration(&A, &B, 3, CALIBRATION_STEP_US);
+        while(true);
+#endif
 
         // Clear cycle data
         g_cycle_EoI_ratio = 0;
@@ -378,6 +395,7 @@ static void breathing_run(void *args)
             events = xEventGroupGetBits(g_controllerEvents);
         } while ((events & BREATHING_RUN_FLAG) != 0);
 
+        signal_state(None);
         brth_printf("BRTH: Stopping\n");
 
         wait_ms(200);
@@ -413,6 +431,10 @@ static void signal_state(BreathingState state)
     EventBits_t brthState = 0;
     switch (state)
     {
+    case None:
+        brthState = 0;
+        brth_printf("BRTH: None\n");
+        break;
     case Insuflation:
         brthState = BRTH_CYCLE_INSUFLATION;
         brth_printf("BRTH: Insuflation\n");
@@ -427,6 +449,7 @@ static void signal_state(BreathingState state)
         break;
     }
     // Inform system about current state
+    g_state= state;
     xEventGroupClearBits(g_breathingEvents, (BRTH_CYCLE_INSUFLATION | BRTH_CYCLE_PLATEAU | BRTH_CYCLE_EXHALATION | BRTH_CYCLE_PINS | BRTH_CYCLE_PEXP));
     xEventGroupSetBits(g_breathingEvents, brthState);
 }
@@ -484,7 +507,7 @@ static void samplingCallback(TimerHandle_t timer) {
     }
 
     // sample Pdiff only during Insuflation state
-    if((xEventGroupGetBits(g_breathingEvents) & BRTH_CYCLE_INSUFLATION) == BRTH_CYCLE_INSUFLATION) 
+    if(Insuflation == g_state) 
     {
         if(g_Pdiff_Lpm_sample_count<MAX_PDIFF_SAMPLES)
         {
@@ -494,3 +517,79 @@ static void samplingCallback(TimerHandle_t timer) {
 
     taskEXIT_CRITICAL();
 }
+
+
+//Flow(t) = A*t + B
+static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibration_step_us) {
+	float slope = 0; // slope of flow(t) cruve
+	float originFlow = 0; // origin flow of flow(t) curve
+	uint32_t steps;
+
+    steps= (uint32_t) (MOTOR_MAX_STEPS*80/100);
+    for(uint32_t t=0; t<steps; ++t) 
+    {
+        g_motor_steps_us[t]= (uint32_t)calibration_step_us;
+    }
+
+
+	// Calibrate slope
+	brth_printf("---------- Calibrating slope ---------------\n");
+	for(int iter=0; iter<iterations; ++iter) {
+        init_Paw_cmH2O_sampling();
+        init_Pdiff_Lpm_sampling();
+    	
+        // HIGH PEEP
+        valve_inhale();
+
+        reset_Vol_mL();
+        g_state=Insuflation;
+		motor_press(g_motor_steps_us, steps);
+        xTimerReset(g_samplingTimer, 10/portTICK_PERIOD_MS);
+        wait_ms(200); // skip first 200ms
+		while(is_motor_moving()) wait_ms(5);
+        xTimerStop(g_samplingTimer, 10/portTICK_PERIOD_MS);
+        g_state= None;
+		wait_ms(500);
+		float volumeIT = read_Vol_mL();
+		brth_printf("volume = %lu ml\n", (uint32_t)(volumeIT));
+        // LOW PEEP
+        valve_exhale();
+        motor_release(MOTOR_RELEASE_STEP_US);
+		while(!is_motor_home());
+        wait_ms(2000);
+
+		float a = 0;
+		float r = linear_fit(g_Pdiff_Lpm_samples, g_Pdiff_Lpm_sample_count, SAMPLING_PERIOD_MS*0.001, &a);
+		brth_printf("a=%lu\n", (uint32_t)(1000.*a));
+		brth_printf("r=%lu\n", (uint32_t)(1000.*r));
+		slope += a / (float)iterations;
+	}
+	*A = slope;
+	brth_printf("A=%lu\n", (uint32_t)(1000.* *A));
+
+
+	// Calibrate originFlow
+	brth_printf("---------- Calibrating B ---------------\n");
+	for(int iter=0; iter<iterations; ++iter) {
+		// HIGH PEEP
+        valve_inhale();
+        reset_Vol_mL();
+		motor_press(g_motor_steps_us, steps);
+		while(is_motor_moving()) wait_ms(5);
+		wait_ms(1000);
+		float volumeIT = read_Vol_mL();
+		// LOW PEEP
+        valve_exhale();
+        motor_release(MOTOR_RELEASE_STEP_US);
+		while(!is_motor_home());
+		brth_printf("volume = %luml\n", (uint32_t)(volumeIT));
+		float b = volumeIT*0.001/((CALIBRATION_STEP_US*0.000001) * steps) - (*A * (CALIBRATION_STEP_US*0.000001)*steps / 2.);
+		brth_printf("b=%ld\n", (int32_t)(1000*b));
+		// Add values for averaging over iterations
+		originFlow += b/(float)iterations;
+	}
+	*B = originFlow;
+	brth_printf("B=%ld\n", (int32_t)(1000*(*B)));
+	brth_printf("Calibration...DONE\n");
+}
+

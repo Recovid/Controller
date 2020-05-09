@@ -25,7 +25,7 @@ static float B;
 
 static float    compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
 static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples,  float* A, float* B);
-static float    linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope);
+//static float    linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope);
 static int32_t  get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
 
 
@@ -40,8 +40,8 @@ static int32_t  get_plateau(float* samples, uint32_t samples_len, float flow_sam
 // Initialize the adaptation engine.
 // Called before the recovid starts the breathing cycles.
 void adaptation_init() {
-    A= 3.577;
-    B= -0.455;
+    A= 0.585; //3.577;
+    B= -0.074; //-0.455;
 }
 
 // Compute the motor step table based on targeted Vmax, VT, and previous flow samples.
@@ -59,7 +59,7 @@ uint32_t adaptation(
     pid(target_Flow_Lpm, 0.001*flow_samples_period_ms, flow_samples_count, flow_samples_Lpm, &A, &B);
 
     for(uint32_t t=0; t<motor_max_steps; ++t) {
-        motor_steps_us[t]= (uint32_t) compte_motor_step_time(t, target_Flow_Lpm/60.0, A, B, 1.0/1600);
+        motor_steps_us[t]= (uint32_t) compte_motor_step_time(t, target_Flow_Lpm/60.0, A, B, (MOTOR_MIN_STEP_US*2)*0.000001);
     }
     return motor_max_steps;
 }
@@ -71,8 +71,8 @@ uint32_t adaptation(
 static float compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed) {
 	float res = (0.8*A*speed*speed*step_number) + B * speed;
 	res = 1000000* res / desired_flow_Ls;
-	if (res  < 600) { 
-        res = 600;
+	if (res  < MOTOR_MIN_STEP_US) { 
+        res = MOTOR_MIN_STEP_US;
     }
 	return res;
 }
@@ -94,7 +94,7 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 		float plateau_slope = linear_fit(flow_samples+low, high-low-1, flow_samples_period_s, &plateau_slope);
 		float plateau_mean = 0;
 		for(uint32_t i=low; i<high; i++) {
-			plateau_mean += flow_samples[i];
+			plateau_mean += flow_samples[i]/60;
 		}
 		plateau_mean = plateau_mean/(high-low);
 //		brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
@@ -112,19 +112,22 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 // Compute slope of samples fetched with specified time_step
 // Returns 	R  if fit is ok
 // 			-1 if fit is not possible
-static float linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope){
+float linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope){
 	float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
-	for(uint32_t i=0;i<samples_len;i++) {
-		sumx  = sumx + (float)i * flow_samples_period_s;
-		sumx2 = sumx2 + (float)i*flow_samples_period_s*(float)i*flow_samples_period_s;
-		sumy  = sumy + (*(samples+i)/60.0);
-		sumy2 = sumy2 + ((*(samples+i))/60.0) * ((*(samples+i)/60.0));
-		sumxy = sumxy + (float)i*(flow_samples_period_s)* (*(samples+i)/60.0);
+    float x,y;
+	for(uint32_t i=00;i<samples_len;i++) {
+        x= (float)i * flow_samples_period_s;
+        y= samples[i]/60.0;
+		sumx  = sumx + x;
+		sumx2 = sumx2 + (x*x);
+		sumy  = sumy + y;
+		sumy2 = sumy2 + (y*y);
+		sumxy = sumxy + (x*y);
 	}
 	float denom = (samples_len * sumx2 - (sumx * sumx));
 	if(denom == 0.) {
-//		brth_printf("Calibration of A is not possible\n");
-		return 1;
+		brth_printf("Calibration of A is not possible\n");
+		return -1;
 	}
 	// compute slope a
 	*slope = (samples_len * sumxy  -  sumx * sumy) / denom;

@@ -1,32 +1,41 @@
 cmake_minimum_required(VERSION 3.12)
 
-###############################################################################
-# Compilers setup
+set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR})
+
 
 if( NOT TARGET )
     set(TARGET recovid_revB) # default target
 endif()
 
-if (NOT ADAPTATION )
-    set(ADAPTATION sam)
+if (NOT APPLICATION)
+    set(APPLICATION Controller)
 endif()
 
-set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR})
-set(COMMON_INC  ${PROJECT_DIR}/include)
-set(TARGET_DIR  ${PROJECT_DIR}/platforms/${TARGET})
+
+set(TARGET_DIR      ${PROJECT_DIR}/platforms/${TARGET})
+set(APPLICATION_DIR ${PROJECT_DIR}/applications/${APPLICATION})
+
+
+if (NOT EXISTS ${APPLICATION_DIR})
+    message(FATAL_ERROR "Application ${APPLICATION} not supported")
+endif()
 
 if (NOT EXISTS ${TARGET_DIR})
     message(FATAL_ERROR "Target platform ${TARGET} not supported")
 endif()
 
+if (NOT EXISTS ${APPLICATION_DIR}/include/${TARGET})
+    message(FATAL_ERROR "Application ${APPLICATION} not supported by ${TARGET}")
+endif()
+
+set(COMMON_INC  
+    ${PROJECT_DIR}/include
+)
+
+
 
 SET(CMAKE_TOOLCHAIN_FILE ${TARGET_DIR}/Toolchain.cmake)
 
-add_compile_definitions(${TARGET})
-
-if(NO_RASPI_REBOOT)
-   add_compile_definitions(NO_RASPI_REBOOT)
-endif()
 
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
@@ -40,7 +49,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 ###############################################################################
 # Project
 
-project(Controller C CXX ASM)
+project(${APPLICATION} C CXX ASM)
 
 enable_testing()
 
@@ -62,48 +71,11 @@ endif()
 
 ###############################################################################
 # Platform
-
 add_subdirectory(${TARGET_DIR})
 
 ###############################################################################
-# Top-level Targets
+# Application Targets
 
-if(native_win32) # !POSIX for high-level deterministic tests only
-    set(EXE_EXT .exe)
-elseif(NOT ${TARGET} STREQUAL "native")
-    set(EXE_EXT .${TARGET}.elf)
-endif()
-
-set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
+add_subdirectory(${APPLICATION_DIR})
 
 
-# Controller
-set(SOURCES
-   src/controller.c
-   src/monitoring.c
-   src/breathing.c
-   src/controller.c
-   src/hmi.c
-   src/protocol.c
-   src/${ADAPTATION}/adaptation.c
-)
-
-include_directories(
-    ${COMMON_INC}
-    src
-)
-
-add_executable(${EXECUTABLE} ${SOURCES} )
-
-target_link_libraries(${EXECUTABLE} m platform )
-target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
-
-#add_executable(       test_${EXECUTABLE} ${SHARED_SOURCES} ${TARGET_DIR}/tests/main.c)
-#target_link_libraries(test_${EXECUTABLE} m platform freertos  ${OPTIONAL_HAL} ${OPTIONAL_PTHREAD})
-
-#add_test(NAME unit-tests COMMAND test_${EXECUTABLE})
-
-# Targets for flashing on stm32
-if(${TARGET} STREQUAL "recovid_revB")
-    Setup_Programming_for(${EXECUTABLE} )
-endif()

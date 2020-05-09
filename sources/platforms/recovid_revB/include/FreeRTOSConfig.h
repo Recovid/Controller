@@ -13,7 +13,7 @@
  * See http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
-#include "platform_defs.h"
+#include "application_defs.h"
 
 
 /* Ensure definitions are only used by the compiler, and not by the assembler. */
@@ -34,8 +34,8 @@
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 56 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)PLATFORM_MINIMAL_STACK_SIZE)
-#define configTOTAL_HEAP_SIZE                    ((size_t)PLATFORM_FREERTOS_HEAP_SIZE)
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)MINIMAL_STACK_SIZE)
+#define configTOTAL_HEAP_SIZE                    ((size_t)FREERTOS_HEAP_SIZE)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -51,9 +51,9 @@
 
 /* Software timer definitions. */
 #define configUSE_TIMERS                         1
-#define configTIMER_TASK_PRIORITY                ( PLATFORM_TIMER_TASK_PRIORITY )
+#define configTIMER_TASK_PRIORITY                ( TIMER_TASK_PRIORITY )
 #define configTIMER_QUEUE_LENGTH                 10
-#define configTIMER_TASK_STACK_DEPTH             ( PLATFORM_TIMER_TASK_STACK_SIZE )
+#define configTIMER_TASK_STACK_DEPTH             ( TIMER_TASK_STACK_SIZE )
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */

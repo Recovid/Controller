@@ -25,6 +25,7 @@ add_library(recovid_revB OBJECT
 
 target_include_directories(recovid_revB PUBLIC 
     ${COMMON_INC}
+	${APPLICATION_DIR}/include/${TARGET}
 	${PLATFORM_DIR}/include
 	${PLATFORM_DIR}/core
 	${PLATFORM_DIR}/drivers

@@ -18,5 +18,7 @@ uint32_t adaptation(
     uint32_t*   motor_steps_us);
 
 
+float linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope);
+
 #endif
 

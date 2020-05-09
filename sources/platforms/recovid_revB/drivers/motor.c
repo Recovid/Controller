@@ -29,8 +29,9 @@ bool init_motor(uint32_t home_step_us)
 
         _limit_sw_A = !HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
         _limit_sw_B = !HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
-        check_home();
-        HAL_TIM_Base_Start(_motor_tim);
+        _home= _limit_sw_A && _limit_sw_B;
+        _homing= false;
+        _moving=false;
         motor_enable(true);
 
         if (_home)
@@ -48,7 +49,7 @@ bool init_motor(uint32_t home_step_us)
             {
                 wait_ms(2);
             }
-            wait_ms(200);
+            wait_ms(300);
             motor_stop();
             wait_ms(500);
         }
@@ -101,7 +102,7 @@ bool motor_press(uint32_t *steps_profile_us, unsigned int nb_steps)
         HAL_TIM_Base_Init(_motor_tim);
         _motor_tim->Instance->CNT=0;
         HAL_DMA_Init(_motor_tim->hdma[TIM_DMA_ID_UPDATE]);
-        HAL_TIM_PWM_Start_IT(_motor_tim, MOTOR_TIM_CHANNEL);
+        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
         HAL_TIM_DMABurst_MultiWriteStart(_motor_tim, TIM_DMABASE_ARR, TIM_DMA_UPDATE, &steps_profile_us[1], TIM_DMABURSTLENGTH_1TRANSFER, nb_steps - 1);
         taskEXIT_CRITICAL();
     }

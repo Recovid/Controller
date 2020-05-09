@@ -84,7 +84,7 @@ TaskHandle_t        g_controllerTask;
 //----------------------------------------------------------
 
 
-void controller_main()
+void application_main()
 {
 
 #ifdef DEBUG
@@ -207,7 +207,7 @@ static void controller_run(void *args)
         xEventGroupSetBits(g_controllerEvents, HMI_RUN_FLAG);
         wait_ms(100);
 
-#ifdef DEBUG_CONTROLLER
+#ifdef DEBUG_CONTROLLER_WATERMARK
         uint16_t dbg_cnt=0;
 #endif
 
@@ -216,7 +216,7 @@ static void controller_run(void *args)
             // TODO Implement controller logic
             // check monitoring process
             // check breathing process
-#ifdef DEBUG_CONTROLLER
+#ifdef DEBUG_CONTROLLER_WATERMARK
             if(++dbg_cnt==250) {
                 uint32_t watermark_controller= uxTaskGetStackHighWaterMark(g_controllerTask);
                 uint32_t watermark_breathing = uxTaskGetStackHighWaterMark(g_breathingTask);
