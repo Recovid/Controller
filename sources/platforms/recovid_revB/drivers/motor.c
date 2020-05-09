@@ -1,6 +1,5 @@
 #include "recovid_revB.h"
 #include "platform.h"
-#include "platform_config.h"
 
 static TIM_HandleTypeDef* _motor_tim = NULL;
 
@@ -16,13 +15,13 @@ static volatile bool _active;
 static void check_home() ;
 void motor_enable(bool ena);
 
-bool motor_release() {
+bool motor_release(uint32_t step_us) {
   motor_stop();
   if( !_home) {
 	  HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
 	  _moving=true;
 	  _homing=true;
-    _motor_tim->Init.Period = MOTOR_RELEASE_STEP_US;
+    _motor_tim->Init.Period = step_us; 
     HAL_TIM_Base_Init(_motor_tim);
 	  HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
   }
@@ -68,7 +67,7 @@ bool is_motor_ok() {
   return _motor_tim!=NULL;
 }
 
-bool init_motor()
+bool init_motor(uint32_t home_step_us)
 {
   if(_motor_tim==NULL) {
     _motor_tim= &motor_tim;
@@ -85,7 +84,7 @@ bool init_motor()
 
     if(_home) {
       HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
-      _motor_tim->Init.Period = MOTOR_HOME_STEP_US;
+      _motor_tim->Init.Period = home_step_us; 
       HAL_TIM_Base_Init(_motor_tim);
       _moving = true;
       _homing= false;
@@ -98,7 +97,7 @@ bool init_motor()
     _homing=true;
     _moving=true;
     HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_RELEASE_DIR);
-    _motor_tim->Init.Period = MOTOR_HOME_STEP_US;
+    _motor_tim->Init.Period = home_step_us;
     HAL_TIM_Base_Init(_motor_tim);
     HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);    
     while(!_home);
@@ -119,7 +118,6 @@ void motor_limit_sw_A_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>10) {
     _limit_sw_A= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_A_GPIO_Port, MOTOR_LIMIT_SW_A_Pin);
-	  _limit_sw_A ? light_yellow(On) : light_yellow(Off);
     check_home();
   }
   last_time=time;
@@ -130,7 +128,6 @@ void motor_limit_sw_B_irq() {
   uint32_t time= HAL_GetTick();
   if(time-last_time>10) {
     _limit_sw_B= ! HAL_GPIO_ReadPin(MOTOR_LIMIT_SW_B_GPIO_Port, MOTOR_LIMIT_SW_B_Pin);
-  	_limit_sw_B ? light_green(On) : light_green(Off);
     check_home();
   }
   last_time=time;

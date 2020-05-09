@@ -10,6 +10,7 @@ Makefile
 *.elf
 *.hex
 obj/
+output.map
 
 # log files
 *.log
@@ -20,6 +21,9 @@ obj/
 
 # Cmakelists
 CMakeLists.txt.user
+CMakeCache.txt
+compile_commands.json
+
 
 # qtcreator generated files
 *.pro.user*
@@ -37,4 +41,5 @@ CMakeLists.txt.user
 # --------
 *.dll
 *.exe
+*.bin
 /build*

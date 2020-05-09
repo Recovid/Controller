@@ -1,17 +1,16 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.12)
 
 ###############################################################################
 # Compilers setup
-
-set(PLATFORMS_DIR ${CMAKE_SOURCE_DIR}/platforms)
-
 
 if( NOT TARGET )
     set(TARGET recovid_revB) # default target
 endif()
 
-set(TARGET_DIR ${PLATFORMS_DIR}/${TARGET})
 
+set(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(COMMON_INC  ${PROJECT_DIR}/include)
+set(TARGET_DIR  ${PROJECT_DIR}/platforms/${TARGET})
 
 if (NOT EXISTS ${TARGET_DIR})
     message(FATAL_ERROR "Target platform ${TARGET} not supported")
@@ -24,6 +23,10 @@ endif()
 SET(CMAKE_TOOLCHAIN_FILE ${TARGET_DIR}/Toolchain.cmake)
 
 add_compile_definitions(${TARGET})
+
+if(NO_RASPI_REBOOT)
+   add_compile_definitions(NO_RASPI_REBOOT)
+endif()
 
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
@@ -56,10 +59,6 @@ if(native_win32)
     add_compile_options(-Wpedantic)
 endif()
 
-include_directories(
-    include
-    ${TARGET_DIR}
-)
 
 ###############################################################################
 # Platform
@@ -74,6 +73,7 @@ if(native_win32) # !POSIX for high-level deterministic tests only
 elseif(NOT ${TARGET} STREQUAL "native")
     set(EXE_EXT .${TARGET}.elf)
 endif()
+
 set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 
@@ -88,16 +88,12 @@ set(SOURCES
    src/compute_motor.c
 )
 
+include_directories(
+    ${COMMON_INC}
+    src
+)
 
 add_executable(${EXECUTABLE} ${SOURCES} )
-
-#if(${TARGET} STREQUAL "recovid_revB")
-#	set(OPTIONAL_HAL hal)
-#endif()
-
-#if(${TARGET} STREQUAL "sim")
-#	set(OPTIONAL_PTHREAD pthread)
-#endif()
 
 target_link_libraries(${EXECUTABLE} m platform )
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target

@@ -348,8 +348,6 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     __HAL_LINKDMA(huart,hdmatx,hdma_uart4_tx);
 
     /* UART4 interrupt Init */
-    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_RX_IRQn, 5, HMI_UART_DMA_RX_IRQ_PRIORITY);    
-    HAL_NVIC_SetPriority(HMI_DMA_CHANNEL_TX_IRQn, 5, HMI_UART_DMA_TX_IRQ_PRIORITY);    
     HAL_NVIC_SetPriority(HMI_UART_IRQn, 5, HMI_UART_IRQ_PRIORITY);              
   }
   else if(huart->Instance==USART2)

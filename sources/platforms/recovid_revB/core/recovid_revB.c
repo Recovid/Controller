@@ -1,5 +1,5 @@
+#include "platform.h"
 #include "recovid_revB.h"
-#include "platform_config.h"
 
 
 I2C_HandleTypeDef hi2c1;
@@ -43,7 +43,6 @@ static void MX_TIM7_Init(void);
 #endif /* __GNUC__ */
 
 
-extern void controller_main();
 
 
 void main()
@@ -336,22 +335,22 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 5);         // TIM2 Motor
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, MOTOR_TIM_DMA_IRQ_PRIORITY);         // TIM2 Motor
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 1);         // TIM3 Motor PEP
-  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  // HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, PEP_TIM_DMA_IRQ_PRIORITY);         // TIM3 Motor PEP
+  // HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 2);         // I2C1 TX Sensors
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, SENSORS_I2C_DMA_TX_IRQ_PRIORITY);         // I2C1 TX Sensors
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, 2);         // I2C1 RX Sensors
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 5, SENSORS_I2C_DMA_RX_IRQ_PRIORITY);         // I2C1 RX Sensors
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
   /* DMA2_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, 1);         // UART HMI RX
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 5, HMI_UART_DMA_RX_IRQ_PRIORITY);         // UART HMI RX
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
   /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, 1);         // UART HMI TX
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 5, HMI_UART_DMA_TX_IRQ_PRIORITY);         // UART HMI TX
   HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
 
 }
@@ -385,8 +384,10 @@ static void MX_GPIO_Init(void)
                           |PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-#ifndef NO_RASPI_REBOOT
+#ifndef NO_RASPI_REBOOT  
   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
+#else
+  HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_RESET);
 #endif
 
   /*Configure GPIO pin Output Level */
@@ -535,6 +536,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
     case BATT_FAULT_Pin       : batt_fault_irq(); break;
   }
 }
+
+
+
 
 /**
   * @brief  This function is executed in case of error occurrence.

@@ -1,14 +1,73 @@
+#include "common.h"
 #include "controller.h"
 #include "breathing.h"
 #include "platform.h"
 #include <inttypes.h>
-
 #include "../platforms/recovid_revB/HAL/CMSIS/Include/cmsis_gcc.h"
+#include "config.h"
 
 #include <compute_motor.h>
 #include <math.h>
 
+//----------------------------------------------------------
+// Private defines
+//----------------------------------------------------------
 
+#define PERIOD_BREATING_MS (10)
+#define MAX_PEP_SAMPLES (100 / PERIOD_BREATING_MS)  // moyenne glissante sur les 100ms dernieres de l'expi
+#define MAX_PPLAT_SAMPLES (50 / PERIOD_BREATING_MS) // moyenne glissante sur les 50ms dernieres de plat
+
+//----------------------------------------------------------
+// Private typedefs
+//----------------------------------------------------------
+
+typedef enum
+{
+  Insufflation,
+  Plateau,
+  Exhalation,
+  Finished
+} BreathingState;
+
+//----------------------------------------------------------
+// Private variables
+//----------------------------------------------------------
+
+static float g_EoI_ratio;
+static float g_FR_pm;
+static float g_VTe_mL;
+static float g_VTi_mL;
+static float g_VMe_Lpm;
+static float g_Pcrete_cmH2O;
+static float g_Pplat_cmH2O;
+static float g_PEP_cmH2O;
+static float g_PEP_cmH2O_samples[MAX_PEP_SAMPLES];
+static uint32_t g_PEP_cmH2O_samples_index;
+static float g_Pplat_cmH2O_samples[MAX_PPLAT_SAMPLES];
+static uint32_t g_Pplat_cmH2O_samples_index;
+
+static BreathingState g_state;
+
+static uint32_t g_state_start_ms;
+static uint32_t g_cycle_start_ms;
+
+static uint32_t g_motor_steps_us[MAX_MOTOR_STEPS] = {0}; // TODO: Make it configurable with a define. This represent a physical limit a the system.
+
+//----------------------------------------------------------
+// Private functions prototypes
+//----------------------------------------------------------
+static void regulation_pep();
+static void init_sample_PEP_cmH2O();
+static void sample_PEP_cmH2O(float Paw_cmH2O);
+static float get_PEP_avg_cmH2O();
+static void init_sample_Pplat_cmH2O();
+static void sample_Pplat_cmH2O(float Paw_cmH2O);
+static float get_Pplat_avg_cmH2O();
+static void enterg_state(BreathingState newState);
+
+//----------------------------------------------------------
+// Public functions
+//----------------------------------------------------------
 static float EoI_ratio;       
 static float FR_pm;           
 static float VTe_mL; 
@@ -16,38 +75,6 @@ static float Pcrete_cmH2O;
 static float Pplat_cmH2O; 
 static float PEP_cmH2O; 
 static float VTe_start=0.;
-
-
-
-typedef enum { Insufflation, Plateau, Exhalation, Finished } BreathingState;
-
-static BreathingState _state; 
-
-static uint32_t       _state_start_ms; 
-static uint32_t       _cycle_start_ms;
-
-
-
-static uint32_t _motor_steps_us[MAX_MOTOR_STEPS] = {0};  // TODO: Make it configurable with a define. This represent a physical limit a the system.
-
-
-
-
-
-
-
-// static float compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
-// static void adaptation(float target_flow_Lm, float* flow_samples, uint32_t nb_samples, float time_step_sec, float* A, float* B);
-// static float linear_fit(float* samples, uint32_t samples_len, float time_step_sec, float* slope);
-// static int32_t get_plateau(float* samples, uint32_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
-
-
-static void enter_state(BreathingState newState);
-
-// extern static volatile bool _home;
-
-
-
 
 
 			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
@@ -91,8 +118,8 @@ static void enter_state(BreathingState newState);
 			#define						FACT_PROPORTIONNEL_in_LINEARITE_POSITIF							2.75f /// MODE PANIK OVERSHOOT : pour converger + rapidement vers erreur				
 			
 			/// 10 - 40 marche tres bien pour les compliances basses : il va falloir tenir compte de la Paw : voir 		Segment_error_time_sliced()		WIP
-			#define							TIME_SLICING_ERROR_debut										30 /// ms : 10
-			#define							TIME_SLICING_ERROR_fin												80 /// ms : 40
+			#define							TIME_SLICING_ERROR_debut										10 /// ms : 10
+			#define							TIME_SLICING_ERROR_fin												40 /// ms : 40
 			
 			
 			
@@ -430,13 +457,16 @@ float		Segment_error_time_sliced(
 /// OUPUT : Debit_slm_segment
 						
 
-void breathing_run(void *args) {
+
+void breathing_run(void *args)
+{
   UNUSED(args);
   EventBits_t events;
 
-  while(true) {
+  while (true)
+  {
     brth_printf("BRTH: Standby\n");
-    events= xEventGroupWaitBits(ctrlEventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    events = xEventGroupWaitBits(ctrlEventFlags, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY);
     brth_printf("BRTH: Started\n");
 
     // _flow_samples_count=0;
@@ -445,12 +475,12 @@ void breathing_run(void *args) {
 
     motor_enable(true);
 
-    EoI_ratio=0;
-    FR_pm=0;
-    VTe_mL=0;
-    Pcrete_cmH2O=0;
-    Pplat_cmH2O=0;
-    PEP_cmH2O=0;
+    g_EoI_ratio = 0;
+    g_FR_pm = 0;
+    g_VTe_mL = 0;
+    g_Pcrete_cmH2O = 0;
+    g_Pplat_cmH2O = 0;
+    g_PEP_cmH2O = 0;
 
 	#if	1 /// test adrien
 	
@@ -549,7 +579,7 @@ void breathing_run(void *args) {
 						}
 						
 						
-						enter_state(Insufflation);
+						enterg_state(Insufflation);
 						valve_inhale();
 						
 						/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -560,7 +590,7 @@ void breathing_run(void *args) {
 					
 						
 						float		duree_segment_analyse_US = vitesse_cste_moteur_US * NBR_pas_moteur_par_segment;
-						// EN REMPLACEMENT DE : compute_constant_motor_steps(d, _steps, _motor_steps_us);
+						// EN REMPLACEMENT DE : compute_constant_motor_steps(d, _steps, g_motor_steps_us);
 						
 						uint64_t	duree_TOTAL_theorique_US = 0;
 						uint32_t	duree_SEGMENT_theorique_US = 0;
@@ -600,7 +630,7 @@ void breathing_run(void *args) {
 							
 							
 							/// on save pr le DMA
-							_motor_steps_us[ i_step ] = duree_step_US;
+							g_motor_steps_us[ i_step ] = duree_step_US;
 							
 							
 							duree_SEGMENT_theorique_US += duree_step_US;
@@ -635,11 +665,11 @@ void breathing_run(void *args) {
 						
 						#if		0
 						for( int i_step = 0; i_step < NBR_PAS_MOTEUR_MAX; i_step++ ){
-							brth_printf( "-- %"PRIu32" %i\n\r", _motor_steps_us[ i_step ], i_step  );
+							brth_printf( "-- %"PRIu32" %i\n\r", g_motor_steps_us[ i_step ], i_step  );
 						}
 						#endif
 						
-						motor_press( _motor_steps_us, NBR_PAS_MOTEUR_MAX );
+						motor_press( g_motor_steps_us, NBR_PAS_MOTEUR_MAX );
 						
 						/// on demarre le sampling en IT
 						/// on demarre le sampling en IT ds TAB_dp_raw_temps_moteur
@@ -751,7 +781,7 @@ void breathing_run(void *args) {
 						/// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 						/// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 							
-						enter_state(Exhalation);
+						enterg_state(Exhalation);
 						// valve_exhale();
 						
 						/// retour moteur HOME
@@ -878,7 +908,7 @@ void breathing_run(void *args) {
 					}
 						
 					
-					// enter_state(Insufflation);
+					// enterg_state(Insufflation);
 					// TODO: Take into account the time to compute adaptation for the FR calculation ??!!??
 
 					// Get current controller settings
@@ -957,7 +987,7 @@ void breathing_run(void *args) {
 							/// Nouvel algo PID
 							/// Nouvel algo PID
 							// bool			MODE_Panique = false;
-							uint32_t		index_step_moteur_en_cours = 0; /// pr analyse ds 	_motor_steps_us[ ]	
+							uint32_t		index_step_moteur_en_cours = 0; /// pr analyse ds 	g_motor_steps_us[ ]	
 							uint32_t		TIMER_US_debut_segment 	= TIMER_ms_debut_sampling_temps_moteur * 1000;
 							uint32_t		TIMER_US_fin_segment 		= TIMER_US_debut_segment + TAB_volume_slm_calib[ 0 ] .CALIB_duree_sgt_US;
 							
@@ -1041,8 +1071,8 @@ void breathing_run(void *args) {
 										/// MAJ indispensable 
 										/// MAJ indispensable 
 										
-										int			duree_step_NM1 = (int)_motor_steps_us[ index_step_moteur_en_cours - 1 ] ;
-										int			duree_step_N 		= (int)_motor_steps_us[ index_step_moteur_en_cours      ] ;
+										int			duree_step_NM1 = (int)g_motor_steps_us[ index_step_moteur_en_cours - 1 ] ;
+										int			duree_step_N 		= (int)g_motor_steps_us[ index_step_moteur_en_cours      ] ;
 										int			accel_en_cours 	= duree_step_NM1 - duree_step_N;
 										if(
 												( accel_en_cours > 0 		&& accel_en_cours >= MAX_ACCEL_MOTEUR_POSITIF )
@@ -1054,7 +1084,7 @@ void breathing_run(void *args) {
 										
 										
 										if(
-												(int64_t)_motor_steps_us[ index_step_moteur_en_cours ]  > DUREE_STEP_MIN_MOTOR
+												(int64_t)g_motor_steps_us[ index_step_moteur_en_cours ]  > DUREE_STEP_MIN_MOTOR
 										){
 											// TAB_volume_slm_calib[ index_segt ] .is_vitesse_max_SEGMENT = false;
 											is_vitesse_max = false; /// faux : a virer
@@ -1650,7 +1680,7 @@ void breathing_run(void *args) {
 						/// on recalcule le futur programme moteur en tenant compte des accelerations et vit max : WIP : a passer en fonction
 						/// on recalcule le futur programme moteur en tenant compte des accelerations et vit max : WIP : a passer en fonction
 						
-						/// INPUT : _motor_steps_us
+						/// INPUT : g_motor_steps_us
 						/// INPUT : duree_step_ideale_US
 						/// INPUT : Last_duree_step_moteur_en_cours en ref a MAJ
 						/// INPUT : timecode_US_depuis_demarrage_moteur en ref a MAJ
@@ -1744,7 +1774,7 @@ void breathing_run(void *args) {
 									/// on applique immediatement
 									// if( TAB_volume_slm_calib[ index_segt ].CALIB_nbr_echant != 0 ){ /// bug dernier segt... WIP : paleocode crado ??? me rappelle plus sorry, a virer / tester
 										
-										_motor_steps_us[ index_pas_stepper++ ] = duree_step_US;
+										g_motor_steps_us[ index_pas_stepper++ ] = duree_step_US;
 										duree_segment_US += duree_step_US;
 										
 									// }
@@ -1754,7 +1784,7 @@ void breathing_run(void *args) {
 							/// on MAJ immediatemment pour ce segment :
 							TAB_volume_slm_calib[ index_segt ].is_accel_max_SEGMENT 		= is_accel_max_segt;
 							TAB_volume_slm_calib[ index_segt ].is_vitesse_max_SEGMENT 	= is_vitesse_max_segt;
-							/// OUTPUT : _motor_steps_us
+							/// OUTPUT : g_motor_steps_us
 							/// OUTPUT : duree_segment_US, timecode_US_depuis_demarrage_moteur
 							/// OUTPUT : passe les flags accel max vit max...
 							/// OUTPUT fonction : a creer WIP :
@@ -1799,7 +1829,7 @@ void breathing_run(void *args) {
 							
 							brth_printf( "-- %i duree step %u \n\r", 
 																								i_steps,
-																								_motor_steps_us[ i_steps ]
+																								g_motor_steps_us[ i_steps ]
 																								// NBR_SEGMENTS_CALIBRATION,
 																								// (int)( round( NBR_pas_moteur_par_segment ) )
 																							);
@@ -1808,7 +1838,7 @@ void breathing_run(void *args) {
 					#endif
 
 					valve_inhale();
-					enter_state(Insufflation);
+					enterg_state(Insufflation);
 					
 					reset_Vol_mL();
 
@@ -1845,30 +1875,30 @@ void breathing_run(void *args) {
 					// _steps = index_pas_stepper;
 					#if					ESSAI_PORTAGE_OLD_COD 		==		0  /// bricolage adrien le temps du dev
 						
-						motor_press( _motor_steps_us, index_pas_stepper ); /// index_pas_stepper en remplacement de _steps);
+						motor_press( g_motor_steps_us, index_pas_stepper ); /// index_pas_stepper en remplacement de _steps);
 						
 						
 					#else
 					
-						// motor_press(_motor_steps_us, _steps);
-						motor_press(_motor_steps_us, index_pas_stepper); /// index_pas_stepper en remplacement de _steps);
+						// motor_press(g_motor_steps_us, _steps);
+						motor_press(g_motor_steps_us, index_pas_stepper); /// index_pas_stepper en remplacement de _steps);
 						
 						#if			NIVEAU_VERBOSE_DEBUG		>=				3
 						// brth_print("BRTH: Insuflation\n");      
 						#endif
-						while(Insufflation == _state ) { /// CONTROLE GENERAL IHM
+						while(Insufflation == g_state ) { /// CONTROLE GENERAL IHM
 						  if (Pmax <= read_Paw_cmH2O()) {
 							  brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
-							  enter_state(Exhalation);
+							  enterg_state(Exhalation);
 							  break;
 						  } else if (VT <= read_Vol_mL()) {
 							  brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-							  enter_state(Plateau);
+							  enterg_state(Plateau);
 							  break;
 						  } else 
-						  if( Ti <= (get_time_ms() - _cycle_start_ms) ) {
-							  brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - _cycle_start_ms));
-							  enter_state(Plateau);
+						  if( Ti <= (get_time_ms() - g_cycle_start_ms) ) {
+							  brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - g_cycle_start_ms));
+							  enterg_state(Plateau);
 							  break;
 						  }
 						  // Sample flow for later adaptation.
@@ -1906,7 +1936,7 @@ void breathing_run(void *args) {
 					/// retour moteur HOME
 					/// retour moteur HOME
 					/// retour moteur HOME
-					motor_release();
+					motor_release(MOTOR_RELEASE_STEP_US);
 					/// retour moteur HOME
 					/// retour moteur HOME
 					/// retour moteur HOME
@@ -1940,7 +1970,7 @@ void breathing_run(void *args) {
 							index_TAB_dp_raw_temps_moteur / DIVISEUR_NBR_VALEURS_SAMPLED >= NBR_VALEURS_TAB_debits_temps_moteur
 						){
 								brth_printf( "\n\r\n\r\n\r---hardfault_CRASH_ME : fin sampling %i < %i\n\r\n\r\n\r", index_TAB_dp_raw_temps_moteur / DIVISEUR_NBR_VALEURS_SAMPLED, NBR_VALEURS_TAB_debits_temps_moteur );
-								motor_release();
+								motor_release(MOTOR_RELEASE_STEP_US);
 								wait_ms( 3000 );
 								hardfault_CRASH_ME();
 						}
@@ -1949,7 +1979,7 @@ void breathing_run(void *args) {
 					}
 					#else
 						
-						motor_release();
+						motor_release(MOTOR_RELEASE_STEP_US);
 
 						/// on arrete le sampling en interrupt ds TAB_dp_raw_temps_moteur
 						/// on arrete le sampling en interrupt ds TAB_dp_raw_temps_moteur
@@ -1965,7 +1995,7 @@ void breathing_run(void *args) {
 								index_TAB_dp_raw_temps_moteur / DIVISEUR_NBR_VALEURS_SAMPLED >= NBR_VALEURS_TAB_debits_temps_moteur
 							){
 									brth_printf( "\n\r\n\r\n\r---hardfault_CRASH_ME : fin sampling %i < %i\n\r\n\r\n\r", index_TAB_dp_raw_temps_moteur / DIVISEUR_NBR_VALEURS_SAMPLED, NBR_VALEURS_TAB_debits_temps_moteur );
-									motor_release();
+									motor_release(MOTOR_RELEASE_STEP_US);
 									wait_ms( 3000 );
 									hardfault_CRASH_ME();
 							}
@@ -2012,7 +2042,7 @@ void breathing_run(void *args) {
 						
 							wait_ms( 750 ); /// 
 							
-							enter_state(Exhalation);
+							enterg_state(Exhalation);
 							valve_exhale();
 							
 							wait_ms( 1700 ); /// 
@@ -2029,13 +2059,13 @@ void breathing_run(void *args) {
 							
 						#else /// WIP : a integrer !!!
 							
-							while(Plateau == _state) { /// CONTROLE GENERAL IHM
+							while(Plateau == g_state) { /// CONTROLE GENERAL IHM
 							if (Pmax <= read_Paw_cmH2O()) { 
 								brth_print("BRTH: Paw > Pmax --> Exhalation\n");
-								enter_state(Exhalation);
-							} else if ( is_command_Tpins_expired() && (Tplat <= (get_time_ms() - _state_start_ms)) ) {
+								enterg_state(Exhalation);
+							} else if ( is_command_Tpins_expired() && (Tplat <= (get_time_ms() - g_state_start_ms)) ) {
 								brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
-								enter_state(Exhalation);
+								enterg_state(Exhalation);
 							}
 							wait_ms(10);
 							}
@@ -2043,18 +2073,18 @@ void breathing_run(void *args) {
 							valve_exhale();
 							
 							
-							while(Exhalation == _state) { /// CONTROLE GENERAL IHM
-							  if ( T <= (get_time_ms() - _cycle_start_ms )) { 
+							while(Exhalation == g_state) { /// CONTROLE GENERAL IHM
+							  if ( T <= (get_time_ms() - g_cycle_start_ms )) { 
 								  uint32_t t_ms = get_time_ms();
 
 
-								  EoI_ratio =  (float)(t_ms-_cycle_start_ms)/(_state_start_ms-_cycle_start_ms);
-								  FR_pm     = 1./(((float)(t_ms-_cycle_start_ms))/1000/60);
+								  EoI_ratio =  (float)(t_ms-g_cycle_start_ms)/(g_state_start_ms-g_cycle_start_ms);
+								  FR_pm     = 1./(((float)(t_ms-g_cycle_start_ms))/1000/60);
 
 								  xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
 								  // TODO regulation_pep();
-								  enter_state(Finished);
+								  enterg_state(Finished);
 							  }
 							wait_ms(10);
 							}
@@ -2089,143 +2119,133 @@ void breathing_run(void *args) {
     do  {
 		brth_printf("BRTH: start cycle\n");
 
-		enter_state(Insufflation);
+		enterg_state(Insufflation);
 
-		// TODO: Take into account the time to compute adaptation for the FR calculation ??!!??
+      // Get current controller settings
+      uint32_t T = get_setting_T_ms();
+      float VT = get_setting_VT_mL();
+      float VM = get_setting_Vmax_Lpm();
+      float Pmax = get_setting_Pmax_cmH2O();
+      uint32_t Tplat = get_setting_Tplat_ms();
 
-		// Get current controller settings
-		uint32_t T        		= get_setting_T_ms      ();
-		float    VT       		= get_setting_VT_mL     ();
-		float    VM       		= get_setting_Vmax_Lpm  ();
-		float    Pmax     	= get_setting_Pmax_cmH2O();
-		uint32_t Tplat    	= get_setting_Tplat_ms  ();
+      init_sample_PEP_cmH2O();
+      init_sample_Pplat_cmH2O();
 
-		float VTi=0.;
-		float VTe=0.;
-
-		
-
-		brth_printf("BRTH: T     : %ld\n", T);
-		brth_printf("BRTH: VT    : %ld\n", (uint32_t)(VT*100));
-		brth_printf("BRTH: VM    : %ld\n", (uint32_t)(VM*100));
-		brth_printf("BRTH: Pmax  : %ld\n", (uint32_t)(Pmax*100));
-		brth_printf("BRTH: Tplat : %ld\n", Tplat);
-
-	  
+      brth_printf("BRTH: T     : %lu\n", T);
+      brth_printf("BRTH: VT    : %lu\n", (uint32_t)(VT * 100));
+      brth_printf("BRTH: VM    : %lu\n", (uint32_t)(VM * 100));
+      brth_printf("BRTH: Pmax  : %lu\n", (uint32_t)(Pmax * 100));
+      brth_printf("BRTH: Tplat : %lu\n", Tplat);
 
       // Compute adaptation based on current settings and previous collected data if any.
-      uint32_t Ti = T*1/3;  // TODO: Check how to calculate Tinsuflation
-      // brth_printf("BRTH: Ti    : %ld\n", Ti);
+      uint32_t Ti = T * 1 / 3; // TODO: Check how to calculate Tinsuflation
+      brth_printf("BRTH: Ti    : %lu\n", Ti);
 
       // adaptation(VM, _flow_samples, _flow_samples_count, 0.001*FLOW_SAMPLING_PERIOD_MS, &A_calibrated, &B_calibrated);
       // _flow_samples_count = 0;
 
-	  uint32_t d = 300*MOTOR_CORRECTION_USTEPS;
-	  
-	  
-		compute_constant_motor_steps(d, _steps, _motor_steps_us);
-	  
-	  
-	  //compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, _steps, _motor_steps_us);
-	  brth_printf("T_C = %d Patmo = %d\n", (int) (read_temp_degreeC()*100), (int) (read_Patmo_mbar()*100));
+      uint32_t d = 300;
+      uint32_t steps = 4000;
+      //compute_constant_motor_steps(d, _steps, g_motor_steps_us);
+      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
+      brth_printf("T_C = %ld Patmo = %ld\n", (int32_t)(read_temp_degreeC() * 100), (int32_t)(read_Patmo_mbar() * 100));
 
       // Start Inhalation
       valve_inhale();
-	  
-		motor_press(_motor_steps_us, _steps);
-
-		reset_Vol_mL();
-		
-		// brth_print("BRTH: Insuflation\n");      
-		while(Insufflation == _state ) {
-		  if (Pmax <= read_Paw_cmH2O()) {
-			  brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
-			  enter_state(Exhalation);
-			  break;
-		  } else if (VT <= read_Vol_mL()) {
-			  brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-			  enter_state(Plateau);
-			  break;
-		  } else 
-		  if( Ti <= (get_time_ms() - _cycle_start_ms) ) {
-			  brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - _cycle_start_ms));
-			  enter_state(Plateau);
-			  break;
-		  }
-		  // Sample flow for later adaptation.
-		  // if(_flow_samples_count<MAX_FLOW_SAMPLES) {
-		  //   _flow_samples[_flow_samples_count] = read_Pdiff_Lpm()/60.;  // in sls
-		  //   ++_flow_samples_count;          
-		  // }
-		  // wait_ms(FLOW_SAMPLING_PERIOD_MS);
-		  wait_ms(10);
-		}
-	  
-      motor_release();
-	  
-      while(Plateau == _state) {
-        if (Pmax <= read_Paw_cmH2O()) { 
-            brth_print("BRTH: Paw > Pmax --> Exhalation\n");
-            enter_state(Exhalation);
-        } else if ( is_command_Tpins_expired() && (Tplat <= (get_time_ms() - _state_start_ms)) ) {
-            brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
-            enter_state(Exhalation);
+      motor_press(g_motor_steps_us, steps);
+      reset_Vol_mL();
+      brth_print("BRTH: Insuflation\n");
+      while (Insufflation == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
+        if (Pmax <= read_Paw_cmH2O())
+        {
+          brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(read_Paw_cmH2O()));
+          enterg_state(Exhalation);
+          break;
         }
-        wait_ms(10);
+        else if (VT <= read_Vol_mL())
+        {
+          brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
+          enterg_state(Plateau);
+          break;
+        }
+        else if (Ti <= (get_time_ms() - g_cycle_start_ms))
+        {
+          brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - g_cycle_start_ms));
+          enterg_state(Plateau);
+          break;
+        }
       }
-      VTi= read_Vol_mL();
+      motor_release(MOTOR_RELEASE_STEP_US);
+      while (Plateau == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        sample_Pplat_cmH2O(read_Paw_cmH2O());
+        g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
+        if (Pmax <= read_Paw_cmH2O())
+        {
+          brth_print("BRTH: Paw > Pmax --> Exhalation\n");
+          g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
+          enterg_state(Exhalation);
+        }
+        else if (is_command_Tpins_expired() && (Tplat <= (get_time_ms() - g_state_start_ms)))
+        {
+          brth_print("BRTH: Tpins expired && (dt > Tplat)\n");
+          g_Pplat_cmH2O = get_Pplat_avg_cmH2O();
+          enterg_state(Exhalation);
+        }
+      }
+      g_VTi_mL = read_Vol_mL();
       valve_exhale();
-	  
-	  
-      while(Exhalation == _state) { 
-          if ( T <= (get_time_ms() - _cycle_start_ms )) { 
-              uint32_t t_ms = get_time_ms();
+      float VTe_start_mL = 0.;
+      while (Exhalation == g_state)
+      {
+        wait_ms(PERIOD_BREATING_MS);
+        sample_PEP_cmH2O(read_Paw_cmH2O());
+        if( !is_command_Tpexp_expired() ) {
+          valve_inhale();
+        } 
+        else 
+        {
+          valve_exhale();
+          if (T <= (get_time_ms() - g_cycle_start_ms))
+          {
+            brth_print("BRTH: Tpexp expired && (T <= dt)\n");
+            uint32_t t_ms = get_time_ms();
 
+            g_PEP_cmH2O = get_PEP_avg_cmH2O();
+            g_EoI_ratio = (float)(t_ms - g_cycle_start_ms) / (g_state_start_ms - g_cycle_start_ms);
+            g_FR_pm = 1. / (((float)(t_ms - g_cycle_start_ms)) / 1000 / 60);
+            g_VTe_mL = VTe_start_mL - read_Vol_mL();
+            g_VMe_Lpm = (g_VTe_mL / 1000) * g_FR_pm;
 
-              EoI_ratio =  (float)(t_ms-_cycle_start_ms)/(_state_start_ms-_cycle_start_ms);
-              FR_pm     = 1./(((float)(t_ms-_cycle_start_ms))/1000/60);
+            xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
 
-              xEventGroupSetBits(brthCycleState, BRTH_RESULT_UPDATED);
-
-              // TODO regulation_pep();
-              enter_state(Finished);
+            regulation_pep();
+            enterg_state(Finished);
           }
-        wait_ms(10);
+        }
       }
-      VTe = VTe_start - read_Vol_mL();
 
+      events = xEventGroupGetBits(ctrlEventFlags);
+    } while ((events & BREATHING_RUN_FLAG) != 0);
 
-
-
-
-      events= xEventGroupGetBits(ctrlEventFlags);
-    } while ( ( events & BREATHING_RUN_FLAG ) != 0 );
-
-    brth_printf("BRTH: Stopping\n");      
+    brth_printf("BRTH: Stopping\n");
 
     wait_ms(200);
     xEventGroupSetBits(ctrlEventFlags, BREATHING_STOPPED_FLAG);
-
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-static void enter_state(BreathingState newState) {
-  _state= newState;
-  _state_start_ms = get_time_ms();
+static void enterg_state(BreathingState newState) {
+  g_state= newState;
+  g_state_start_ms = get_time_ms();
   EventBits_t brthState =0;
-  switch(_state) {
+  switch(g_state) {
     case Insufflation:
-      _cycle_start_ms = get_time_ms();
+      g_cycle_start_ms = get_time_ms();
       brthState =  BRTH_CYCLE_INSUFLATION;
 	  #if			NIVEAU_VERBOSE_DEBUG		>=				3
       brth_printf("BRTH: Insuflation...\n");
@@ -2252,108 +2272,78 @@ static void enter_state(BreathingState newState) {
       break;
   }
   // Inform system about current state
-  xEventGroupClearBits(brthCycleState, (BRTH_CYCLE_INSUFLATION | BRTH_CYCLE_PLATEAU | BRTH_CYCLE_EXHALATION | BRTH_CYCLE_FINISHED) );
+  xEventGroupClearBits(brthCycleState, (BRTH_CYCLE_INSUFLATION | BRTH_CYCLE_PLATEAU | BRTH_CYCLE_EXHALATION | BRTH_CYCLE_FINISHED));
   xEventGroupSetBits(brthCycleState, brthState);
 }
 
+float get_breathing_EoI_ratio() { return g_EoI_ratio; }
+float get_breathing_FR_pm() { return g_FR_pm; }
+float get_breathing_VTe_mL() { return g_VTe_mL; }
+float get_breathing_VTi_mL() { return g_VTi_mL; }
+float get_breathing_VMe_Lpm() { return g_VMe_Lpm; }
+float get_breathing_Pcrete_cmH2O() { return g_Pcrete_cmH2O; }
+float get_Pplat_cmH20() { return g_Pplat_cmH2O; }
+float get_PEP_cmH2O() { return g_PEP_cmH2O; }
 
+//----------------------------------------------------------
+// Private functions
+//----------------------------------------------------------
 
-// static float compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed) {
-// 	float res = (0.8*A*speed*speed*step_number) + B * speed;
-// 	res = res / desired_flow_Ls;
-// 	if (res * 1000000 < 200) {return 200;}
-// 	else {return res * 1000000.;}
-// }
+static void regulation_pep()
+{
+  float pep_objective = get_setting_PEP_cmH2O(); // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
+  float current_pep = get_PEP_cmH2O();
+  int relative_pep = (pep_objective * 10.f - current_pep * 10.f);
+  if (abs(relative_pep) > 3)
+  {
+    motor_pep_move((int)((float)relative_pep / MOTOR_PEP_PEP_TO_MM_FACTOR));
+  }
+}
 
+static void init_sample_PEP_cmH2O()
+{
+  //Samples PEP for a rolling average
+  g_PEP_cmH2O_samples_index = 0;
+  for (int i = 0; i < MAX_PEP_SAMPLES; i++)
+    g_PEP_cmH2O_samples[i] = 0;
+}
 
-// static void adaptation(float target_flow_Lm, float* flow_samples, uint32_t nb_samples, float time_step_sec, float* A, float* B) {
-//   if(nb_samples==0) return;
-// //************************************************* PID ZONE ********************************************//
-// 		// Compute average flow and slope to adjust A_calibrated and B_calibrated
-// 		float P_plateau_slope = 0.1;
-// 		float P_plateau_mean = 0.2;
-// 		uint32_t low;
-// 		uint32_t high;
-// 		if(get_plateau(flow_samples, nb_samples, time_step_sec, 10, &low, &high) == 0) {
-// //			brth_printf("plateau found from sample %lu to %lu\n", low, high);
-// 		} else {
-// //			brth_printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
-// 		}
-// 		float plateau_slope = linear_fit(flow_samples+low, high-low-1, time_step_sec, &plateau_slope);
-// 		float plateau_mean = 0;
-// 		for(uint32_t i=low; i<high; i++) {
-// 			plateau_mean += flow_samples[i];
-// 		}
-// 		plateau_mean = plateau_mean/(high-low);
-// //		brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
-// //		brth_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
+static void sample_PEP_cmH2O(float Paw_cmH2O)
+{
+  g_PEP_cmH2O_samples[g_PEP_cmH2O_samples_index] = Paw_cmH2O;
+  g_PEP_cmH2O_samples_index = (g_PEP_cmH2O_samples_index + 1) % MAX_PEP_SAMPLES;
+}
 
-// 		float error_mean = plateau_mean - (target_flow_Lm/60.);
+static float get_PEP_avg_cmH2O()
+{
+  float sum_PEP = 0;
+  for (int i = 0; i < MAX_PEP_SAMPLES; i++)
+  {
+    sum_PEP += g_PEP_cmH2O_samples[i];
+  }
+  return (sum_PEP / MAX_PEP_SAMPLES);
+}
 
-// 		*A += plateau_slope * P_plateau_slope;
-// 		*B += error_mean * P_plateau_mean;
-// //		brth_printf("A = %ld\n", (int32_t)(1000*(*A)));
-// //		brth_printf("B = %ld\n", (int32_t)(1000*(*B)));
+static void init_sample_Pplat_cmH2O()
+{
+  //Samples Pplat for a rolling average
+  g_Pplat_cmH2O_samples_index = 0;
+  for (int i = 0; i < MAX_PPLAT_SAMPLES; i++)
+    g_Pplat_cmH2O_samples[i] = 0;
+}
 
-// }
+static void sample_Pplat_cmH2O(float Paw_cmH2O)
+{
+  g_Pplat_cmH2O_samples[g_Pplat_cmH2O_samples_index] = Paw_cmH2O;
+  g_Pplat_cmH2O_samples_index = (g_Pplat_cmH2O_samples_index + 1) % MAX_PPLAT_SAMPLES;
+}
 
-// // Compute slope of samples fetched with specified time_step
-// // Returns 	R  if fit is ok
-// // 			-1 if fit is not possible
-// static float linear_fit(float* samples, uint32_t samples_len, float time_step_sec, float* slope){
-// 	float sumx=0,sumy=0,sumxy=0,sumx2=0, sumy2=0;
-// 	for(uint32_t i=0;i<samples_len;i++) {
-// 		sumx  = sumx + (float)i * time_step_sec;
-// 		sumx2 = sumx2 + (float)i*time_step_sec*(float)i*time_step_sec;
-// 		sumy  = sumy + *(samples+i);
-// 		sumy2 = sumy2 + (*(samples+i)) * (*(samples+i));
-// 		sumxy = sumxy + (float)i*(time_step_sec)* (*(samples+i));
-// 	}
-// 	float denom = (samples_len * sumx2 - (sumx * sumx));
-// 	if(denom == 0.) {
-// //		brth_printf("Calibration of A is not possible\n");
-// 		return 1;
-// 	}
-// 	// compute slope a
-// 	*slope = (samples_len * sumxy  -  sumx * sumy) / denom;
-
-// 	// compute correlation coefficient
-// 	return (sumxy - sumx * sumy / samples_len) / sqrtf((sumx2 - (sumx*sumx)/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
-// }
-
-// static int32_t get_plateau(float* samples, uint32_t samples_len, float time_step_sec, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound){
-// 	if(windows_number < 2 || windows_number > 30) {return -1;}
-// 	float slopes[30];
-// 	*high_bound = samples_len-1;
-// 	// Compute slope for time windows to detect when signal start increasing/decreasing
-// 	for(uint32_t window=0; window<windows_number; window++) {
-// 		float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, time_step_sec, slopes+window);
-// //		brth_printf("%ld    ", (int32_t)(*(slopes+window) * 1000));
-// 	}
-// //	brth_printf("\n");
-// 	for(uint32_t window=1; window<windows_number; window++) {
-// 		float delta_slope = slopes[window-1] - slopes[window];
-// 		if(delta_slope > 1.) {
-// 			*low_bound = (uint32_t)((samples_len/windows_number)*(window+1));
-// //			brth_printf("plateau begin at %lu over %lu points\n", *low_bound, (uint32_t)samples_len);
-// 			return 0;
-// 		}
-// 	}
-// 	*low_bound = (uint32_t)(samples_len/2);
-// //	brth_printf("No plateau found\n");
-// 	return 1;
-// }
-
-
-
-
-
-float get_breathing_EoI_ratio()     { return EoI_ratio; }
-float get_breathing_FR_pm()         { return FR_pm; }
-float get_breathing_VTe_mL()        { return VTe_mL; }
-float get_breathing_VMe_Lpm()       { return Pcrete_cmH2O; }
-float get_breathing_Pcrete_cmH2O()  { return Pcrete_cmH2O; }
-float get_Pplat_cmH20()             { return Pplat_cmH2O; }
-float get_PEP_cmH2O()               { return PEP_cmH2O; }
-
-
+static float get_Pplat_avg_cmH2O()
+{
+  float sum_Pplat = 0;
+  for (int i = 0; i < MAX_PPLAT_SAMPLES; i++)
+  {
+    sum_Pplat += g_Pplat_cmH2O_samples[i];
+  }
+  return (sum_Pplat / MAX_PPLAT_SAMPLES);
+}

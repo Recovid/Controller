@@ -1,8 +1,9 @@
 #include "recovid_revB.h"
 #include "platform.h"
-#include "platform_config.h"
 #include "bmp280.h"
 #include <string.h>
+#include <float.h>
+#include <math.h>
 
 /*
  * Notes concernant l'utilisation du bmp280.
@@ -15,12 +16,11 @@
  * fonction de la lib Bosch.
  *
  */
+/*
+ * The sequence of reading is now REQ_SDP_MEASUREMENT->READ_SDP_MEASUREMENT-> READ_BMP280_STAGE_1 -> READ_BMP280_STAGE_2 -> READ_NPA_MEASUREMENT
+                                      |________________________________________<__________________________________________________|
 
-/* Trick : utilisation d'un masque pour timer la mesure de pression / température.
- * Permet de gérer une durée par puissance de 2. l'unité étant 4.8ms (période de mesure du SDP610)
  */
-#define BMP280_PERIOD 0xFFF  // une mesure toutes les 4.8 * 4095 = 19.656s
-
 typedef enum {
 	STOPPED,
 	STOPPING,
@@ -32,7 +32,7 @@ typedef enum {
 } sensors_state_t;
 
 
-static I2C_HandleTypeDef* _i2c= NULL;
+static I2C_HandleTypeDef* _i2c= &sensors_i2c;
 static bool initialized = false;
 
 static const uint8_t _sdp_reset_req[1]  = { 0xFE };
@@ -60,6 +60,15 @@ volatile sensors_state_t _sensor_state;
 			
 				
 
+static volatile float buffer_flow_slm[4]	={0};
+static volatile float buffer_Paw_cmH2O[4]	={0};
+static volatile float buffer_RPaw_cmH2O[4]	={0};
+static volatile float paw_max = 0;
+static volatile float vol_brut = 0;
+static volatile float vol_max = 0;
+static volatile	uint16_t last_flow_t_us;
+
+#define FLOW_SAMPLE_DELTA 20000
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
 
@@ -72,18 +81,15 @@ static void bmp280_delay_ms(uint32_t period_ms);
 
 static bool initBMP280();
 static bool initSDP610();
-static HAL_StatusTypeDef readBMP280_stage_1();
-static HAL_StatusTypeDef readBMP280_stage_2();
 
 
 
 static inline uint16_t get_time_us() { return timer_us.Instance->CNT; }
 
-static bool sensors_init(I2C_HandleTypeDef *hi2c) {
+bool init_sensors() {
 	if (initialized)
 		return true;
 
-    _i2c = hi2c;
 
     if (!initSDP610() || !initBMP280())
         return false;
@@ -107,13 +113,13 @@ static bool initSDP610()
 	// TODO: Check if all sensors are responding.
 	for (int t = 1; t < 127; ++t) {
 		if(HAL_I2C_IsDeviceReady(_i2c, (uint16_t)(t<<1), 2, 2) == HAL_OK) {
-			dbg_printf("Found device at address: %02X\n", t);
+			//dbg_printf("Found device at address: %02X\n", t);
 		}
 
 	}
 	// First try to complete pending sdp rad request if any !!!
 	if (HAL_I2C_Master_Receive(_i2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_buffer, sizeof(_sdp_measurement_buffer), 1000) != HAL_I2C_ERROR_NONE) {
-		printf("Tried to finished pending sdp read request... but nothing came...\n");
+		//dbg_printf("Tried to finished pending sdp read request... but nothing came...\n");
 	}
 
 	// Reset SDP
@@ -142,10 +148,6 @@ static bool initSDP610()
 	}
 
 	return true;
-}
-
-bool init_sensors() {
-	return sensors_init(&sensors_i2c);
 }
 
 
@@ -201,18 +203,20 @@ static bool initBMP280() {
 
 //! \returns false in case of hardware failure
 bool is_sensors_ok() {
-	return _i2c != NULL;
+  return initialized;
 }
 
 //! \returns false in case of hardware failure
 bool is_Pdiff_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
+
 bool is_Paw_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
+
 bool is_Patmo_ok() {
-  return _i2c!=NULL;
+  return initialized;
 }
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
@@ -244,6 +248,9 @@ float read_Vol_mL() {
  //! reset current integrated volume to 0
 void reset_Vol_mL() {
 	_current_vol_mL = 0;
+	paw_max 	= 0;
+	vol_brut 	= 0;
+	vol_max 	= 0;
 }
 static void readSDP() {
 	_sensor_state = READ_SDP_MEASUREMENT;
@@ -260,7 +267,7 @@ static void readNPA() {
 	HAL_I2C_Master_Receive_DMA(_i2c, ADDR_NPA700B, (uint8_t*) _npa_measurement_buffer, sizeof(_npa_measurement_buffer));
 }
 
-static HAL_StatusTypeDef readBMP280_stage_1() {
+static void readBMP280_stage_1() {
     _sensor_state = READ_BMP280_STAGE_1;
     bmp280_DMA_buffer[0] = BMP280_PRES_MSB_ADDR;
     /*
@@ -269,14 +276,14 @@ static HAL_StatusTypeDef readBMP280_stage_1() {
      * qui ne permet pas de rentrer dans la machine d'état. On utilise donc la fonction d'envoi avec interruptions moins
      * gourmande que la version synchone. (mais la version synchrone fonctionne également si besoin.)
      */
-    return HAL_I2C_Master_Transmit_IT(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, 1);
+    HAL_I2C_Master_Transmit_IT(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, 1);
 }
 
-static HAL_StatusTypeDef readBMP280_stage_2() {
+static void readBMP280_stage_2() {
     uint8_t bytesToRead = 6;
     assert(bytesToRead <= sizeof(bmp280_DMA_buffer));
     _sensor_state = READ_BMP280_STAGE_2;
-    return HAL_I2C_Master_Receive_DMA(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, bytesToRead);
+    HAL_I2C_Master_Receive_DMA(_i2c, BMP280_I2C_ADDR_PRIM << 1, bmp280_DMA_buffer, bytesToRead);
 }
 
 
@@ -327,14 +334,61 @@ float compute_corrected_pressure(uint16_t read)
 //! \warning TODO compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
 float compute_corrected_flow(int16_t read)
 {
-    return -(float) read / 105.f; // V1 Calibration
+    uint16_t current_time = (uint16_t)get_time_us();
+    uint16_t dt_time = current_time - last_flow_t_us;
+    last_flow_t_us = current_time;
+    buffer_flow_slm[3]=buffer_flow_slm[2];
+    buffer_flow_slm[2]=buffer_flow_slm[1];
+    buffer_flow_slm[1]=buffer_flow_slm[0];
+    buffer_Paw_cmH2O[3]=buffer_Paw_cmH2O[2];
+    buffer_Paw_cmH2O[2]=buffer_Paw_cmH2O[1];
+    buffer_Paw_cmH2O[1]=buffer_Paw_cmH2O[0];
+    buffer_RPaw_cmH2O[3]=buffer_RPaw_cmH2O[2];
+    buffer_RPaw_cmH2O[2]=buffer_RPaw_cmH2O[1];
+    buffer_RPaw_cmH2O[1]=buffer_RPaw_cmH2O[0];
+
+    buffer_Paw_cmH2O[0]=_current_Paw_cmH2O; 
+    buffer_RPaw_cmH2O[0]=sqrtf(buffer_Paw_cmH2O[0]);
+    buffer_flow_slm[0]=-(float) read / 105.f;
+
+    float sum = buffer_flow_slm[0] + buffer_flow_slm[1] + buffer_flow_slm[2] + buffer_flow_slm[3];
+    float acc = ( buffer_flow_slm[0] - buffer_flow_slm[3] ) /4;
+    paw_max = MAX(paw_max, buffer_Paw_cmH2O[0]);
+    float pv = paw_max / MAX(vol_max,10);
+    vol_brut+=buffer_flow_slm[0]*((float)dt_time/1000);
+    vol_max = MAX(vol_max, vol_brut);
+    float pneumo=0;
+    if ((sum<-0.10) && (pv<=1))
+	pneumo=-0.2 + (0.86)*buffer_flow_slm[2] + (-3.13)*buffer_RPaw_cmH2O[0] + (0.58)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1))
+	pneumo=3.2 + (0.89)*buffer_flow_slm[2] + (-0.44)*buffer_RPaw_cmH2O[0] + (-0.01)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (1<pv))
+	pneumo=2.1 + (0.91)*buffer_flow_slm[2] + (0.26)*buffer_RPaw_cmH2O[0] + (-0.07)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (pv<=1) && (acc<-13))
+	pneumo=158.5 + (0.93)*buffer_flow_slm[2] + (-59.25)*buffer_RPaw_cmH2O[0] + (5.18)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (pv<=1) && (5<acc))
+	pneumo=13.5 + (-4.23)*buffer_flow_slm[2] + (33.99)*buffer_RPaw_cmH2O[0] + (-40.40)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1) && (5<acc))
+	pneumo=172.8 + (0.76)*buffer_flow_slm[2] + (-154.49)*buffer_RPaw_cmH2O[0] + (35.21)*buffer_Paw_cmH2O[0];
+    else if ((0.10<sum) && (pv<=1) && (acc<-13))
+	pneumo=28.1 + (0.46)*buffer_flow_slm[2] + (3.43)*buffer_RPaw_cmH2O[0] + (-0.62)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv))
+	pneumo=-0.2 + (0.71)*buffer_flow_slm[2] + (-5.61)*buffer_RPaw_cmH2O[0] + (0.71)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv) && (acc<-13))
+	pneumo=198.9 + (-0.49)*buffer_flow_slm[2] + (-187.62)*buffer_RPaw_cmH2O[0] + (22.02)*buffer_Paw_cmH2O[0];
+    else if ((sum<-0.10) && (1<pv) && (5<acc))
+	pneumo=14.0 + (0.00)*buffer_flow_slm[2] + (-20.87)*buffer_RPaw_cmH2O[0] + (-0.88)*buffer_Paw_cmH2O[0];
+    else pneumo=buffer_flow_slm[0];
+
+
+    return pneumo; // V1 Calibration
 }
 
 void		hardfault_CRASH_ME(
 		// string 		message_err /// WIP code fatal error
 ){
 	// #error	"not_in_production !!!!"
-	brth_printf( "hardfault_CRASH_ME\n\r" );
+	printf( "hardfault_CRASH_ME\n\r" );
 	
 	// ALARM_fatale( message_err ); /// WIP
 	
@@ -357,8 +411,8 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// TODO: Manage error
-				_sensor_state = STOPPED;
+				// skip
+				readSDP();
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
@@ -379,13 +433,13 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 		case REQ_SDP_MEASUREMENT: {
 			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
 					// retry
-					HAL_I2C_Master_Transmit_IT(hi2c, ADDR_SPD610, (uint8_t*) _sdp_measurement_req, sizeof(_sdp_measurement_req));
+					reqSDP();
 					break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-					// TODO: Manage error
-					_sensor_state = STOPPED;
-					break;
+				// skip
+				readSDP();
+				break;
 			}
 			readSDP();
 			break;
@@ -396,15 +450,14 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				break;
 			}
 			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// TODO: Manage error
-				_sensor_state = STOPPED;
+				// Skip
+				readBMP280_stage_1();
 				break;
 			}
 			if (_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF) {
 				uint16_t sdp_t_us = (uint16_t)get_time_us();
 				uint16_t sdp_dt_us = (uint16_t)sdp_t_us - last_sdp_t_us;
 				int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-				
 				static uint32_t 	Ancien_maintenant = 0;
 				uint32_t				maintenant = get_time_ms();
 				
@@ -443,22 +496,20 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 						// hardfault_CRASH_ME();
 					}
 				}
-
-				_current_flow_slm = compute_corrected_flow(dp_raw);
-      			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000); /// frequence echantillongae periodique todo !!
-				last_sdp_t_us = sdp_t_us;
-                readSDP();
+				//Germain
+				if(sdp_dt_us> FLOW_SAMPLE_DELTA)
+				{
+				    _current_flow_slm = compute_corrected_flow(dp_raw);
+      			            _current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
+				    last_sdp_t_us = sdp_t_us;
+				}
+        		        readSDP();
 			} else {
-                static uint16_t count = BMP280_PERIOD;
-                if ((count++ & BMP280_PERIOD) == BMP280_PERIOD)
-                    readBMP280_stage_1();
-                else
-                    readNPA();
+				readBMP280_stage_1();
             }
             break;
         }
         case READ_BMP280_STAGE_1: {
-            uint16_t x = BMP280_PERIOD;
             readBMP280_stage_2();
             break;
         }

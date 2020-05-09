@@ -1,0 +1,25 @@
+#ifndef __PLATFORM_DEFS_H__
+#define __PLATFORM_DEFS_H__
+
+// platform specific FreeRTOS stack size
+#define PLATFORM_FREERTOS_HEAP_SIZE          (16*1024)    // in bytes
+#define PLATFORM_BREATHING_TASK_STACK_SIZE   (1024)       // in word
+#define PLATFORM_MONITORING_TASK_STACK_SIZE  (768)        // in word
+#define PLATFORM_CONTROLLER_TASK_STACK_SIZE  (768)        // in word
+#define PLATFORM_HMI_TASK_STACK_SIZE         (1024)       // in word
+#define PLATFORM_MINIMAL_STACK_SIZE          (128)        // in word  (for IDLE task)
+
+#if ( (PLATFORM_FREERTOS_HEAP_SIZE/4) < (PLATFORM_BREATHING_TASK_STACK_SIZE)+(PLATFORM_MONITORING_TASK_STACK_SIZE)+(PLATFORM_CONTROLLER_TASK_STACK_SIZE)+(PLATFORM_HMI_TASK_STACK_SIZE)+ (2*PLATFORM_MINIMAL_STACK_SIZE) )
+#error Not enough heap to create all tasks and events
+#endif
+
+#define MOTOR_PEP_PEP_TO_MM_FACTOR            (1.7)   // PEP to mm factor
+#define MOTOR_CORRECTION_USTEPS               (                          4)
+#define MOTOR_HOME_STEP_US                    (400*MOTOR_CORRECTION_USTEPS)
+#define MOTOR_RELEASE_STEP_US                 (300*MOTOR_CORRECTION_USTEPS)
+
+// MOTOR PEP platform specific defines
+
+#define MOTOR_PEP_PEP_TO_MM_FACTOR            (1.7)   // PEP to mm factor
+
+#endif

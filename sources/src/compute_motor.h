@@ -1,6 +1,21 @@
 #ifndef __COMPUTE_MOTOR_H__
 #define __COMPUTE_MOTOR_H__
 
+#include "platform.h"
+
+
+
+#define MOTOR_STEP_TIME_INIT    (      400* ( MOTOR_CORRECTION_USTEPS)  )
+#define MOTOR_ACC_STEPS         (        2* ( MOTOR_CORRECTION_USTEPS)  )
+#define MOTOR_ACC_COEF          ( MOTOR_STEP_TIME_INIT/ MOTOR_ACC_STEPS )
+#define MAX_MOTOR_STEPS         (     4800/ ( MOTOR_CORRECTION_USTEPS)  )
+
+
+
+
+
+
+
 
 unsigned int compute_motor_press_christophe(
 		unsigned int step_t_ns_init, 

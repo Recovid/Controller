@@ -46,8 +46,8 @@ set(COMMON_TOOLCHAIN_LFLAGS "\
     --specs=nano.specs \
 ")
 
-SET(CMAKE_C_FLAGS_DEBUG          "-Os -g" CACHE INTERNAL "c compiler flags debug")
-SET(CMAKE_CXX_FLAGS_DEBUG        "-Os -g" CACHE INTERNAL "cxx compiler flags debug")
+SET(CMAKE_C_FLAGS_DEBUG          "-O0 -g" CACHE INTERNAL "c compiler flags debug")
+SET(CMAKE_CXX_FLAGS_DEBUG        "-O0 -g" CACHE INTERNAL "cxx compiler flags debug")
 SET(CMAKE_ASM_FLAGS_DEBUG        "-g"     CACHE INTERNAL "asm compiler flags debug")
 SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "-Xlinker -Map=output.map" CACHE INTERNAL "linker flags debug")
 

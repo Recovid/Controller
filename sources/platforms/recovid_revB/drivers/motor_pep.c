@@ -1,8 +1,11 @@
 #include "recovid_revB.h"
-#include "platform_config.h"
+#include "platform.h"
 #include <math.h>
 
 static TIM_HandleTypeDef* _motor_tim = NULL;
+
+
+
 
 static void step_callback(TIM_HandleTypeDef *tim);
 
