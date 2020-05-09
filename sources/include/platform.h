@@ -146,12 +146,12 @@ bool is_Patmo_ok();
 		#define						NBR_SEGMENTS_CALIBRATION												64 /// WIP on aurait due faire +, en fait ca passe en RAM
 		mesure_volume		TAB_volume_slm_calib[ NBR_SEGMENTS_CALIBRATION ];
 
-		#define		NBR_VALEURS_TAB_debits_temps_moteur		750 /// besoin de marge pour Ti tres long a gros volumes : il y a de la RAM a gagner ici : essayer avec Ti max : WIP : faire freq variable
-		#define		DIVISEUR_NBR_VALEURS_SAMPLED				2 /// WIP : faire freq variable
+		#define		NBR_VALEURS_TAB_debits_temps_moteur		1200 /// besoin de marge pour Ti tres long a gros volumes : il y a de la RAM a gagner ici : essayer avec Ti max : WIP : faire freq variable
+		#define		DIVISEUR_NBR_VALEURS_SAMPLED				1 /// WIP : faire freq variable
 
 		typedef struct  {
 					int16_t	dp_raw;
-					int16_t	Paw; /// WIP : pr calculer le time slicing de debit : low res surement suffisante !!!
+					// int16_t	Paw; /// WIP : pr calculer le time slicing de debit : low res surement suffisante !!!
 					uint32_t	timecode_sample_MS;
 		} samples_debit;
 		
@@ -161,10 +161,12 @@ bool is_Patmo_ok();
 		volatile uint64_t						accumule_TAB_TIMECODE_temps_moteur;
 		volatile int16_t							denom_TAB_dp_raw_temps_moteur;
 		volatile samples_debit			TAB_dp_raw_temps_moteur[ NBR_VALEURS_TAB_debits_temps_moteur  ]; /// 200 Hz : resta a calculer : _current_flow_slm = compute_corrected_flow(dp_raw);
-		volatile uint64_t						TIMER_debut_sampling_temps_moteur;
+		
+		volatile uint64_t						TIMER_ms_debut_sampling_temps_moteur;
 		volatile uint32_t						timecode_ms_full_speed;
+		volatile uint8_t							index_sgt_full_speed;
 		volatile uint64_t						TIMER_fin_accel_moteur_ms;
-		volatile uint64_t						TIMER_fin_sampling_temps_moteur;
+		volatile uint64_t						TIMER_ms_fin_sampling_temps_moteur;
 		volatile bool								is_running_sampling_temps_moteur;
 		
 /// ajouts Adrien

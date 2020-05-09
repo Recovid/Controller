@@ -410,8 +410,8 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				
 				if(
 							is_running_sampling_temps_moteur 		== 	true /// on souhaite l'acquisition en IT
-					&&	maintenant 													>= 	TIMER_debut_sampling_temps_moteur
-					&&	maintenant 													<= 	TIMER_fin_sampling_temps_moteur
+					&&	maintenant 													>= 	TIMER_ms_debut_sampling_temps_moteur
+					&&	maintenant 													<= 	TIMER_ms_fin_sampling_temps_moteur
 					&&	maintenant 													>= 	Ancien_maintenant + 6 /// frequence echantillongae periodique todo !!
 				){
 					
@@ -425,7 +425,7 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 						
 						/// on ecrase 
 						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].dp_raw 							= dp_raw; /// accumule_TAB_dp_raw_temps_moteur 			/ denom_TAB_dp_raw_temps_moteur;
-						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].Paw = round( _current_Paw_cmH2O ); /// on ecrase a chaque fois car on cherche le max... pas grave
+						// TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].Paw = round( _current_Paw_cmH2O ); /// on ecrase a chaque fois car on cherche le max... pas grave
 						TAB_dp_raw_temps_moteur[ ( index_TAB_dp_raw_temps_moteur ) / DIVISEUR_NBR_VALEURS_SAMPLED ].timecode_sample_MS 	= accumule_TAB_TIMECODE_temps_moteur 	/ denom_TAB_dp_raw_temps_moteur;
 						index_TAB_dp_raw_temps_moteur++;
 						
