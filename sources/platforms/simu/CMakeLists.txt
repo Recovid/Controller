@@ -56,6 +56,7 @@ target_include_directories(simu PUBLIC
         ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 		${FREERTOS_INC_DIR_X86}
 		${PLATFORM_DIR}
+        ${PLATFORM_DIR}
         ${PLATFORM_DIR}/include
 )
 
