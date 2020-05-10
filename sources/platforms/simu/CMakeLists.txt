@@ -24,7 +24,7 @@ add_compile_definitions(MAX_NUMBER_OF_TASKS=300)
         ${FREERTOS_SRC_DIR_X86}
         ${FREERTOS_SRC_DIR_X86}/portable/GCC/POSIX
 		${FREERTOS_INC_DIR_X86}
-		${PLATFORM_DIR}
+		${PLATFORM_DIR}/include
     )
     target_link_libraries(freertos PUBLIC pthread)
 #endif()

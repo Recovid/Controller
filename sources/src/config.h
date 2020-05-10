@@ -13,6 +13,7 @@
 
 #ifdef DEBUG
 #define DEBUG_CONTROLLER
+#define DEBUG_WATERMARK
 #define DEBUG_BREATHING
 //#define DEBUG_MONITOR
 //#define DEBUG_HMI

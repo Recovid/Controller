@@ -69,6 +69,7 @@ function(Setup_Programming_for)
         add_custom_command(OUTPUT ${HEX_FILE} ${BIN_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${exe}> ${HEX_FILE}
             COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${exe}> ${BIN_FILE}
+            COMMAND ${SIZE} $<TARGET_FILE:${exe}>
             COMMENT "Objcopy ${HEX_FILE}"
 			DEPENDS ${exe}
         )

@@ -1,6 +1,6 @@
 #include "platform.h"
 #include "recovid_revB.h"
-
+#include "stm32f3xx_ll_usart.h"
 
 I2C_HandleTypeDef hi2c1;
 DMA_HandleTypeDef hdma_i2c1_rx;
@@ -321,6 +321,7 @@ static void MX_UART4_Init(void)
   {
     Error_Handler();
   }
+  LL_USART_DisableIT_ERROR(UART4);
 }
 
 /** 

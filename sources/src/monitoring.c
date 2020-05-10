@@ -1,16 +1,66 @@
-#include "controller.h"
+#include "common.h"
+#include "config.h"
 #include "monitoring.h"
+#include "controller.h"
 #include "breathing.h"
 #include "platform.h"
-#include "config.h"
 
-void monitoring_run(void *args) {
+
+//----------------------------------------------------------
+// Private defines
+//----------------------------------------------------------
+
+//----------------------------------------------------------
+// Private typedefs
+//----------------------------------------------------------
+
+//----------------------------------------------------------
+// Private variables
+//----------------------------------------------------------
+
+//----------------------------------------------------------
+// Private functions prototypes
+//----------------------------------------------------------
+static void monitoring_run(void *args);
+
+//----------------------------------------------------------
+// Public variables
+//----------------------------------------------------------
+TaskHandle_t     g_monitoringTask;
+
+//----------------------------------------------------------
+// Public functions
+//----------------------------------------------------------
+
+bool monitoring_init() {
+#ifdef DEBUG
+    printf("MNTR: Initializing\n");
+#endif
+
+    if (xTaskCreate(monitoring_run, "Monitoring", MONITORING_TASK_STACK_SIZE, NULL, MONITORING_TASK_PRIORITY, &g_monitoringTask) != pdTRUE)
+    {
+#ifdef DEBUG
+        printf("MNTR: Unable to create monitoringTask\n");
+#endif
+        return false;
+    }
+#ifdef DEBUG
+    printf("MNTR: Initialized\n");
+#endif
+    return true;
+}
+
+//----------------------------------------------------------
+// Private functions
+//----------------------------------------------------------
+
+static void monitoring_run(void *args) {
   UNUSED(args)
   EventBits_t events;
 
   while(true) {
     mntr_printf("MNTR: Standby\n");
-    events= xEventGroupWaitBits(ctrlEventFlags, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
+    events= xEventGroupWaitBits(g_controllerEvents, MONITORING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY );
     mntr_printf("MNTR: Started\n");
 
     do {
@@ -19,13 +69,13 @@ void monitoring_run(void *args) {
 
 
 
-      events= xEventGroupGetBits(ctrlEventFlags);
+      events= xEventGroupGetBits(g_controllerEvents);
     } while ( ( events & MONITORING_RUN_FLAG ) != 0 );
 
     mntr_printf("MNTR: stopping\n");      
 
     wait_ms(200);
-    xEventGroupSetBits(ctrlEventFlags, MONITORING_STOPPED_FLAG);
+    xEventGroupSetBits(g_controllerEvents, MONITORING_STOPPED_FLAG);
 
 
   }
