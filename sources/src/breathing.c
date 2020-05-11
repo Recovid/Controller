@@ -166,9 +166,9 @@ void breathing_run(void *args)
 					// TODO: Take into account the time to compute adaptation for the FR calculation ??!!??
 
 					// Get current controller settings
-					uint32_t T        		= get_setting_T_ms      (); /// CONTROLE GENERAL IHM
+					uint32_t T        		= 3000; /// get_setting_T_ms      (); /// CONTROLE GENERAL IHM 			MODIF_POST_COMMIT
 					float    VT       		= get_setting_VT_mL     ();
-					float    VM       		= get_setting_Vmax_Lpm  ();
+					float    VM       		= 30; /// get_setting_Vmax_Lpm  ();
 					float    Pmax     		= get_setting_Pmax_cmH2O();
 					uint32_t Tplat    	= get_setting_Tplat_ms  ();
 
@@ -450,7 +450,7 @@ void breathing_run(void *args)
 							enterg_state(Exhalation);
 							valve_exhale();
 							
-							wait_ms( 4500 ); /// exhale 
+							wait_ms( 2000 ); /// exhale 
 							
 							float	V_must_be_zero = read_Vol_mL();
 							VTe = VTe_start - V_must_be_zero; /// CONTROLE GENERAL IHM
@@ -495,8 +495,8 @@ void breathing_run(void *args)
 																																																												
 																																																										);
 											#else																																									
-												float	pourcentage_erreur = ( V_must_be_zero ) / VTe;
-												brth_printf( "---- ERR  \t%i\t%i\tLin  ACCEL %ims \tVTi %i VTe %i  Verr_Acc %i : pmill %i \tmoy PID I :  \t%i\n\r", 
+												float	pourcentage_erreur = ( V_must_be_zero ) / VTe; /// MODIF_POST_COMMIT
+												brth_printf( "---- ERR  \t%i\t%i\tLin  ACCEL %ims \tVTi %i VTe %i  Verr_Acc %i -> deb err %i pmill %i \tmoy PID I :  \t%i\n\r", 
 																																																												(int)( GLOB_MOYENNE_erreur * 1000 ),
 																																																												(int)( GLOB_FACTEUR_linearite_plateau_inspi * 1000 ),
 																																																												(int)GLOB_timecode_ms_full_speed,
@@ -504,6 +504,7 @@ void breathing_run(void *args)
 																																																												(int)( VTi * 1000 ),
 																																																												(int)( VTe * 1000 ),
 																																																												(int)( GLOB_Volume_erreur_phase_accel * 1000 ),
+																																																												(int)( GLOB_debit_from_error_slm * 1000 ),
 																																																												
 																																																												(int)( pourcentage_erreur * 1000 ),
 																																																												

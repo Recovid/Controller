@@ -1762,14 +1762,22 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 							if( 
 										maintenant > GLOB_TIMER_fin_accel_moteur_ms
 								&&	GLOB_Volume_erreur_phase_accel == -12345.0f /// MAJ needed
+								&&	GLOB_timecode_ms_full_speed != 0
 							){ /// GLOB_timecode_ms_full_speed ){
-								float	Volume_ideal_mL = 			( 
-																										get_setting_Vmax_Lpm()  // debit_consigne_slm
-																								* 		60.0f /// min to sec
+								float	Volume_attendu_mL = 			( 
+																										( 30.0f + GLOB_debit_from_error_slm ) /// get_setting_Vmax_Lpm()  // debit_consigne_slm
+																								/ 		60.0f /// min to sec : MODIF_POST_COMMIT
 																							)
 																					* 	GLOB_timecode_ms_full_speed
+																					// / 1000
 																				;
-								GLOB_Volume_erreur_phase_accel = Volume_ideal_mL - _current_vol_mL;
+																				
+								GLOB_Volume_erreur_phase_accel = Volume_attendu_mL - _current_vol_mL;
+								
+								#define		ATTENUATION_OSCILLATION_COMP_VOLUME_ERR			0.85f
+								GLOB_debit_from_error_slm = ATTENUATION_OSCILLATION_COMP_VOLUME_ERR * 60.0f * GLOB_Volume_erreur_phase_accel / ( 1000 - GLOB_timecode_ms_full_speed );
+								
+								printf( "--%i mL deb comp %i full speed %i ms\n\r", (int)( Volume_attendu_mL ), (int)( GLOB_debit_from_error_slm * 1000 ), (int)( GLOB_timecode_ms_full_speed ) );
 							}
 							
 				    last_sdp_t_us = sdp_t_us;

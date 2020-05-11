@@ -419,6 +419,7 @@ bool		init_variables_PID(
 		GLOB_duree_TOTAL_theorique_US 						= 0;
 		GLOB_debit_from_error_slm 									= 0;
 		GLOB_Volume_erreur_phase_accel 						= -12345.0f;
+		
 		/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
 		/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
 		
@@ -499,6 +500,8 @@ bool			compute_PID_factors(
 								uint32_t		index_step_moteur_en_cours = 0; /// pr analyse ds 	g_motor_steps_us[ ]	
 								uint32_t		TIMER_US_debut_segment 	= GLOB_TIMER_ms_debut_sampling_temps_moteur * 1000;
 								uint32_t		TIMER_US_fin_segment 		= TIMER_US_debut_segment + TAB_volume_slm_calib[ 0 ] .CALIB_duree_sgt_US;
+								uint32_t		DUREE_Totale_cycle__controle_Ti = 0; /// MODIF_POST_COMMIT
+								
 								
 								/// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 								/// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -513,6 +516,23 @@ bool			compute_PID_factors(
 									
 									/// il faut faire un time slicing car on a un temps de reponse entre la commande moteur et son effet sur le débits
 									/// todo reecrire en prenant en compte le tableau de debit du debut à la fin du temps moteur : beaucoup + precis
+									
+
+									#if		ENABLE_GESTION_Ti		==		1
+									if( DUREE_Totale_cycle__controle_Ti >  Ti*1000 ){ /// on vient de depasser Ti !!! cut !! : MODIF_POST_COMMIT
+										
+										// brth_printf( "------------------------------------------------------------> break deb err : %i > %i\n\r", 
+																																															// (int)DUREE_Totale_cycle__controle_Ti,
+																																															// (int)Ti
+																																														// ); /// MODIF_POST_COMMIT
+										
+										TAB_volume_slm_calib[ index_segt ] .PID_ERREUR_Debit = 0;
+										TAB_volume_slm_calib[ index_segt ] .CALIB_duree_sgt_US = 0;
+										// super_break = true;
+										continue;
+									}
+									#endif
+									
 									
 									/// ON FAIT LA MOYENNE : 	ATTENTION  INSTABLE CAR FREQUENCE ECHANTILLONAGE CAPTEUR PAS FIXE...
 									float		Debit_slm_segment = Segment_error_time_sliced(
@@ -537,7 +557,7 @@ bool			compute_PID_factors(
 																																						-	(
 																																								debit_consigne_slm
 																																							#if			USE_PID_VENTILATION_Verreur_accel		==		1
-																																							// +	GLOB_debit_from_error_slm
+																																							+	GLOB_debit_from_error_slm
 																																							#endif
 																																							)
 																																					;
@@ -545,7 +565,7 @@ bool			compute_PID_factors(
 									/// MAJ 		ERREUR 
 									/// MAJ 		ERREUR 
 																																			
-									brth_printf( "---deb mes %i Err %i\n\r", (int)( Debit_slm_segment * 1000 ), (int)( TAB_volume_slm_calib[ index_segt ] .PID_ERREUR_Debit * 1000 ) );
+									// brth_printf( "---deb mes %i Err %i\n\r", (int)( Debit_slm_segment * 1000 ), (int)( TAB_volume_slm_calib[ index_segt ] .PID_ERREUR_Debit * 1000 ) );
 									
 									
 									/// on recupere l'erreur du SEGMENT
@@ -662,7 +682,9 @@ bool			compute_PID_factors(
 									else { /// l'erreur est negative			PAS DE PANIQUE
 									
 										/// on verifie les commandes moteurs du cycle precedant		--->  		on passe		is_vitesse_max_SEGMENT		et			is_accel_max_SEGMENT
-										if(
+										
+										/// MODIF_POST_COMMIT
+/* 										if(
 												DUREE_segment_US		< GLOB_NBR_pas_moteur_par_segment * DUREE_STEP_MIN_MOTOR /// cad SEGMENT a vitesse max
 										){
 											brth_printf( "---ERREUR !!! duree %i < duree min %i from %i\n\r", 
@@ -682,7 +704,9 @@ bool			compute_PID_factors(
 											/// MAJ indispensable 
 											/// MAJ indispensable 
 											
-										} else if(
+										} else  */
+											
+										if(
 												DUREE_segment_US		== GLOB_NBR_pas_moteur_par_segment * DUREE_STEP_MIN_MOTOR /// cad SEGMENT a vitesse max
 										){
 											/// SEGMENT non tunable
@@ -728,6 +752,11 @@ bool			compute_PID_factors(
 									/// MAJ
 									TIMER_US_debut_segment 	+= TAB_volume_slm_calib[ index_segt ] .CALIB_duree_sgt_US;
 									TIMER_US_fin_segment 		+= TAB_volume_slm_calib[ index_segt ] .CALIB_duree_sgt_US;
+									
+									#if		ENABLE_GESTION_Ti		==		1
+									DUREE_Totale_cycle__controle_Ti += DUREE_segment_US; ///	MODIF_POST_COMMIT		= TAB_volume_slm_calib[ index_segt ] .CALIB_duree_sgt_US;;
+									#endif
+									
 									
 								} /// fin du for		NBR_SEGMENTS_CALIBRATION
 								/// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1006,9 +1035,26 @@ bool			compute_PID_factors(
 						/// ETAPE 2 : on prepare la commande moteur
 						/// ETAPE 2 : on prepare la commande moteur
 						
-						#if	USE_PID_VENTILATION_Verreur_accel		==		1 /// WIP
+						#if	USE_PID_VENTILATION_Verreur_accel		==		1 /// WIP : 
 								/// MAJ : WIP a tester
-								GLOB_debit_from_error_slm = GLOB_Volume_erreur_phase_accel / duree_FULL_SPEED; /// on pourrait aussi estimer direct l'aire du triangle defini par la pente d'accel max, ou laisser faire la PID...
+								#if	0
+								if( 
+											GLOB_Volume_erreur_phase_accel != -12345.0f
+									&&	GLOB_timecode_ms_full_speed	!= 0
+								){ /// MODIF_POST_COMMIT
+									GLOB_debit_from_error_slm = -GLOB_Volume_erreur_phase_accel / GLOB_timecode_ms_full_speed; /// on pourrait aussi estimer direct l'aire du triangle defini par la pente d'accel max, ou laisser faire la PID...
+								
+								
+									brth_printf( "--V %i deb %i : tim %i\n\r", 
+																								(int)( GLOB_Volume_erreur_phase_accel * 1000 ),
+																								(int)( GLOB_debit_from_error_slm * 1000 ),
+																								GLOB_timecode_ms_full_speed 
+																							);
+								}
+								// else {
+									// GLOB_debit_from_error_slm = 0;
+								// }
+								#endif
 						#else
 								wait_ms( 4 ); /// on laisse respirer le CPU
 						#endif
@@ -1062,7 +1108,7 @@ bool			compute_PID_factors(
 																																							debit_consigne_slm 
 																																							
 																																						#if			USE_PID_VENTILATION_Verreur_accel		==		1
-																																						// +	GLOB_debit_from_error_slm /// todo : on accumule le VOL d'erreur pdt accel : A VENTILER SUR debit_consigne_slm
+																																						+	GLOB_debit_from_error_slm /// todo : on accumule le VOL d'erreur pdt accel : A VENTILER SUR debit_consigne_slm
 																																						#endif
 																																						
 																																					) * 60 * 1000 * 1000
@@ -1197,7 +1243,10 @@ bool			compute_PID_factors(
 											
 										// }
 											#if		ENABLE_GESTION_Ti		==		1
-											if( DUREE_Totale_cycle + duree_segment_US > round( (float)Ti / 1000 ) ){ /// on vient de depasser Ti !!! cut !!
+											if( round( (float)( DUREE_Totale_cycle + duree_segment_US ) / 1000 ) >  Ti ){ /// on vient de depasser Ti !!! cut !! : MODIF_POST_COMMIT
+												
+												brth_printf( "------------------------------------------------------------> break : %i\n\r", (int)round( (float)( DUREE_Totale_cycle + duree_segment_US ) / 1000 )  ); /// MODIF_POST_COMMIT
+												
 												super_break = true;
 												break;
 											}
@@ -1245,22 +1294,35 @@ bool			compute_PID_factors(
 						
 						#if		ENABLE_LISSAGE_DECELERATION			==		1
 						int	nbr_pas_restant = MAX_MOTOR_STEPS - GLOB_index_pas_stepper;
-						// if(
-									// nbr_pas_restant > 0
-						// ){
-							while( 
-											nbr_pas_restant-- > 0
-							){
-								if( Last_duree_step_moteur_en_cours > MAX_ACCEL_MOTEUR_NEGATIF ){
-									Last_duree_step_moteur_en_cours -= MAX_ACCEL_MOTEUR_NEGATIF;
-									g_motor_steps_us[ GLOB_index_pas_stepper++ ] = Last_duree_step_moteur_en_cours;
-									
-								} else {
-									Last_duree_step_moteur_en_cours = 0;
-									g_motor_steps_us[ GLOB_index_pas_stepper++ ] = Last_duree_step_moteur_en_cours;
-									break;
-								}
+						
+						int	decceleration = DECCELERATION_VALUE;
+						int	nbr_pas_necessaires = ( 4096 - Last_duree_step_moteur_en_cours ) / decceleration;
+						if( nbr_pas_restant < nbr_pas_necessaires ){
+							decceleration = ( 4096 - Last_duree_step_moteur_en_cours ) / nbr_pas_restant;
+						}
+						
+						brth_printf( "---pas restant %i\n\r", nbr_pas_restant );
+						
+						while( 
+										nbr_pas_restant-- > 0
+								&&	decceleration > 0
+						){
+							if( Last_duree_step_moteur_en_cours < 4096 ){
+								decceleration += DECCELERATION_VALUE;
+							} else {
+								decceleration -= DECCELERATION_VALUE * 2;
 							}
+							
+							Last_duree_step_moteur_en_cours += decceleration;
+							g_motor_steps_us[ GLOB_index_pas_stepper++ ] = Last_duree_step_moteur_en_cours;
+							DUREE_Totale_cycle 								+= Last_duree_step_moteur_en_cours; /// WIP : doublon paleocode a virer ??? /// MODIF_POST_COMMIT
+							GLOB_duree_TOTAL_theorique_US 		+= (uint32_t)Last_duree_step_moteur_en_cours; /// WIP : doublon paleocode a virer ???
+						}
+						
+						// while( 
+										// nbr_pas_restant-- > 0
+						// ){
+							// g_motor_steps_us[ GLOB_index_pas_stepper++ ] = 0; /// MODIF_POST_COMMIT
 						// }
 						#endif
 						
