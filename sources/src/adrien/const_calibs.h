@@ -82,7 +82,7 @@ const uint16_t CONST_calib_90_lpm[64];
 #define DEBIT_OVERSAMPLING_TIME             0 /// ms apres arret moteur (toujours un peu de débit) : mais on en tient pas
                                               /// compte finalement pour la pid
 
-#define USE_PID_VENTILATION_Verreur_accel   0 /// WIP : pas encore tested, pas meme compiled
+#define USE_PID_VENTILATION_Verreur_accel   1 /// WIP : pas encore tested, pas meme compiled
 #define FACTEUR_I_PID_VENTILATION_ERREUR_PHASE_ACCEL 0.0002f
 
 // #define					DEBIT_CIBLE_SLM

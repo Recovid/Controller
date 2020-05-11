@@ -601,15 +601,20 @@ uint32_t adaptation( float     target_VT_mL,
 #if USE_PID_VENTILATION_Verreur_accel == 1 /// WIP
   float vol_during_acc_mL = 0.f;
   uint32_t t_acc = 0;
-  for(uint32_t i = 0; t_acc < GLOB_timecode_ms_full_speed; i++)
+  printf("GLOB_timecode_ms_full_speed = %d\n", GLOB_timecode_ms_full_speed);
+  uint32_t i =0;
+  for(i = 0; t_acc < (GLOB_timecode_ms_full_speed*1000) ; i++)
   {
-    t_acc          += motor_steps_us[i]
-    vol_during_acc += ((flow_samples_Lpm[i]/60.f)) / flow_sample_period_ms; //LPM -> mLms => /60/1000*1000 => /60 
+    t_acc             += motor_steps_us[i];
+    if( ((t_acc/1000) % flow_samples_period_ms) == 0)
+    {
+      uint32_t idx = (t_acc/1000) / flow_samples_period_ms;
+      vol_during_acc_mL += ( flow_samples_Lpm[idx] / 60.f) * (flow_samples_period_ms); //LPM -> mLms => /60/1000*1000 => /60
+    }
   }
-
-  float Volume_ideal_mL = ( get_setting_Vmax_Lpm() / 60.0f ) * 	GLOB_timecode_ms_full_speed; //LPM -> mLms => /60/1000*1000 => /60
-  GLOB_Volume_erreur_phase_accel = Volume_ideal_mL - vol_during_acc;
+  //Mettre a jour GLOB_debit_from_error_slm
   GLOB_debit_from_error_slm = GLOB_Volume_erreur_phase_accel / duree_FULL_SPEED; /// on pourrait aussi estimer direct l'aire du triangle PID...
+
 #endif
 
   GLOB_index_pas_stepper = 0;
@@ -864,7 +869,7 @@ uint32_t adaptation( float     target_VT_mL,
   float    V_must_be_zero = get_cycle_VTe_mL();
   float    VTe = get_cycle_VTi_mL() - V_must_be_zero; /// CONTROLE GENERAL IHM
   float    pourcentage_erreur = ( V_must_be_zero ) / VTe; /// MODIF_POST_COMMIT
-  printf("----ERR\t%i\t%i\tLinACCEL%ims\tVTi%iVTe%iVerr_Acc%i->deberr%ipmill%i\tmoyPIDI:\t%i\n\r",
+  printf("----ERR\t %i\t %i\t LinACCEL %ims\t VTi %i VTe %i Verr_Acc %i ->deberr %i pmill %i\tmoyPIDI:\t %i\n",
     (int)(GLOB_MOYENNE_erreur*1000),
     (int)(GLOB_FACTEUR_linearite_plateau_inspi*1000),
     (int)GLOB_timecode_ms_full_speed,
@@ -904,7 +909,7 @@ uint32_t adaptation( float     target_VT_mL,
 // GLOB_is_first_guess_from_abaques
 
 /// reinit
-// GLOB_Volume_erreur_phase_accel
+// 
 //
 
 
