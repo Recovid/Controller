@@ -1,4 +1,5 @@
 #include "common.h"
+#include "compute_motor.h"
 #include "config.h"
 #include "defaults.h"
 #include "controller.h"
@@ -48,6 +49,7 @@ static float g_cycle_VMe_Lpm;
 static float g_cycle_Pcrete_cmH2O;
 static float g_cycle_Pplat_cmH2O;
 static float g_cycle_PEP_cmH2O;
+static uint32_t g_cycle_insuflation_duration;
 
 static uint32_t g_setting_T;
 static float g_setting_VT;
@@ -146,6 +148,7 @@ float get_cycle_VMe_Lpm() { return g_cycle_VMe_Lpm; }
 float get_cycle_Pcrete_cmH2O() { return g_cycle_Pcrete_cmH2O; }
 float get_cycle_Pplat_cmH2O() { return g_cycle_Pplat_cmH2O; }
 float get_cycle_PEP_cmH2O() { return g_cycle_PEP_cmH2O; }
+uint32_t get_cycle_insuflation_duration() { return g_cycle_insuflation_duration; }
 
 
 //----------------------------------------------------------
@@ -172,11 +175,13 @@ static void breathing_run(void *args)
         g_cycle_Pcrete_cmH2O = 0;
         g_cycle_Pplat_cmH2O = 0;
         g_cycle_PEP_cmH2O = 0;
+        g_cycle_insuflation_duration = 0;
 
         // Init state machine
         BreathingState next_state = Insuflation;
         uint32_t inhalation_start_ms;
         uint32_t inhalation_pause_t_ms;
+        uint32_t insuflation_stop_ms;
 
         uint32_t exhalation_start_ms;
         uint32_t exhalation_pause_t_ms;
@@ -219,8 +224,7 @@ static void breathing_run(void *args)
             //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
             //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
 
-            uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
-
+            uint32_t nb_steps = adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
             // Init Paw samples
             init_Paw_cmH2O_sampling();
 
@@ -261,6 +265,10 @@ static void breathing_run(void *args)
             
             // Insuflation state: onExit
             motor_stop();
+            if(Plateau == next_state) 
+            {
+                wait_ms(MOTOR_INERTIA_STOP_MS);
+            }
             motor_release(MOTOR_RELEASE_STEP_US);
 
 

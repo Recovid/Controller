@@ -31,7 +31,7 @@ float get_cycle_VMe_Lpm();
 float get_cycle_Pcrete_cmH2O();
 float get_cycle_Pplat_cmH2O();
 float get_cycle_PEP_cmH2O();
-
+uint32_t get_cycle_insuflation_duration();
 
 
 

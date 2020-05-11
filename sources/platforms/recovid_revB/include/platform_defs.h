@@ -53,7 +53,7 @@
 #define MOTOR_HOME_STEP_US                    ((uint32_t)((360.0*1000000.0)/(MOTOR_STEPS_PER_REV*MOTOR_HOME_SPEED)))      // us/step
 #define MOTOR_RELEASE_STEP_US                 ((uint32_t)((360.0*1000000.0)/(MOTOR_STEPS_PER_REV*MOTOR_RELEASE_SPEED)))   // us/step
 
-
+#define MOTOR_INERTIA_STOP_MS                 (50)
 // MOTOR PEP platform specific defines
 
 #define MOTOR_PEP_PEP_TO_MM_FACTOR            (1.7)   // PEP to mm factor

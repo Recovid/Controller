@@ -86,6 +86,7 @@ set(SOURCES
    src/hmi.c
    src/protocol.c
    src/${ADAPTATION}/adaptation.c
+   src/compute_motor.c
 )
 
 include_directories(
