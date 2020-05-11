@@ -1,598 +1,215 @@
-const	uint16_t		CONST_calib_90_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 396,
- 6880,
- 9719,
- 11796,
- 13742,
- 15204,
- 16127,
- 16951,
- 17812,
- 18751,
- 19799,
- 20772,
- 22135,
- 23859,
- 25575,
- 27090,
- 28597,
- 29552,
- 29930,
- 30467,
- 31443,
- 32356,
- 31619,
- 30310,
- 29078,
- 30432,
- 32071,
- 34260,
- 35808,
- 34858,
- 35594,
- 35410,
- 35322,
- 34800,
- 32612,
- 29158};
+#ifndef __CONST_CALIB_H__
+#define __CONST_CALIB_H__
+
+#include "compute_motor.h"
 
 
-const	uint16_t		CONST_calib_80_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 2429,
- 5293,
- 7380,
- 8884,
- 10405,
- 11656,
- 12751,
- 13808,
- 14828,
- 15860,
- 16767,
- 17712,
- 18402,
- 19187,
- 20021,
- 20973,
- 22110,
- 23353,
- 24763,
- 26078,
- 27207,
- 28096,
- 28807,
- 29391,
- 29732,
- 30098,
- 30395,
- 30438,
- 30144,
- 29546,
- 29622,
- 30451,
- 32398,
- 34527,
- 35113,
- 35085,
- 34193,
- 33609,
- 33098,
- 33154,
- 30813};
+const	uint16_t		CONST_calib_90_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_80_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_70_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_60_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_50_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_40_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_30_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_20_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_10_lpm[ 64 ] ;
+const	uint16_t		CONST_calib_90_lpm[ 64 ] ;
 
 
-const	uint16_t		CONST_calib_70_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 2362,
- 4018,
- 5608,
- 6908,
- 8125,
- 9160,
- 10146,
- 11114,
- 12015,
- 12912,
- 13938,
- 15075,
- 16158,
- 17116,
- 18091,
- 18758,
- 19397,
- 19853,
- 20476,
- 21428,
- 22506,
- 23718,
- 25013,
- 26164,
- 27058,
- 27789,
- 28232,
- 28539,
- 28778,
- 28860,
- 29030,
- 28984,
- 28593,
- 28557,
- 29455,
- 31099,
- 32561,
- 32852,
- 32777,
- 32697,
- 32893,
- 31917,
- 31410,
- 29476};
+/// ajouts Adrien
+/// ajouts Adrien		WIP : a deplacer
+/// ajouts Adrien
 
 
-const	uint16_t		CONST_calib_60_lpm[ 64 ] = { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 734,
- 2260,
- 3974,
- 5663,
- 6796,
- 7757,
- 8584,
- 9398,
- 10291,
- 11244,
- 12154,
- 12982,
- 13782,
- 14597,
- 15503,
- 16331,
- 17226,
- 18188,
- 18804,
- 19164,
- 19664,
- 20039,
- 20776,
- 21886,
- 23566,
- 25144,
- 26464,
- 27506,
- 28234,
- 28828,
- 29230,
- 29424,
- 29366,
- 29394,
- 29423,
- 28926,
- 28590,
- 29691,
- 32234,
- 34177,
- 33859,
- 32419,
- 31906,
- 32500,
- 32612,
- 32650,
- 31415};
- 
- 
-const	uint16_t		CONST_calib_50_lpm[ 64 ] =  { 53,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 575,
- 2121,
- 3949,
- 5185,
- 5926,
- 6593,
- 7206,
- 7754,
- 8306,
- 8759,
- 9189,
- 9814,
- 10602,
- 11573,
- 12740,
- 14101,
- 15456,
- 16581,
- 17450,
- 18109,
- 18708,
- 19352,
- 19771,
- 19940,
- 20131,
- 20636,
- 21630,
- 22810,
- 24071,
- 25079,
- 25931,
- 26610,
- 27090,
- 27458,
- 27610,
- 27777,
- 27845,
- 27914,
- 28023,
- 28144,
- 28249,
- 29715,
- 31313,
- 31503,
- 30266,
- 29530,
- 29036,
- 29029,
- 29469,
- 29467,
- 29482};
-
- 
-const	uint16_t		CONST_calib_40_lpm[ 64 ] =   { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 741,
- 3209,
- 4903,
- 5584,
- 6191,
- 6470,
- 6652,
- 6878,
- 7216,
- 7751,
- 8451,
- 9112,
- 9847,
- 10435,
- 10918,
- 11323,
- 11883,
- 13093,
- 14911,
- 17106,
- 18818,
- 19567,
- 19949,
- 20444,
- 20862,
- 20852,
- 20577,
- 20537,
- 21388,
- 22974,
- 24688,
- 25944,
- 26691,
- 27251,
- 27654,
- 27818,
- 27970,
- 27982,
- 27999,
- 27973,
- 27947,
- 28128,
- 28332,
- 29504,
- 32277,
- 32926,
- 31188,
- 30194,
- 30224,
- 31090,
- 32831,
- 30900,
- 30197,
- 31439};
-
-
-const	uint16_t		CONST_calib_30_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1842,
- 3308,
- 4587,
- 5781,
- 6883,
- 7183,
- 7074,
- 6941,
- 7069,
- 7294,
- 7772,
- 8354,
- 8937,
- 9497,
- 9964,
- 10409,
- 10851,
- 11415,
- 12099,
- 12740,
- 13344,
- 14017,
- 14996,
- 16398,
- 17726,
- 18638,
- 18999,
- 19076,
- 19074,
- 19141,
- 19503,
- 20736,
- 22738,
- 24509,
- 25659,
- 26364,
- 26742,
- 27017,
- 27164,
- 27234,
- 27203,
- 27280,
- 27311,
- 27487,
- 28066,
- 29418,
- 33886,
- 31423,
- 27937,
- 39274,
- 38688,
- 17751,
- 19236,
- 23060,
- 21660,
- 19870};
-
-
-const	uint16_t		CONST_calib_20_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1934,
- 3164,
- 3816,
- 4035,
- 4242,
- 4521,
- 4975,
- 5538,
- 6199,
- 7051,
- 7896,
- 8615,
- 9284,
- 9685,
- 9888,
- 10159,
- 10585,
- 10767,
- 10940,
- 11246,
- 11771,
- 12417,
- 13205,
- 13977,
- 14953,
- 16186,
- 17207,
- 17920,
- 18113,
- 18045,
- 18342,
- 18744,
- 19120,
- 19830,
- 21521,
- 23224,
- 24403,
- 25169,
- 25522,
- 25810,
- 25997,
- 26345,
- 26615,
- 26660,
- 26835,
- 27032,
- 27649,
- 28894,
- 31035,
- 26717,
- 29071,
- 35135,
- 31022,
- 23239,
- 23240,
- 22302,
- 20480,
- 17701};
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
+			// #define					NBR_PAS_MOTEUR_MAX													MAX_MOTOR_STEPS  /// 4800 //4480
+			// #define					NBR_SEGMENTS_CALIBRATION										64
+			
+			// #define					NBR_PAS_MOTEUR_par_SEGMENT_ANALYSE				( (float)NBR_PAS_MOTEUR_MAX / NBR_SEGMENTS_CALIBRATION )
+			
+			#define					VITESSE_DEMARRAGE_CALIB											( 2048 ) // us pas moteur * MOTOR_CORRECTION_USTEPS
+			
+			#define					NBR_ITERATION_CALIB														3
+			
+			
+			#define					MAX_ACCEL_MOTEUR_POSITIF										( 38 ) /// 40
+			#define					MAX_ACCEL_MOTEUR_NEGATIF									( 38 ) /// 45
+			#define					MAX_ACCEL_MOTEUR_POSITIF_ON_PLATEAU		( 38 ) /// 40
+			#define					MAX_ACCEL_MOTEUR_NEGATIF_ON_PLATEAU		( 38 ) /// 45
+			
+			#define					DUREE_STEP_MIN_MOTOR												380 /// cad vitesse max
+			#define					DUREE_ARRET_MOTEUR_PR_ACCEL							2048
+			
+			/// P meilleur que I ???
+			#define					USE_PID_ON_AUTO_CALIB												1
+			#define							FACTEUR_P_PID_CONSIGNE_DEBIT													0.20f /// 0.33f max
+			#define									LIMITE_BASSE_DESACTIVATION_COMPOSANTE_P_PID					(-1500.0f/1000) /// on desactivera la 		composante_PID_P_factor_SEGMENT_complet		a l'approche de la convergence, pour ne laisser que la composante Integral
+			#define							FACTEUR_I_PID_CONSIGNE_DEBIT_ERR_NEGATIVE					0.0004f /// mode pas de panik : 0.00005f
+			#define							FACTEUR_P_PID_CONSIGNE_DEBIT_ERR_POSITIVE						0.50f  /// en cas de debranchement patient par ex : on diminue en mode vlan
+			
+			/// securite tuyaux bouched : variation debit instantane
+			
+			#define					MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_POSITIF					(8.5f /1000) /// 2000 : on empeche les tres grosses ponctuelles /// todo_lyon : 
+			#define					MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_NEGATIF				(2.5f /1000) /// 2000 : on empeche les tres grosses ponctuelles /// todo_lyon : 
+			#define					MAX_INTEGRALE_ACCUMULEE_PID																(15.0f /1000) /// 2000 : on empeche les tres grosses ponctuelles /// todo_lyon : 
+			
+			#define				PROPORTION_FACTEUR_LINEARITE_PLATEAU							30.5f /// diminuer pour ajouter de la resolution
+			#define						MINI_FACTEUR_LINEARITE_PLATEAU												0.60f
+			#define						MAXI_FACTEUR_LINEARITE_PLATEAU											0.90f
+			#define						FACT_PROPORTIONNEL_in_LINEARITE_NEGATIF						0.75f /// pour converger + rapidement vers erreur	
+			#define						FACT_PROPORTIONNEL_in_LINEARITE_POSITIF							2.75f /// MODE PANIK OVERSHOOT : pour converger + rapidement vers erreur				
+			
+			/// 10 - 40 marche tres bien pour les compliances basses : il va falloir tenir compte de la Paw : voir 		Segment_error_time_sliced()		WIP
+			#define							TIME_SLICING_ERROR_debut										10 /// ms : 10
+			#define							TIME_SLICING_ERROR_fin												40 /// ms : 40
+			
+			
+			
+			#define					ENABLE_GESTION_Ti																0
+			#define					ENABLE_LISSAGE_DECELERATION									0
+			
+			
+			
+			#define					ENABLE_LISSAGE_COURBE_FACT_INTEGRALE			0 /// NE PAS UTILISER c'est foireux...
+			#define							FACTEUR_LISSAGE_NM1													0.08f
+			#define							FACTEUR_LISSAGE_NP1													0.08f
+			
+			
+			/// sampling debit IT pendant PHASE MOTEUR inspi
+			#define					DEBIT_OVERSAMPLING_TIME											0 /// ms apres arret moteur (toujours un peu de débit) : mais on en tient pas compte finalement pour la pid
+			
+						
+			#define					USE_PID_VENTILATION_Verreur_accel							0 /// WIP : pas encore tested, pas meme compiled
+			#define							FACTEUR_I_PID_VENTILATION_ERREUR_PHASE_ACCEL				0.0002f
+			
+			
+			// #define					DEBIT_CIBLE_SLM																60 /// slm
+			// #if							DEBIT_CIBLE_SLM		< 		10
+				// #error 		"DEBIT_CIBLE_SLM trop bas..."
+			// #endif
+			
+			#define					DEBUG_PRINTF_CYCLE_PID											0 /// ---DEBUT sampling data
+			#define					DEBUG_PRINTF_PR_CALIB_A_VIDE								0
+			
+			#define					ENABLE_PID_REGULATION												1
+			
+			
+			#define					NIVEAU_VERBOSE_DEBUG												3
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
+			/// ceci est un WIP ;)		besoin de temps pour fixer ca proprement : la consigne de debit est 			DEBIT_CIBLE_SLM
 
 
 
-const	uint16_t		CONST_calib_10_lpm[ 64 ] =  { 1,
- 1,
- 1,
- 1,
- 1,
- 1,
- 1752,
- 2832,
- 3061,
- 3079,
- 3204,
- 3497,
- 3806,
- 4258,
- 4650,
- 5054,
- 5532,
- 7187,
- 14130,
- 11883,
- 52,
- 2986,
- 6720,
- 8023,
- 8238,
- 8546,
- 8956,
- 9480,
- 10201,
- 10945,
- 11699,
- 12349,
- 13300,
- 14694,
- 15482,
- 14558,
- 13337,
- 14321,
- 14807,
- 15420,
- 16084,
- 17809,
- 18989,
- 20331,
- 20677,
- 21034,
- 21279,
- 21616,
- 21597,
- 21801,
- 21870,
- 22201,
- 23024,
- 23232,
- 22737,
- 29757,
- 20406,
- 29462,
- 26219,
- 13621,
- 12471,
- 16067,
- 17276,
- 15044};
 
 
-  
-  
-  
+
+
+
+void		hardfault_CRASH_ME();
+
+typedef struct  {
+	uint8_t		CALIB_nbr_echant;
+	uint32_t	CALIB_duree_sgt_US;
+	float			CALIB_result_volume_segment;
+	uint32_t	CALIB_US_avt_motor_full_speed;
+	float			debit_slm_en_cours;
+	
+	float			PID_ERREUR_Debit;
+	float			PID_i_factor;
+	bool			max_error_checked;
+	
+	bool			PID_tunable_sgt;
+	bool			MODE_Panique;
+	bool			is_vitesse_max_SEGMENT; ///						= false;
+	bool			is_accel_max_SEGMENT; ///						= false;
+} mesure_volume;
+
+#define						NBR_SEGMENTS_CALIBRATION												64 /// WIP on aurait due faire +, en fait ca passe en RAM
+mesure_volume		TAB_volume_slm_calib[ NBR_SEGMENTS_CALIBRATION ];
+
+#define		NBR_VALEURS_TAB_debits_temps_moteur		800 /// besoin de marge pour Ti tres long a gros volumes : il y a de la RAM a gagner ici : essayer avec Ti max : WIP : faire freq variable
+#define		DIVISEUR_NBR_VALEURS_SAMPLED				1 /// WIP : faire freq variable
+
+typedef struct  {
+			int16_t	dp_raw;
+			// int16_t	Paw; /// WIP : pr calculer le time slicing de debit : low res surement suffisante !!!
+			uint32_t	timecode_sample_MS;
+} samples_debit;
+
+/// WIP : a placer en archi apres validation fonctionnement complet
+volatile int32_t							GLOB_index_TAB_dp_raw_temps_moteur;
+volatile int64_t							GLOB_accumule_TAB_dp_raw_temps_moteur;
+volatile uint64_t						GLOB_accumule_TAB_TIMECODE_temps_moteur;
+volatile int16_t							GLOB_denom_TAB_dp_raw_temps_moteur;
+volatile samples_debit			TAB_dp_raw_temps_moteur[ NBR_VALEURS_TAB_debits_temps_moteur  ]; /// 200 Hz : resta a calculer : _current_flow_slm = compute_corrected_flow(dp_raw);
+
+volatile uint64_t						GLOB_TIMER_ms_debut_sampling_temps_moteur;
+volatile uint32_t						GLOB_timecode_ms_full_speed;
+volatile uint8_t							GLOB_index_sgt_full_speed;
+volatile uint64_t						GLOB_TIMER_fin_accel_moteur_ms;
+volatile uint64_t						GLOB_TIMER_ms_fin_sampling_temps_moteur;
+volatile bool								GLOB_is_running_sampling_temps_moteur;
+
+
+volatile int									GLOB_NBR_pas_moteur_par_segment;
+/// ajouts Adrien
+/// ajouts Adrien
+/// ajouts Adrien
+
+
+
+volatile bool				GLOB_is_first_guess_from_abaques; /// 						= true;
+volatile uint32_t		GLOB_index_premier_segment_FULL_SPEED; /// 	= 0;
+volatile uint32_t		GLOB_NBR_de_cycles_before_auto_crash_test; /// 	= 0; /// 0 pr desactiver le test crash
+
+
+volatile float				GLOB_FACTEUR_linearite_plateau_inspi;
+volatile float				GLOB_MOYENNE_facteur_I_PID; /// = 0;
+volatile float				GLOB_MOYENNE_erreur; /// 				= 0;
+volatile uint32_t		GLOB_index_pas_stepper; /// = 0;
+volatile uint32_t		GLOB_duree_TOTAL_theorique_US; /// = 0;
+
+
+volatile float				GLOB_debit_from_error_slm; /// = 0; /// provenant essentiellement de la phase d'acceleration qu'il va falloir compenser en augmentation de dit (Ti restant fixed)
+volatile float				GLOB_Volume_erreur_phase_accel; /// = 0;
+
+
+volatile uint32_t 		g_motor_steps_us[ MAX_MOTOR_STEPS ]; /// = {0}; // TODO: Make it configurable with a define. This represent a physical limit a the system.
+
+
+/// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// 			FUNCTIONS
+bool		load_default_calib_from_debit(	float debit_consigne_slm );
+bool		init_variables_PID(		float		debit_consigne_slm );
+void 		reset_Vol_error_phase_accel(); /// GLOB_Volume_erreur_phase_accel = -12345.0f; /// sera remesured ds interrupt i2c
+
+void		start_sampling_temps_moteur( uint32_t maintenant_sampling );
+void		stop_sampling_temps_moteur( );
+
+float		Segment_error_time_sliced(
+															/// INPUT : TAB_dp_raw_temps_moteur
+															int				index_segt,
+															uint32_t		TIMER_US_debut_segment, 						/// INPUT : TIMER_US_debut_segment
+															uint32_t		TIMER_US_fin_segment, 								//// INPUT : TIMER_US_fin_segment
+															uint32_t		TIME_SLICING_ERROR_debut__, 					/// INPUT : TIME_SLICING_ERROR_debut
+															uint32_t		TIME_SLICING_ERROR_fin__, 						/// INPUT : TIME_SLICING_ERROR_fin
+															/// important que ces 2 variables soient JUSTES et mise à jour !!!																				WIP : a verifier
+															uint64_t		GLOB_TIMER_fin_accel_moteur_ms, 								// GLOB_TIMER_fin_accel_moteur_ms = 1;
+															uint64_t		GLOB_TIMER_ms_fin_sampling_temps_moteur 			// GLOB_TIMER_ms_fin_sampling_temps_moteur = 0;
+);
+
+/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
+/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
+bool		compute_PID_factors(
+															float 		debit_consigne_slm,
+															uint32_t Ti
+															/// GLOB_Volume_erreur_phase_accel
+														);
+/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
+/// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr usage uniqt ds boucle breathing
+
+
+#endif

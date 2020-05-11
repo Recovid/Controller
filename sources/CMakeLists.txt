@@ -86,6 +86,8 @@ set(SOURCES
    src/hmi.c
    src/protocol.c
    src/compute_motor.c
+   src/auto_calib.c
+   src/pid_adrien.c
 )
 
 include_directories(
