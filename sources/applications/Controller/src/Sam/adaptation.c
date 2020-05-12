@@ -26,9 +26,8 @@ static float B;
 static float    compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
 static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples,  float* A, float* B);
 //static float    linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope);
-static int32_t  get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
-static int32_t  get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound);
-
+static bool get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
+static bool get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound);
 
 //----------------------------------------------------------
 // Public variables
@@ -90,7 +89,7 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 		if(get_plateau2(flow_samples, flow_samples_count, flow_samples_period_s, &low, &high) == 0) {
 //			brth_printf("plateau found from sample %lu to %lu\n", low, high);
 		} else {
-//			brth_printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
+			brth_printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
 		}
 		float plateau_slope = linear_fit(flow_samples+low, high-low-1, flow_samples_period_s, &plateau_slope);
 		float plateau_mean = 0;
@@ -127,7 +126,7 @@ float linear_fit(float* samples, uint32_t samples_len, float flow_samples_period
 	}
 	float denom = (samples_len * sumx2 - (sumx * sumx));
 	if(denom == 0.) {
-		brth_printf("Calibration of A is not possible\n");
+		brth_printf("no fit\n");
 		return -1;
 	}
 	// compute slope a
@@ -137,13 +136,15 @@ float linear_fit(float* samples, uint32_t samples_len, float flow_samples_period
 	return (sumxy - sumx * sumy / samples_len) / sqrtf((sumx2 - (sumx*sumx)/samples_len) * (sumy2 - (sumy*sumy)/samples_len));
 }
 
-static int32_t get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound){
+static bool get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound)
+{
 	if(windows_number < 2 || windows_number > 30) {return -1;}
 	float slopes[30];
 	*high_bound = samples_len-1;
 	// Compute slope for time windows to detect when signal start increasing/decreasing
-	for(uint32_t window=0; window<windows_number; window++) {
-		float r = linear_fit(samples+window*(samples_len/windows_number), samples_len/windows_number, flow_samples_period_s, slopes+window);
+	for(uint32_t window=0; window<windows_number; window++) 
+    {
+		float r = linear_fit(&samples[window*(samples_len/windows_number)], samples_len/windows_number, flow_samples_period_s, slopes+window);
 //		brth_printf("%ld    ", (int32_t)(*(slopes+window) * 1000));
 	}
 //	brth_printf("\n");
@@ -157,32 +158,37 @@ static int32_t get_plateau(float* samples, uint32_t samples_len, float flow_samp
 	}
 	*low_bound = (uint32_t)(samples_len/2);
 //	brth_printf("No plateau found\n");
-	return 1;
+	return true;
 }
 
-static int32_t get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound){
+static bool get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound)
+{
     // First we have to dismiss the first "zero flux" points
     uint32_t firstNonZeroIndex = 0;
-    while(samples[firstNonZeroIndex] < 0.001) {++firstNonZeroIndex;}
+    while(firstNonZeroIndex< samples_len && samples[firstNonZeroIndex++] < 0.001);
 
     // Now we try to find the best midpoint to fit two lines to flow data
     // TODO : dismiss the first and last N points
     uint32_t N = 3;
     int32_t samples_len_no_zeros = samples_len - firstNonZeroIndex;
+    // TODO Check samples_len_no_zeros !!
+
     float bestRScore = 0.;
     float bestSlopes[2];
     uint32_t bestMidpointIndex = 0;
     // For each midpoint index
     uint32_t midpointIndex;
-    for(midpointIndex=firstNonZeroIndex+N; midpointIndex<samples_len-N; ++midpointIndex) {
+    for(midpointIndex=firstNonZeroIndex+N; midpointIndex<samples_len-N; ++midpointIndex) 
+    {
         // Compute the two slopes
         float slope1;
         float slope2;
-        float r1 = linear_fit(samples+firstNonZeroIndex, midpointIndex-firstNonZeroIndex+1, flow_samples_period_s, &slope1);
-        float r2 = linear_fit(midpointIndex, samples_len-midpointIndex, flow_samples_period_s, &slope2);
+        float r1 = linear_fit(&samples[firstNonZeroIndex], midpointIndex-firstNonZeroIndex+1, flow_samples_period_s, &slope1);
+        float r2 = linear_fit(&samples[midpointIndex], samples_len-midpointIndex, flow_samples_period_s, &slope2);
         // Compute score based on fit RSQ and points number
         float score = r1 * (float)(midpointIndex-firstNonZeroIndex+1)/(float)(samples_len_no_zeros) + r2 * (float)(samples_len-midpointIndex)/(float)(samples_len_no_zeros);
-        if(score > bestRScore) {
+        if(score > bestRScore) 
+        {
             bestRScore = score;
             bestMidpointIndex = midpointIndex;
             bestSlopes[0] = slope1;
@@ -192,5 +198,5 @@ static int32_t get_plateau2(float* samples, uint32_t samples_len, float flow_sam
     *high_bound = samples_len-1;
     *low_bound = (uint32_t)(midpointIndex);
     brth_printf("plateau begin at %lu and ends at %lu with score %lu\n", *low_bound, *high_bound, (uint32_t)(1000*bestRScore));
-    return 1;
+    return true;
 }
