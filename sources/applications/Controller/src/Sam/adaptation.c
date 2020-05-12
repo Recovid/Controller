@@ -86,7 +86,7 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 		float P_plateau_mean = 0.2;
 		uint32_t low;
 		uint32_t high;
-		if(get_plateau(flow_samples, flow_samples_count, flow_samples_period_s, 10, &low, &high) == 0) {
+		if(get_plateau2(flow_samples, flow_samples_count, flow_samples_period_s, 10, &low, &high) == 0) {
 //			brth_printf("plateau found from sample %lu to %lu\n", low, high);
 		} else {
 //			brth_printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
@@ -157,4 +157,39 @@ static int32_t get_plateau(float* samples, uint32_t samples_len, float flow_samp
 	*low_bound = (uint32_t)(samples_len/2);
 //	brth_printf("No plateau found\n");
 	return 1;
+}
+
+static int32_t get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound){
+    // First we have to dismiss the first "zero flux" points
+    uint32_t firstNonZeroIndex = 0;
+    while(samples[firstNonZeroIndex] < 0.001) {++firstNonZeroIndex;}
+
+    // Now we try to find the best midpoint to fit two lines to flow data
+    // TODO : dismiss the first and last N points
+    uint32_t N = 3;
+    int32_t samples_len_no_zeros = samples_len - firstNonZeroIndex;
+    float bestRScore = 0.;
+    float bestSlopes[2];
+    uint32_t bestMidpointIndex = 0;
+    // For each midpoint index
+    uint32_t midpointIndex;
+    for(midpointIndex=firstNonZeroIndex+N; midpointIndex<samples_len-N; ++midpointIndex) {
+        // Compute the two slopes
+        float slope1;
+        float slope2;
+        float r1 = linear_fit(samples+firstNonZeroIndex, midpointIndex-firstNonZeroIndex+1, flow_samples_period_s, &slope1);
+        float r2 = linear_fit(midpointIndex, samples_len-midpointIndex, flow_samples_period_s, &slope2);
+        // Compute score based on fit RSQ and points number
+        float score = r1 * (float)(midpointIndex-firstNonZeroIndex+1)/(float)(samples_len_no_zeros) + r2 * (float)(samples_len-midpointIndex)/(float)(samples_len_no_zeros);
+        if(score > bestRScore) {
+            bestRScore = score;
+            bestMidpointIndex = midpointIndex;
+            bestSlopes[0] = slope1;
+            bestSlopes[1] = slope2;
+        }
+    }
+    *high_bound = samples_len-1;
+    *low_bound = (uint32_t)(midpointIndex);
+    brth_printf("plateau begin at %lu and ends at %lu with score %lu\n", *low_bound, *high_bound, (uint32_t)(1000*bestRScore));
+    return 1;
 }
