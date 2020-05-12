@@ -19,7 +19,7 @@
  */
 #include "PID.h"
 
-pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float ki, float kd)
+pid_H pid_create(pid_H pid, float* in, float* out, float* set, float kp, float ki, float kd)
 {
 	pid->input = in;
 	pid->output = out;
@@ -34,11 +34,11 @@ pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float k
 	return pid;
 }
 
-void pid_compute(pid_t pid)
+void pid_compute(pid_H pid)
 {
 	// Check if control is enabled
 	if (!pid->automode)
-		return false;
+		return;
 	
 	float in = *(pid->input);
 	// Compute error
@@ -64,7 +64,7 @@ void pid_compute(pid_t pid)
 	pid->lastin = in;
 }
 
-void pid_tune(pid_t pid, float kp, float ki, float kd)
+void pid_tune(pid_H pid, float kp, float ki, float kd)
 {
 	// Check for validity
 	if (kp < 0 || ki < 0 || kd < 0)
@@ -84,7 +84,7 @@ void pid_tune(pid_t pid, float kp, float ki, float kd)
 	}
 }
 
-void pid_limits(pid_t pid, float min, float max)
+void pid_limits(pid_H pid, float min, float max)
 {
 	if (min >= max) return;
 	pid->omin = min;
@@ -103,7 +103,7 @@ void pid_limits(pid_t pid, float min, float max)
 	}
 }
 
-void pid_auto(pid_t pid)
+void pid_auto(pid_H pid)
 {
 	// If going from manual to auto
 	if (!pid->automode) {
@@ -117,12 +117,12 @@ void pid_auto(pid_t pid)
 	}
 }
 
-void pid_manual(pid_t pid)
+void pid_manual(pid_H pid)
 {
 	pid->automode = false;
 }
 
-void pid_direction(pid_t pid, enum pid_control_directions dir)
+void pid_direction(pid_H pid, enum pid_control_directions dir)
 {
 	if (pid->automode && pid->direction != dir) {
 		pid->Kp = (0 - pid->Kp);

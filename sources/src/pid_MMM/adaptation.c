@@ -14,7 +14,7 @@
 //----------------------------------------------------------
 // Private defines
 //----------------------------------------------------------
-#define NB_SLICES                      (30)
+
 //----------------------------------------------------------
 // Private typedefs
 //----------------------------------------------------------
@@ -121,19 +121,23 @@ uint32_t adaptation(
   {
     compute_seed(target_Flow_Lpm, target_VT_mL, motor_steps_us, &nb_steps);
     l_adaptation_initialized = true;
-	
-	
+		
 	// Structure to strore PID data and pointer to PID structure
 	struct pid_controller ctrldata_Volume, ctrldata_Debit[NB_SLICES];
-	pid_t pid_Volume, pid_FlowRate[NB_SLICES];
+	pid_H pid_FlowRate[NB_SLICES];
+	float input_volume, flow_setpoint, objective_volume;
+	float Flowrate_Slice[NB_SLICES];
+	float Freq_Steps[NB_SLICES];
+	
 	// Prepare PID Volume controller for operation, set limits and enable controller
-	pid_Volume = pid_create(&ctrldata_Volume, &input_volume, &Debit_Plateau_Consigne, &setpoint, kp, ki, kd);
+	pid_H pid_Volume = pid_create(&ctrldata_Volume, &input_volume, &flow_setpoint, &objective_volume, VOL_KP, VOL_KI, VOL_KD);
 	pid_limits(pid_Volume, 0, 200);
 	pid_auto(pid_Volume);
+	
 	// Prepare PID Flowrate controller for operation, set limits and enable controller
 	for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
 	{
-		pid_FlowRate[slice_index] = pid_create(&ctrldata_Debit[slice_index], &input_volume, &Debit_Plateau_Consigne, &setpoint, kp, ki, kd);
+		pid_FlowRate[slice_index] = pid_create(&ctrldata_Debit[slice_index], &Flowrate_Slice[slice_index], &Freq_Steps[slice_index], &flow_setpoint, FLOW_KP, FLOW_KI, FLOW_KD);
 		pid_limits(pid_FlowRate[slice_index], 0, 200);
 		pid_auto(pid_FlowRate[slice_index]);
 	}
