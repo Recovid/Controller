@@ -27,6 +27,7 @@ static float    compte_motor_step_time(uint32_t step_number, float desired_flow_
 static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples,  float* A, float* B);
 //static float    linear_fit(float* samples, uint32_t samples_len, float flow_samples_period_s, float* slope);
 static int32_t  get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
+static int32_t  get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound);
 
 
 //----------------------------------------------------------
@@ -86,7 +87,7 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 		float P_plateau_mean = 0.2;
 		uint32_t low;
 		uint32_t high;
-		if(get_plateau2(flow_samples, flow_samples_count, flow_samples_period_s, 10, &low, &high) == 0) {
+		if(get_plateau2(flow_samples, flow_samples_count, flow_samples_period_s, &low, &high) == 0) {
 //			brth_printf("plateau found from sample %lu to %lu\n", low, high);
 		} else {
 //			brth_printf("plateau NOT found, considering from sample %lu to %lu\n", low, high);
