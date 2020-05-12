@@ -4,6 +4,7 @@
 #include "adaptation.h"
 #include "platform.h"
 #include "platform_defs.h"
+#include "PID.h"
 #include <inttypes.h>
 // Other dependencies
 #include <stdint.h>
@@ -100,6 +101,24 @@ uint32_t adaptation(
   {
     compute_seed(target_Flow_Lpm, target_VT_mL, motor_steps_us, &nb_steps);
     l_adaptation_initialized = true;
+	
+	
+	// Structure to strore PID data and pointer to PID structure
+	struct pid_controller ctrldata_Volume, ctrldata_Debit[NB_SLICES];
+	pid_t pid_Volume, pid_FlowRate[NB_SLICES];
+	// Prepare PID Volume controller for operation, set limits and enable controller
+	pid_Volume = pid_create(&ctrldata_Volume, &input_volume, &Debit_Plateau_Consigne, &setpoint, kp, ki, kd);
+	pid_limits(pid_Volume, 0, 200);
+	pid_auto(pid_Volume);
+	// Prepare PID Flowrate controller for operation, set limits and enable controller
+	for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
+	{
+		pid_FlowRate[slice_index] = pid_create(&ctrldata_Debit[slice_index], &input_volume, &Debit_Plateau_Consigne, &setpoint, kp, ki, kd);
+		pid_limits(pid_FlowRate[slice_index], 0, 200);
+		pid_auto(pid_FlowRate[slice_index]);
+	}
+	
+	
     return nb_steps;
   }
   //translate sample for time to steps
