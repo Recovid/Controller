@@ -252,11 +252,11 @@ static void breathing_run(void *args)
                     brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
                     next_state = Plateau;
                 }
-                // else if (g_setting_Tinsu_ms <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
-                // {
-                //     brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - inhalation_start_ms));
-                //     next_state = Plateau;
-                // }
+                else if (g_setting_Tinsu_ms <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
+                {
+                     brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - inhalation_start_ms));
+                     next_state = Plateau;
+                }
             } while (Insuflation == next_state);
             
             // Insuflation state: onExit
