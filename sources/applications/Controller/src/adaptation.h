@@ -1,6 +1,10 @@
 #ifndef __ADAPTATION_H__
 #define __ADAPTATION_H__
 #include "common.h"
+#include "platform.h"
+
+#define CALIBRATION_STEP_US    (MOTOR_MIN_STEP_US*2)
+
 
 // Initialize the adaptation engine.
 // Called before the recovid starts the breathing cycles.
@@ -17,6 +21,9 @@ uint32_t adaptation(
     uint32_t    motor_max_steps, 
     uint32_t*   motor_steps_us);
 
+
+
+float    linear_fit(float* samples, uint32_t samples_len, float* a, float* b);
 
 
 #endif

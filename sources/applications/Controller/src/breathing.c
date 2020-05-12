@@ -25,9 +25,6 @@
 #define MAX_PDIFF_SAMPLES       (2000 / SAMPLING_PERIOD_MS)
 
 
-#define CALIBRATION_STEP_US    (MOTOR_MIN_STEP_US*2)
-
-
 //----------------------------------------------------------
 // Private typedefs
 //----------------------------------------------------------
@@ -175,13 +172,12 @@ static void breathing_run(void *args)
 
         motor_enable(true);
 
+        float a=0,b=0;
 #if 0
         brth_printf("BRTH: Calibration...\n");
-        float a=0,b=0;
         calibration(&a, &b, 3, CALIBRATION_STEP_US);
-        wait_ms(5000);
+        wait_ms(2000);
 #endif
-        float a=0,b=0;
         adaptation_init(a,b);
 
         // Clear cycle data
@@ -537,7 +533,7 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
 	float originFlow = 0; // origin flow of flow(t) curve
 	uint32_t steps;
 
-    steps= (uint32_t) (MOTOR_MAX_STEPS*80/100);
+    steps= (uint32_t) (MOTOR_MAX_STEPS*66/100);
     for(uint32_t t=0; t<steps; ++t) 
     {
         g_motor_steps_us[t]= (uint32_t)calibration_step_us;
@@ -572,8 +568,23 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
         wait_ms(2000);
 
 		float a = 0, b = 0;
-		float r = linear_fit(g_Pdiff_Lpm_samples, g_Pdiff_Lpm_sample_count, SAMPLING_PERIOD_MS*0.001, &a, &b);
-		brth_printf("a=%lu\n", (uint32_t)(1000.*a));
+		float r = linear_fit(g_Pdiff_Lpm_samples, g_Pdiff_Lpm_sample_count, &a, &b);
+
+        // scale slope from sample idx to to seconds
+        a= a/(0.001*SAMPLING_PERIOD_MS);
+
+        for(int t=0; t<g_Pdiff_Lpm_sample_count; ++t ) 
+        {
+            brth_printf("%ld, ", (int32_t)(g_Pdiff_Lpm_samples[t]));
+        }
+        brth_printf("\n");
+        for(int t=0; t<g_Pdiff_Lpm_sample_count; ++t ) 
+        {
+            brth_printf("%ld, ", (int32_t)(a*t+b));
+        }
+        brth_printf("\n");
+
+		brth_printf("a=%ld b=%ld\n", (int32_t)(1000.*a), (int32_t)(1000.*b));
 		brth_printf("r=%lu\n", (uint32_t)(1000.*r));
 		slope += a / (float)iterations;
 	}
@@ -603,6 +614,14 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
 	}
 	*B = originFlow;
 	brth_printf("B=%ld\n", (int32_t)(1000*(*B)));
+
+    // Reset Paw samples
+    init_Paw_cmH2O_sampling();
+
+    // Reset Pdiff samples
+    init_Pdiff_Lpm_sampling();
+
+
 	brth_printf("Calibration...DONE\n");
 }
 
