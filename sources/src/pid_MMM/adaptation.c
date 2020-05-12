@@ -1,3 +1,4 @@
+#include "breathing.h"
 #include "common.h"
 #include "compute_motor.h"
 #include "config.h"
@@ -13,7 +14,7 @@
 //----------------------------------------------------------
 // Private defines
 //----------------------------------------------------------
-
+#define NB_SLICES                      (30)
 //----------------------------------------------------------
 // Private typedefs
 //----------------------------------------------------------
@@ -24,6 +25,14 @@
 static bool l_adaptation_initialized = false;
 static const uint32_t T_omegamax_ms      = 200;
 static float flow_samples_motor_steps[MOTOR_MAX_STEPS];
+static const uint32_t Sa_max_pas_par_s2 = 45000;
+static const uint32_t Sd_max_pas_par_s2 = 3E5;
+static const float    AxC50R5           = 0.000204 ;  //constante courbe Vol(mL) de pas
+static const float    PxC50R5           = 2.1605 ;    //puissance sur le numéro de pas Vol (pas)
+static const float    S4H2O_cm          = 70;         //limite haute Pcrete pour selecteur moteur S4 en position C (85% du courant max)
+
+static float freq_steps_per_slices[NB_SLICES];
+static float error_per_slices[NB_SLICES];
 
 //----------------------------------------------------------
 // Private functions prototypes
@@ -39,7 +48,7 @@ void convert_freq_to_motor_steps(float* freq_steps_per_slices,  //input: freq st
                                  uint32_t* nb_steps);           //output: nb_steps
 
 void convert_motor_steps_to_freq(uint32_t* t_motor_step_us,     //input: Array of steps time [MAX_MOTOR_STEPS]
-                                 uint32_t* nb_steps,            //input: nb_steps
+                                 uint32_t nb_steps,            //input: nb_steps
 				 uint32_t  nb_slices,	   	//input: nb slices 
 				 float* freq_steps_per_slices); //output: array of freq per slices
 
@@ -49,6 +58,17 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
 					uint32_t* motor_steps_us,           //Motor steps to feat the samples against
 					uint32_t  nb_steps, 	            //Size of the array
 					float* flow_samples_motor_steps);//output a array of samples feated on motor steps
+
+static void compute_max_slope(uint32_t nb_steps_slices,
+                              uint32_t nb_steps_per_slices,
+                              float*   max_slope_acceleration,
+                              float*   max_slope_deceleration);
+
+static void compute_slice_flow_error(uint32_t nb_slices,
+                                     uint32_t nb_steps_per_slices,
+                                     float    target_Flow_Lpm,
+                                     float*   flow_samples_motor_steps,
+                                     float*   slice_flow_error);
 
 
 //----------------------------------------------------------
@@ -124,12 +144,13 @@ uint32_t adaptation(
   //translate sample for time to steps
   // => F1
 
+  convert_motor_steps_to_freq(motor_steps_us, nb_steps, NB_SLICES, freq_steps_per_slices);
+
   convert_samples_t_to_samples_steps(flow_samples_Lpm, flow_samples_count, flow_samples_period_ms, motor_steps_us, motor_max_steps, flow_samples_motor_steps);
 
-  //convert previous motor_steps_us to freq
-  ///????? 
-
+  compute_slice_flow_error(NB_SLICES, nb_steps/NB_SLICES, target_Flow_Lpm, flow_samples_motor_steps, error_per_slices);
   //convert_freq_to_motor_steps(new_freq, NB_SLICES, motor_step_us, &nb_stepseps);
+
 
   return nb_steps;
 }
@@ -235,9 +256,11 @@ void convert_freq_to_motor_steps(float* freq_steps_per_slices,  //input: freq st
                                  uint32_t* nb_steps);           //output: nb_steps
 
 void convert_motor_steps_to_freq(uint32_t* t_motor_step_us,     //input: Array of steps time [MAX_MOTOR_STEPS]
-                                 uint32_t* nb_steps,            //input: nb_steps
+                                 uint32_t nb_steps,            //input: nb_steps
 				 uint32_t  nb_slices,	   	//input: nb slices 
-				 float* freq_steps_per_slices); //output: array of freq per slices
+				 float* freq_steps_per_slices) //output: array of freq per slices
+{
+}
 
 void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //array of samples
 					uint32_t  flow_samples_count,       //nb samples in array
@@ -261,3 +284,47 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
     t_acc_us += motor_steps_us[i];
   }
 }
+
+
+
+
+//----------------------------------------------------------
+// Private functions
+//----------------------------------------------------------
+static void compute_max_slope(uint32_t nb_steps_slices,
+                              uint32_t nb_steps_per_slices,
+                              float*   max_slope_acceleration,
+                              float*   max_slope_deceleration)
+{
+  float VTi    = get_cycle_VTi_mL();
+  float Pcrete = get_cycle_Pcrete_cmH2O();
+  float PEP    = get_cycle_PEP_cmH2O();
+  float VnMax  = AxC50R5*powf(MAX_MOTOR_STEPS, PxC50R5); 
+  for(uint32_t k=0; k<nb_steps_slices; k++)
+  {
+    float Vn = AxC50R5*pow(k*nb_steps_per_slices, PxC50R5);
+    float motor_load_percent_n = 0.75*(VTi/Vn*Pcrete/S4H2O_cm) + 0.25*(Vn/VnMax); 
+    max_slope_acceleration[k] = Sa_max_pas_par_s2 * (1 - motor_load_percent_n);
+    max_slope_deceleration[k] = Sa_max_pas_par_s2 + (Sd_max_pas_par_s2 - Sa_max_pas_par_s2) * motor_load_percent_n;
+  }
+
+}
+
+static void compute_slice_flow_error(uint32_t nb_slices,
+                                     uint32_t nb_steps_per_slices,
+                                     float    target_Flow_Lpm,
+                                     float*   flow_samples_motor_steps,
+                                     float*   slice_flow_error)
+{
+  for(uint32_t k=0; k<nb_slices; k++)
+  {
+    slice_flow_error[k] = 0;
+    for(uint32_t i=0; i < nb_steps_per_slices; i++)
+    {
+      slice_flow_error[k] -= flow_samples_motor_steps[k*nb_steps_per_slices+i];
+    }
+    slice_flow_error[k] /= nb_steps_per_slices;
+    slice_flow_error[k] += target_Flow_Lpm;
+  }
+}
+

@@ -77,6 +77,7 @@ endif()
 set(EXECUTABLE ${PROJECT_NAME}${EXE_EXT})
 
 
+FILE(GLOB ADAPTATION_SRC src/${ADAPTATION}/*.c)
 # Controller
 set(SOURCES
    src/controller.c
@@ -85,7 +86,7 @@ set(SOURCES
    src/controller.c
    src/hmi.c
    src/protocol.c
-   src/${ADAPTATION}/adaptation.c
+   ${ADAPTATION_SRC} 
 )
 
 include_directories(
