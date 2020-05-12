@@ -1,4 +1,5 @@
 #include "common.h"
+#include "compute_motor.h"
 #include "config.h"
 #include "defaults.h"
 #include "controller.h"
@@ -48,7 +49,7 @@ static float g_cycle_VMe_Lpm;
 static float g_cycle_Pcrete_cmH2O;
 static float g_cycle_Pplat_cmH2O;
 static float g_cycle_PEP_cmH2O;
-
+static uint32_t g_cycle_nb_steps = MAX_MOTOR_STEPS;
 static uint32_t g_setting_T;
 static float g_setting_VT;
 static float g_setting_VM;
@@ -219,7 +220,7 @@ static void breathing_run(void *args)
             //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
             //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
 
-            uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
+            g_cycle_nb_steps = adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, g_cycle_nb_steps, g_motor_steps_us);
 
             // Init Paw samples
             init_Paw_cmH2O_sampling();
@@ -229,7 +230,7 @@ static void breathing_run(void *args)
 
             valve_inhale();
             reset_Vol_mL();
-            motor_press(g_motor_steps_us, nb_steps);
+            motor_press(g_motor_steps_us, g_cycle_nb_steps);
 
             // start Sampling (Paw and Pdiff)
             if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
