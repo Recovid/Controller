@@ -74,7 +74,7 @@ static volatile BreathingState g_state;
 
 static uint32_t g_motor_steps_us[MOTOR_MAX_STEPS] ; 
 
-
+static volatile bool g_sampling;
 
 
 //----------------------------------------------------------
@@ -177,10 +177,12 @@ static void breathing_run(void *args)
 
 #if 0
         brth_printf("BRTH: Calibration...\n");
-        float A,B;
-        calibration(&A, &B, 3, CALIBRATION_STEP_US);
-        while(true);
+        float a=0,b=0;
+        calibration(&a, &b, 3, CALIBRATION_STEP_US);
+        wait_ms(5000);
 #endif
+        float a=0,b=0;
+        adaptation_init(a,b);
 
         // Clear cycle data
         g_cycle_EoI_ratio = 0;
@@ -236,6 +238,12 @@ static void breathing_run(void *args)
             //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
             //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
 
+            for(uint32_t t=0; t<g_Pdiff_Lpm_sample_count; ++t) {
+                dbg_printf("%lu, ",(uint32_t)g_Pdiff_Lpm_samples[t]*1000);
+            }
+            dbg_printf("\n");
+
+
             uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
 
             // Init Paw samples
@@ -246,25 +254,29 @@ static void breathing_run(void *args)
 
             valve_inhale();
             reset_Vol_mL();
-            motor_press(g_motor_steps_us, nb_steps);
 
             // start Sampling (Paw and Pdiff)
+            g_sampling=true;
             if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
             {
                 // TODO : What should we do? Raise an alarm ??
+                brth_printf("Error timer !!\n");
             }
+            motor_press(g_motor_steps_us, nb_steps);
+
             // Insuflation state: do
             // Pdiff and Paw sampling will be done by the samplingTimer in background
             do
             {
                 wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
                 g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
-                if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
-                {
-                    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
-                    next_state = Exhalation;
-                }
-                else if (g_setting_VT <= read_Vol_mL())
+                // if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                // {
+                //     brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                //     next_state = Exhalation;
+                // }
+                // else 
+                if (g_setting_VT <= read_Vol_mL())
                 {
                     brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
                     next_state = Plateau;
@@ -277,9 +289,8 @@ static void breathing_run(void *args)
             } while (Insuflation == next_state);
             
             // Insuflation state: onExit
+            g_sampling=false;
             motor_stop();
-            motor_release(MOTOR_RELEASE_STEP_US);
-
 
             if (Plateau == next_state)
             {
@@ -331,7 +342,7 @@ static void breathing_run(void *args)
 
             // End of (macro) state Inhalation            
             g_cycle_VTi_mL = read_Vol_mL();
-
+            motor_release(MOTOR_RELEASE_STEP_US);
 
             // Exhalation state: onEntry
             signal_state(Exhalation);
@@ -507,11 +518,12 @@ static void samplingCallback(TimerHandle_t timer) {
     }
 
     // sample Pdiff only during Insuflation state
-    if(Insuflation == g_state) 
+    if(g_sampling==true) 
     {
         if(g_Pdiff_Lpm_sample_count<MAX_PDIFF_SAMPLES)
         {
-            g_Pdiff_Lpm_samples[g_Pdiff_Lpm_sample_count++]= read_Pdiff_Lpm();
+            g_Pdiff_Lpm_samples[g_Pdiff_Lpm_sample_count]= read_Pdiff_Lpm();
+            ++g_Pdiff_Lpm_sample_count;
         }
     }
 
@@ -542,11 +554,12 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
         valve_inhale();
 
         reset_Vol_mL();
-        g_state=Insuflation;
-		motor_press(g_motor_steps_us, steps);
         xTimerReset(g_samplingTimer, 10/portTICK_PERIOD_MS);
+		motor_press(g_motor_steps_us, steps);
         wait_ms(200); // skip first 200ms
+        g_sampling= true;
 		while(is_motor_moving()) wait_ms(5);
+        g_sampling= false;
         xTimerStop(g_samplingTimer, 10/portTICK_PERIOD_MS);
         g_state= None;
 		wait_ms(500);
@@ -558,8 +571,8 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
 		while(!is_motor_home());
         wait_ms(2000);
 
-		float a = 0;
-		float r = linear_fit(g_Pdiff_Lpm_samples, g_Pdiff_Lpm_sample_count, SAMPLING_PERIOD_MS*0.001, &a);
+		float a = 0, b = 0;
+		float r = linear_fit(g_Pdiff_Lpm_samples, g_Pdiff_Lpm_sample_count, SAMPLING_PERIOD_MS*0.001, &a, &b);
 		brth_printf("a=%lu\n", (uint32_t)(1000.*a));
 		brth_printf("r=%lu\n", (uint32_t)(1000.*r));
 		slope += a / (float)iterations;

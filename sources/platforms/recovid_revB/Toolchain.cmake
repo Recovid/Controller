@@ -43,6 +43,7 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
 set(COMMON_TOOLCHAIN_LFLAGS "\
     ${COMMON_TOOLCHAIN_CFLAGS} \
     -Wl,--gc-sections \
+    --specs=nosys.specs \
     --specs=nano.specs \
 ")
 

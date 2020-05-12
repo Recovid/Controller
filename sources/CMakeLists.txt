@@ -74,7 +74,7 @@ endif()
 add_subdirectory(${TARGET_DIR})
 
 ###############################################################################
-# Application Targets
+# Application
 
 add_subdirectory(${APPLICATION_DIR})
 

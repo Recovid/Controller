@@ -1,7 +1,7 @@
-#include "common.h"
-#include "config.h"
+#include "application.h"
 #include "platform.h"
 #include "calibration.h"
+#include "hmi.h"
 
 #include <math.h>
 #include <string.h>
@@ -65,55 +65,20 @@ static void calibration_run(void *args);
 static TaskHandle_t        g_calibrationTask;
 static TimerHandle_t       g_samplingTimer;
 
-#ifdef DEBUG
-SemaphoreHandle_t dbgMutex;
-#endif
-
 //----------------------------------------------------------
 // Public functions
 //----------------------------------------------------------
 
-void application_main()
-{
-
-#ifdef DEBUG
-    printf("Starting Calibration\n");
-
-    dbgMutex = xSemaphoreCreateBinary();
-    if(NULL == dbgMutex) {
-        printf("Unable to create dbgMutex\n");
-        return;
-    }
-    xSemaphoreGive(dbgMutex);
-#endif
-
-    if(calibration_init() == false) 
-    {
-        return;
-    }
-
-#ifdef DEBUG
-    printf("Starting scheduler\n");
-#endif
-
-    // start scheduler
-    vTaskStartScheduler();
-
-    // We should never get here
-}
-
-
-
 bool calibration_init() {
 #ifdef DEBUG
-    printf("Initializing\n");
+    printf("SAM : Initializing\n");
 #endif
 
     g_samplingTimer = xTimerCreate("SamplingTimer", SAMPLING_PERIOD_MS / portTICK_PERIOD_MS, pdTRUE, 0, samplingCallback);
     if ( NULL == g_samplingTimer)
     {
 #ifdef DEBUG
-        printf("Unable to create samplingTimer\n");
+        printf("SAM : Unable to create samplingTimer\n");
 #endif
         return false;
     }
@@ -121,13 +86,13 @@ bool calibration_init() {
     if (xTaskCreate(calibration_run, "Calibration", CALIBRATION_TASK_STACK_SIZE, NULL, CALIBRATION_TASK_PRIORITY, &g_calibrationTask) != pdTRUE)
     {
 #ifdef DEBUG
-        printf("Unable to create calibrationTask\n");
+        printf("SAM : Unable to create calibrationTask\n");
 #endif
         return false;
     }
 
 #ifdef DEBUG
-    printf("Initialized\n");
+    printf("SAM : Initialized\n");
 #endif
     return true;
 }
@@ -144,11 +109,12 @@ static void calibration_run(void *args)
     init_indicators();
     init_valve();
     init_sensors();
-    init_motor();
+    sensors_start();
+    init_motor(MOTOR_HOME_STEP_US);
 
     while (true)
     {
-        dbg_printf("Waiting for failsafe signal\n");
+        dbg_printf("SAM : Waiting for On signal\n");
         while (is_Failsafe_Enabled())
         {
             wait_ms(200);
@@ -225,7 +191,15 @@ static void calibration_run(void *args)
         }
         B = originFlow;
         dbg_printf("B=%ld\n", (int32_t)(1000*B));
-        dbg_printf("Calibration...DONE\n");        
+        dbg_printf("Calibration...DONE\n");     
+
+        dbg_printf("SAM : Waiting for Off signal\n");
+        while (!is_Failsafe_Enabled())
+        {
+            wait_ms(200);
+        }
+        wait_ms(500);
+   
     }
 }
 

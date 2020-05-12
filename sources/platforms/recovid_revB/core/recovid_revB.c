@@ -385,11 +385,11 @@ static void MX_GPIO_Init(void)
                           |PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-#ifndef NO_RASPI_REBOOT  
-  HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
-#else
+// #ifndef NO_RASPI_REBOOT  
+//   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
+// #else
   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_RESET);
-#endif
+// #endif
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_RESET);

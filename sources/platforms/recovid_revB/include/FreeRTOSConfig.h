@@ -52,7 +52,7 @@
 /* Software timer definitions. */
 #define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                ( TIMER_TASK_PRIORITY )
-#define configTIMER_QUEUE_LENGTH                 10
+#define configTIMER_QUEUE_LENGTH                 1
 #define configTIMER_TASK_STACK_DEPTH             ( TIMER_TASK_STACK_SIZE )
 
 /* Set the following definitions to 1 to include the API function, or zero

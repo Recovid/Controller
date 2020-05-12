@@ -9,7 +9,6 @@ typedef struct {
     float       (*get_setting_PEP_cmH2O)(void);
     float       (*get_setting_Vmax_Lpm)(void);
     float       (*get_setting_EoI_ratio)(void);
-    uint32_t    (*get_setting_Tplat_ms)(void);
     float       (*get_setting_Pmax_cmH2O)(void);
     float       (*get_setting_Pmin_cmH2O)(void);
     float       (*get_setting_VTmin_mL)(void);

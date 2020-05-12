@@ -40,7 +40,7 @@ int uart_recv();
 //! HW actuators
 
 //! Called during initialisation only
-bool init_motor();
+bool init_motor(uint32_t home_step_us);
 
 //! \returns false in case of hardware failure
 bool is_motor_ok();

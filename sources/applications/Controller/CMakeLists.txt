@@ -12,6 +12,7 @@ endif()
 
 set(EXECUTABLE ${APPLICATION}${EXE_EXT})
 
+message("Adding executable ${EXECUTABLE}")
 add_executable(${EXECUTABLE} 
     ${APPLICATION_DIR}/src/controller.c
     ${APPLICATION_DIR}/src/monitoring.c
@@ -28,9 +29,9 @@ target_include_directories(${EXECUTABLE} PUBLIC
     ${APPLICATION_DIR}/include/${TARGET}
 )
 
-if(NO_RASPI_REBOOT)
+#if(NO_RASPI_REBOOT)
    add_compile_definitions(NO_RASPI_REBOOT)
-endif()
+#endif()
 
 
 
@@ -38,10 +39,38 @@ target_link_libraries(${EXECUTABLE} m platform )
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 
+###############################################################################
+# Setup OpenOCD
 
-# Targets for flashing on stm32
-if(${TARGET} STREQUAL "recovid_revB")
-    Setup_Programming_for(${EXECUTABLE} )
+if(NOT CMAKE_HOST_WIN32)
+    add_custom_target(install_udev
+        sudo ${CMAKE_SOURCE_DIR}/tools/install_udev.sh
+        USES_TERMINAL
+    )
 endif()
 
+if(${TARGET} STREQUAL "recovid_revB")
+    set(HEX_FILE ${EXECUTABLE}.hex)
+    set(BIN_FILE ${EXECUTABLE}.bin)
+    message("Adding custom command for ${EXECUTABLE}")
+    add_custom_command(TARGET ${EXECUTABLE}
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${EXECUTABLE}> ${HEX_FILE}
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${EXECUTABLE}> ${BIN_FILE}
+        COMMAND ${SIZE} $<TARGET_FILE:${EXECUTABLE}>
+        COMMENT "Objcopy ${HEX_FILE}"
+        POST_BUILD
+    )
+
+    set(target_name "${EXECUTABLE}.flash")
+    message("Created target ${target_name}")
+    add_custom_target("${target_name}"
+        openocd -f ${OPENOCD_CFG}
+            -c "init"
+            -c "reset init"
+            -c "flash write_image erase ${EXECUTABLE}"
+            -c "reset"
+            -c "shutdown"
+        DEPENDS ${HEX_FILE}
+    )
+endif()
 

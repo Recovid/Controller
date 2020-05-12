@@ -1,5 +1,4 @@
-#include "common.h"
-#include "config.h"
+#include "application.h"
 #include "hmi.h"
 #include "protocol.h"
 #include "platform.h"
