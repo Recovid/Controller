@@ -24,7 +24,7 @@ static float B;
 //----------------------------------------------------------
 
 static float    compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B, float speed);
-static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples,  float* A, float* B);
+static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples, uint32_t Ni, float* A, float* B);
 static bool     get_plateau(float* samples, uint32_t samples_len, float flow_samples_period_s, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau2(float* samples, uint32_t samples_len, float flow_samples_period_s, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
@@ -41,8 +41,8 @@ static float    linear_fit(float* samples, uint32_t samples_len, float* a, float
 // Initialize the adaptation engine.
 // Called before the recovid starts the breathing cycles.
 void adaptation_init(float a, float b) {
-    A= 0.585; //3.577;
-    B= -0.074; //-0.455;
+    A= 1.5; //a; //3.577; //3.577;
+    B= -0.05; //b; //-(MOTOR_MIN_STEP_US*2)*0.000001 +  MOTOR_MIN_STEP_US * 0.000001;
 }
 
 // Compute the motor step table based on targeted Vmax, VT, and previous flow samples.
@@ -62,11 +62,29 @@ uint32_t adaptation(
     //     get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high);
     // }
     
-    pid(target_Flow_Lpm, 0.001*flow_samples_period_ms, flow_samples_count, flow_samples_Lpm, &A, &B);
+    float Ti_s= flow_samples_period_ms*flow_samples_count/1000;
+    float t_s=0;
+    uint32_t Ni;
+    for(Ni=0; Ni<motor_max_steps; ++Ni) 
+    {
+        t_s+= 0.000001* motor_steps_us[Ni];
+        if(t_s>=Ti_s) break;
+    }
+
+    pid(target_Flow_Lpm, 0.001*flow_samples_period_ms, flow_samples_count, flow_samples_Lpm, Ni, &A, &B);
 
     for(uint32_t t=0; t<motor_max_steps; ++t) {
         motor_steps_us[t]= (uint32_t) compte_motor_step_time(t, target_Flow_Lpm, A, B, (MOTOR_MIN_STEP_US*2)*0.000001);
     }
+    #define ACCEL_US  10000
+    float s= MOTOR_MIN_STEP_US*2;
+    for(uint32_t t=0; t<motor_max_steps/10; ++t) {
+        if(motor_steps_us[t]>=s) break;
+        motor_steps_us[t]= s;
+        s-= (s*0.000001)*ACCEL_US;
+    }
+
+
     return motor_max_steps;
 }
 
@@ -74,22 +92,22 @@ uint32_t adaptation(
 // Private functions
 //----------------------------------------------------------
 
-static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lm, float A, float B, float speed) {
-	float res = (0.8*A*speed*speed*step_number) + B * speed;
-	res = 1000000* res / desired_flow_Lm;
-	if (res  < 0.8*MOTOR_MIN_STEP_US) { 
-        res = 0.8*MOTOR_MIN_STEP_US;
+static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lpm, float A, float B, float speed) {
+	float res = (A*speed*speed*step_number) + B * speed;
+	res = 1000000* res * 60 / desired_flow_Lpm;
+	if (res  < MOTOR_MIN_STEP_US/1.3) { 
+        res = MOTOR_MIN_STEP_US/1.3;
     }
 	return res;
 }
 
 
-static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples,  float* A, float* B) {
+static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples_Lpm, uint32_t Ni, float* A, float* B) {
   if(flow_samples_count==0) return;
 //************************************************* PID ZONE ********************************************//
 		// Compute average flow and slope to adjust A and B coefficients
-		float P_plateau_slope = 0.1;
-		float P_plateau_mean = 0.2;
+		float P_plateau_slope = 0.05;
+		float P_plateau_mean = 0.5;
 		uint32_t low;
 		uint32_t high;
 
@@ -100,15 +118,18 @@ static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
         plateau_slope= linear_fit(flow_samples+low, high-low-1, &plateau_slope, &origin);
 		float plateau_mean = 0;
 		for(uint32_t i=low; i<high; i++) {
-			plateau_mean += flow_samples[i];
+			plateau_mean += flow_samples_Lpm[i]/60;
 		}
 		plateau_mean = plateau_mean/(high-low);
-		brth_printf("plateau: slope=%ld origin=%ld mean=%ld\n",(int32_t)(1000*plateau_slope),(int32_t)(1000*origin),(int32_t)(1000*plateau_mean));
-
-		float error_mean = plateau_mean - target_flow_Lpm;
-
-		*A += plateau_slope * P_plateau_slope;
-		*B += error_mean * P_plateau_mean;
+        float error_mean = plateau_mean - (target_flow_Lpm/60.);
+		brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
+		brth_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
+        brth_printf("plateau error : %ld\n",(int32_t)(1000*error_mean));
+		float A_error = plateau_slope * P_plateau_slope;
+        
+        float B_corr= *B - A_error* (Ni*(Ni+1)/2); // comment to remove A-B correction
+        *A += A_error;
+		*B = B_corr + (error_mean * P_plateau_mean);
 		brth_printf("A = %ld\n", (int32_t)(1000*(*A)));
 		brth_printf("B = %ld\n", (int32_t)(1000*(*B)));
 
