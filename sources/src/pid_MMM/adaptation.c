@@ -236,11 +236,43 @@ void convert_freq_to_motor_steps(float* freq_steps_per_slices,  //input: freq st
 				 uint32_t* t_motor_step_us,     //output: Array of steps time [MAX_MOTOR_STEPS]
                                  uint32_t* nb_steps);           //output: nb_steps
 
-void convert_motor_steps_to_freq(uint32_t* t_motor_step_us,     //input: Array of steps time [MAX_MOTOR_STEPS]
-                                 uint32_t nb_steps,            //input: nb_steps
-				 uint32_t  nb_slices,	   	//input: nb slices 
-				 float* freq_steps_per_slices) //output: array of freq per slices
+void convert_motor_steps_to_freq(uint32_t* t_motor_step_us,       //input: Array of steps time [MAX_MOTOR_STEPS]
+                                 uint32_t  nb_steps,              //input: nb_steps
+				 uint32_t  nb_slices,	   	  //input: nb slices 
+				 float*    freq_steps_per_slices) //output: array of freq per slices
 {
+  uint32_t nb_steps_per_slices = nb_steps / nb_slices;
+  //The last slice may have more steps (between 0 to NB_SLICES more)
+  uint32_t last_nb_steps_per_slices = nb_steps - (nb_steps_per_slices * nb_slices);
+  uint32_t slice_idx = 0;
+  uint32_t t_acc_us;
+  for(slice_idx = 0; slice_idx < nb_slices-1; slice_idx++)
+  {
+    t_acc_us = 0;
+    uint32_t start_idx = slice_idx*nb_steps_per_slices;
+    uint32_t end_idx   = start_idx + nb_steps_per_slices;
+    for(uint32_t step_idx_within_slice = start_idx; step_idx_within_slice < end_idx; step_idx_within_slice++)
+    {
+      t_acc_us += t_motor_step_us[step_idx_within_slice];
+    }
+    if(t_acc_us != 0)
+      freq_steps_per_slices[slice_idx] = nb_steps_per_slices*1000000.f  / t_acc_us;
+    else
+      freq_steps_per_slices[slice_idx] = 0.0f;
+  }
+
+  //The last slice may have more steps (between 0 to NB_SLICES more)
+  t_acc_us = 0;
+  uint32_t start_idx = slice_idx*nb_steps_per_slices;
+  uint32_t end_idx   = start_idx + last_nb_steps_per_slices;
+  for(uint32_t step_idx_within_slice = start_idx; step_idx_within_slice < end_idx; step_idx_within_slice++)
+  {
+    t_acc_us += t_motor_step_us[step_idx_within_slice];
+  }
+  if(t_acc_us != 0)
+    freq_steps_per_slices[slice_idx] = last_nb_steps_per_slices*1000000.f  / t_acc_us;
+  else
+    freq_steps_per_slices[slice_idx] = 0.0f;
 }
 
 void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //array of samples
