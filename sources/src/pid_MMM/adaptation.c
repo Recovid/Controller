@@ -39,9 +39,9 @@ struct pid_controller ctrldata_Volume;
 struct pid_controller ctrldata_Debit[NB_SLICES];
 pid_H pid_Volume;
 pid_H pid_FlowRate[NB_SLICES];
-float PreviousCycle_Vti, flow_setpoint, objective_volume;
+float PreviousCycle_Vti, flow_command_updated, objective_volume;
 float Flowrate_Slice[NB_SLICES];
-float Freq_Steps[NB_SLICES];
+float Freq_Steps_updated[NB_SLICES];
 
 //----------------------------------------------------------
 // Private functions prototypes
@@ -133,10 +133,10 @@ uint32_t adaptation(
 		
 		// Prepare PID Volume controller for operation, set limits and enable controller
 		pid_Volume = pid_create(	&ctrldata_Volume, 
-										&PreviousCycle_Vti, 
-										&flow_setpoint, 
-										&objective_volume, 
-										VOL_KP, VOL_KI, VOL_KD);
+									&PreviousCycle_Vti, 
+									&flow_command_updated, 
+									&objective_volume, 
+									VOL_KP, VOL_KI, VOL_KD);
 		pid_limits(pid_Volume, 0, 200);
 		pid_auto(pid_Volume);
 		
@@ -145,8 +145,8 @@ uint32_t adaptation(
 		{
 			pid_FlowRate[slice_index] = pid_create(	&ctrldata_Debit[slice_index], 
 													&Flowrate_Slice[slice_index], 
-													&Freq_Steps[slice_index], 
-													&flow_setpoint, 
+													&Freq_Steps_updated[slice_index], 
+													&flow_command_updated, 
 													FLOW_KP, FLOW_KI, FLOW_KD);
 			pid_limits(pid_FlowRate[slice_index], 0, 200);
 			pid_auto(pid_FlowRate[slice_index]);
@@ -173,21 +173,22 @@ uint32_t adaptation(
 
 	// Call Volume PID every X cycles: Read process feedback, Compute new PID output value
 	PreviousCycle_Vti = get_cycle_VTi_mL();
-	pid_compute(pid_Volume); // result is stored in flow_setpoint
+	pid_compute(pid_Volume); // result is stored in flow_command_updated
 	
 	// Call Debit PID
 	for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
 	{
 		// Compute new PID output value
-		pid_compute(pid_FlowRate[slice_index]); // result is stored in Freq_Steps[slice_index]
+		pid_compute(pid_FlowRate[slice_index]); // result is stored in Freq_Steps_updated[slice_index]
 		
 		// Add the seed to the result
+		Freq_Steps_updated[slice_index] += freq_steps_per_slices[slice_index];
 		
 		// check if all slices are under max acceleration & decelaration
-		if(Freq_Steps[slice_index] > max_slope_acceleration[slice_index])
-			Freq_Steps[slice_index] = max_slope_acceleration[slice_index];
-		if(Freq_Steps[slice_index] > max_slope_deceleration[slice_index])
-			Freq_Steps[slice_index] = max_slope_deceleration[slice_index];
+		if(Freq_Steps_updated[slice_index] > max_slope_acceleration[slice_index])
+			Freq_Steps_updated[slice_index] = max_slope_acceleration[slice_index];
+		if(Freq_Steps_updated[slice_index] > max_slope_deceleration[slice_index])
+			Freq_Steps_updated[slice_index] = max_slope_deceleration[slice_index];
 	}
 	
 	// Compute motor step table ?
