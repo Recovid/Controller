@@ -134,7 +134,6 @@ void motor_active_irq();
 #define PEP_TIM_CHANNEL                     TIM_CHANNEL_4
 
 #define PEP_PULSE_WIDTH_US                  10
-#define PEP_STEPS_PER_MM                    (200*8*1)     // steps_per_rev*microstepping*thread_mm_per_rev
 #define PEP_MAX_SPEED                       (4)           // mm/s
 #define PEP_HOME_SPEED                      (0.6)         // mm/s
 

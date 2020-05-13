@@ -6,6 +6,8 @@ static TIM_HandleTypeDef *_motor_tim = NULL;
 
 static void step_callback(TIM_HandleTypeDef *tim);
 
+static volatile int32_t _absolute_steps;
+static volatile int16_t _step_inc;
 static volatile uint32_t _remaining_steps;
 static volatile bool _moving;
 static volatile bool _homing;
@@ -43,6 +45,7 @@ bool init_motor_pep()
         set_enable(false);
 
         _home = !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
+        motor_pep_home();
     }
     return true;
 }
@@ -52,17 +55,28 @@ bool is_motor_pep_ok()
     return _motor_tim != NULL;
 }
 
-bool motor_pep_move(int relative_mm)
+bool motor_pep_move(int relative_cmH2O)
 {
     if (_motor_tim == NULL)
         return false;
-    if (relative_mm != 0)
+    if (relative_cmH2O != 0)
     {
+        int32_t nb_steps= (int32_t)(relative_cmH2O*1000*MOTOR_PEP_PEP_TO_MM_FACTOR) * MOTOR_PEP_STEPS_PER_MM;
+        if(_absolute_steps+nb_steps <0 ) 
+        {
+            nb_steps= -_absolute_steps;
+        }
+        if(_absolute_steps+nb_steps > MOTOR_PEP_MAX_STEPS)  
+        {
+            nb_steps= MOTOR_PEP_MAX_STEPS;
+        }
+        _step_inc= nb_steps<0? 1 : -1;
+
         __disable_irq();
-        set_direction(relative_mm < 0 ? PEP_DIR_DEC : PEP_DIR_INC);
+        set_direction(nb_steps < 0 ? PEP_DIR_DEC : PEP_DIR_INC);
         set_enable(true);
-        _remaining_steps = (uint32_t)fabs(relative_mm) * PEP_STEPS_PER_MM;
-        _motor_tim->Init.Period = (uint16_t)(1000000.0 / (PEP_MAX_SPEED * PEP_STEPS_PER_MM));
+        _remaining_steps = (uint32_t)fabs(nb_steps);
+        _motor_tim->Init.Period = (uint16_t)(1000000.0 / (PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_MM));
         HAL_TIM_Base_Init(_motor_tim);
         _motor_tim->Instance->CNT = 0;
         _moving = true;
@@ -79,21 +93,23 @@ bool motor_pep_home()
     {
         return false;
     }
+    if(!_home) {
+        __disable_irq();
+        set_direction(PEP_DIR_DEC);
+        set_enable(true);
+        _motor_tim->Init.Period = (uint16_t)(1000000 / (PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_MM));
+        HAL_TIM_Base_Init(_motor_tim);
+        _motor_tim->Instance->CNT = 0;
+        _moving = true;
+        _homing = true;
+        __enable_irq();
+        HAL_TIM_Base_Start_IT(_motor_tim);
 
-    __disable_irq();
-    set_direction(PEP_DIR_DEC);
-    set_enable(true);
-    _motor_tim->Init.Period = (uint16_t)(1000000 / (PEP_MAX_SPEED * PEP_STEPS_PER_MM));
-    HAL_TIM_Base_Init(_motor_tim);
-    _motor_tim->Instance->CNT = 0;
-    _moving = true;
-    _homing = true;
-    __enable_irq();
-    HAL_TIM_Base_Start_IT(_motor_tim);
-
-    while (!_home) 
-    {
-        wait_ms(5);
+        while (!_home) 
+        {
+            wait_ms(5);
+        }
+        _absolute_steps=0;
     }
     return true;
 }
@@ -154,6 +170,16 @@ static void step_callback(TIM_HandleTypeDef *tim)
         motor_pep_stop();
     }
     --_remaining_steps;
+    _absolute_steps+= _step_inc;
+    if(_absolute_steps<0) {
+        _absolute_steps=0;
+        motor_pep_stop();
+    }
+    if(_absolute_steps>MOTOR_PEP_MAX_STEPS) {
+        _absolute_steps=MOTOR_PEP_MAX_STEPS;
+        motor_pep_stop();
+    }
+
 }
 
 static void set_stepping(step_mode_t m0, step_mode_t m1)

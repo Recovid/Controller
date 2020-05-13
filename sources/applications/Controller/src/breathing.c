@@ -71,7 +71,7 @@ static volatile BreathingState g_state;
 
 static uint32_t g_motor_steps_us[MOTOR_MAX_STEPS] ; 
 
-static volatile bool g_sampling;
+static volatile bool g_Pdiff_sampling;
 
 
 //----------------------------------------------------------
@@ -188,6 +188,18 @@ static void breathing_run(void *args)
         g_cycle_Pplat_cmH2O = 0;
         g_cycle_PEP_cmH2O = 0;
 
+
+        // Init Paw samples
+        init_Paw_cmH2O_sampling();
+        // Init Pdiff sampling
+        init_Pdiff_Lpm_sampling();
+        // Start timer
+        if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
+        {
+            // TODO : What should we do? Raise an alarm ??
+            brth_printf("Error timer !!\n");
+        }
+
         // Init state machine
         BreathingState next_state = Insuflation;
         uint32_t inhalation_start_ms;
@@ -227,23 +239,14 @@ static void breathing_run(void *args)
             brth_printf("BRTH: Tinsu : %lu\n", g_setting_Tinsu_ms);
             brth_printf("BRTH: Tinspi: %lu\n", g_setting_Tinspi_ms);
             brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
-            
-
-
-            // Compute adaptation based on current settings and previous collected data if any.
-            //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
-            //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
-
+#ifdef DEBUG_BREATHING            
             for(uint32_t t=0; t<g_Pdiff_Lpm_sample_count; ++t) {
                 dbg_printf("%lu, ",(uint32_t)g_Pdiff_Lpm_samples[t]*1000);
             }
             dbg_printf("\n");
-
+#endif
 
             uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
-
-            // Init Paw samples
-            init_Paw_cmH2O_sampling();
 
             // Init Pdiff samples
             init_Pdiff_Lpm_sampling();
@@ -251,13 +254,8 @@ static void breathing_run(void *args)
             valve_inhale();
             reset_Vol_mL();
 
-            // start Sampling (Paw and Pdiff)
-            g_sampling=true;
-            if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
-            {
-                // TODO : What should we do? Raise an alarm ??
-                brth_printf("Error timer !!\n");
-            }
+            // start Pdiff Sampling 
+            g_Pdiff_sampling=true;
             motor_press(g_motor_steps_us, nb_steps);
 
             // Insuflation state: do
@@ -266,18 +264,19 @@ static void breathing_run(void *args)
             {
                 wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
                 g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
-                // if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
-                // {
-                //     brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
-                //     next_state = Exhalation;
-                // }
-                // else 
+                if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                {
+                    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                    next_state = Exhalation;
+                }
+                else 
                 if (g_setting_VT <= read_Vol_mL())
                 {
                     brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
                     next_state = Plateau;
                 }
-                // else if (g_setting_Tinsu_ms <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
+                // else 
+                // if (g_setting_Tinsu_ms * 1.2 <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
                 // {
                 //     brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - inhalation_start_ms));
                 //     next_state = Plateau;
@@ -285,7 +284,7 @@ static void breathing_run(void *args)
             } while (Insuflation == next_state);
             
             // Insuflation state: onExit
-            g_sampling=false;
+            g_Pdiff_sampling=false;
             motor_stop();
 
             if (Plateau == next_state)
@@ -377,16 +376,10 @@ static void breathing_run(void *args)
             } while (Exhalation == next_state);            
             
             // Exhalation state: onExit
-            g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
-
-            // stop Sampling (Paw and Pdiff)
-            if( xTimerStop(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
-            {
-                // TODO : What should we do? Raise an alarm ??
-            }
-
             // Compute cycle data
             uint32_t t_ms = get_time_ms();
+            g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
+
             g_cycle_EoI_ratio = (float)(t_ms - exhalation_start_ms - exhalation_pause_t_ms) / (exhalation_start_ms - inhalation_start_ms - inhalation_pause_t_ms);
             g_cycle_FR_pm = 1. / (((float)(t_ms - inhalation_start_ms - inhalation_pause_t_ms - exhalation_pause_t_ms)) / 1000 / 60);
             g_cycle_VTe_mL = VTe_start_mL - read_Vol_mL();
@@ -396,11 +389,17 @@ static void breathing_run(void *args)
             xEventGroupSetBits(g_breathingEvents, BRTH_CYCLE_UPDATED);
 
             // Proceed to the PEP regulation
-            //regulation_pep();
+            regulation_pep();
 
             // Check if controller asked us to stop.
             events = xEventGroupGetBits(g_controllerEvents);
         } while ((events & BREATHING_RUN_FLAG) != 0);
+
+        // stop Sampling (Paw and Pdiff)
+        if( xTimerStop(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
+        {
+            // TODO : What should we do? Raise an alarm ??
+        }
 
         signal_state(None);
         brth_printf("BRTH: Stopping\n");
@@ -487,6 +486,7 @@ static void init_Pdiff_Lpm_sampling()
     taskENTER_CRITICAL();
     memset((void*)g_Pdiff_Lpm_samples, 0, sizeof(g_Pdiff_Lpm_samples));
     g_Pdiff_Lpm_sample_count= 0;
+    g_Pdiff_sampling= false;
     taskEXIT_CRITICAL();
 }
 
@@ -514,7 +514,7 @@ static void samplingCallback(TimerHandle_t timer) {
     }
 
     // sample Pdiff only during Insuflation state
-    if(g_sampling==true) 
+    if(g_Pdiff_sampling==true) 
     {
         if(g_Pdiff_Lpm_sample_count<MAX_PDIFF_SAMPLES)
         {
@@ -553,9 +553,9 @@ static void calibration(float* A, float* B, uint8_t iterations, uint32_t calibra
         xTimerReset(g_samplingTimer, 10/portTICK_PERIOD_MS);
 		motor_press(g_motor_steps_us, steps);
         wait_ms(200); // skip first 200ms
-        g_sampling= true;
+        g_Pdiff_sampling= true;
 		while(is_motor_moving()) wait_ms(5);
-        g_sampling= false;
+        g_Pdiff_sampling= false;
         xTimerStop(g_samplingTimer, 10/portTICK_PERIOD_MS);
         g_state= None;
 		wait_ms(500);
