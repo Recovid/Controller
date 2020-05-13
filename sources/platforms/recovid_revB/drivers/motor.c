@@ -1,5 +1,6 @@
 #include "recovid_revB.h"
 #include "platform.h"
+#include <platform_defs.h>
 
 static TIM_HandleTypeDef *_motor_tim = NULL;
 
@@ -91,6 +92,22 @@ bool motor_release(uint32_t step_us)
 bool motor_press(uint32_t *steps_profile_us, unsigned int nb_steps)
 {
     motor_stop();
+    if(_home)
+    {
+        taskENTER_CRITICAL();
+        HAL_GPIO_WritePin(MOTOR_DIR_GPIO_Port, MOTOR_DIR_Pin, MOTOR_PRESS_DIR);
+        _motor_tim->Init.Period = MOTOR_RELEASE_SPEED;
+        HAL_TIM_Base_Init(_motor_tim);
+        _motor_tim->Instance->CNT=0;
+        _moving = true;
+        _homing = false;
+        HAL_TIM_PWM_Start(_motor_tim, MOTOR_TIM_CHANNEL);
+        taskEXIT_CRITICAL();
+        while (_home) 
+        {
+            wait_ms(2);
+        }
+    }
     if (nb_steps > 0)
     {
         taskENTER_CRITICAL();
