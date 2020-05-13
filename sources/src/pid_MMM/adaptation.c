@@ -32,7 +32,16 @@ static const float    PxC50R5           = 2.1605 ;    //puissance sur le numéro
 static const float    S4H2O_cm          = 70;         //limite haute Pcrete pour selecteur moteur S4 en position C (85% du courant max)
 
 static float freq_steps_per_slices[NB_SLICES];
-static float error_per_slices[NB_SLICES];
+static float flow_per_slices[NB_SLICES];
+
+// Structure to strore PID data and pointer to PID structure
+struct pid_controller ctrldata_Volume;
+struct pid_controller ctrldata_Debit[NB_SLICES];
+pid_H pid_Volume;
+pid_H pid_FlowRate[NB_SLICES];
+float PreviousCycle_Vti, flow_setpoint, objective_volume;
+float Flowrate_Slice[NB_SLICES];
+float Freq_Steps[NB_SLICES];
 
 //----------------------------------------------------------
 // Private functions prototypes
@@ -59,16 +68,16 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
 					uint32_t  nb_steps, 	            //Size of the array
 					float* flow_samples_motor_steps);//output a array of samples feated on motor steps
 
-static void compute_max_slope(uint32_t nb_steps_slices,
+static void compute_max_slope(uint32_t nb_slices,
                               uint32_t nb_steps_per_slices,
                               float*   max_slope_acceleration,
                               float*   max_slope_deceleration);
 
-static void compute_slice_flow_error(uint32_t nb_slices,
+static void compute_slice_flow(uint32_t nb_slices,
                                      uint32_t nb_steps_per_slices,
                                      float    target_Flow_Lpm,
                                      float*   flow_samples_motor_steps,
-                                     float*   slice_flow_error);
+                                     float*   slice_flow);
 
 
 //----------------------------------------------------------
@@ -117,46 +126,74 @@ uint32_t adaptation(
 {
   uint32_t nb_steps = motor_max_steps;
 
-  if(l_adaptation_initialized != true)
-  {
-    compute_seed(target_Flow_Lpm, target_VT_mL, motor_steps_us, &nb_steps);
-    l_adaptation_initialized = true;
+	if(l_adaptation_initialized != true)
+	{
+		compute_seed(target_Flow_Lpm, target_VT_mL, motor_steps_us, &nb_steps);
+		l_adaptation_initialized = true;
 		
-	// Structure to strore PID data and pointer to PID structure
-	struct pid_controller ctrldata_Volume, ctrldata_Debit[NB_SLICES];
-	pid_H pid_FlowRate[NB_SLICES];
-	float input_volume, flow_setpoint, objective_volume;
-	float Flowrate_Slice[NB_SLICES];
-	float Freq_Steps[NB_SLICES];
+		// Prepare PID Volume controller for operation, set limits and enable controller
+		pid_Volume = pid_create(	&ctrldata_Volume, 
+										&PreviousCycle_Vti, 
+										&flow_setpoint, 
+										&objective_volume, 
+										VOL_KP, VOL_KI, VOL_KD);
+		pid_limits(pid_Volume, 0, 200);
+		pid_auto(pid_Volume);
+		
+		// Prepare PID Flowrate controller for operation, set limits and enable controller
+		for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
+		{
+			pid_FlowRate[slice_index] = pid_create(	&ctrldata_Debit[slice_index], 
+													&Flowrate_Slice[slice_index], 
+													&Freq_Steps[slice_index], 
+													&flow_setpoint, 
+													FLOW_KP, FLOW_KI, FLOW_KD);
+			pid_limits(pid_FlowRate[slice_index], 0, 200);
+			pid_auto(pid_FlowRate[slice_index]);
+		}
+		
+		
+		return nb_steps;
+	}
+	//translate sample for time to steps
+	// => F1
+
+	convert_motor_steps_to_freq(motor_steps_us, nb_steps, NB_SLICES, freq_steps_per_slices);
+
+	convert_samples_t_to_samples_steps(flow_samples_Lpm, flow_samples_count, flow_samples_period_ms, motor_steps_us, motor_max_steps, flow_samples_motor_steps);
+
+	compute_slice_flow(NB_SLICES, nb_steps/NB_SLICES, target_Flow_Lpm, flow_samples_motor_steps, flow_per_slices);
+
+	float max_slope_acceleration[NB_SLICES], max_slope_deceleration[NB_SLICES];
+	// F3 Compute Max acceleration per Slice
+	compute_max_slope(	NB_SLICES,
+						nb_steps,
+						max_slope_acceleration,
+						max_slope_deceleration);
+
+	// Call Volume PID every X cycles: Read process feedback, Compute new PID output value
+	PreviousCycle_Vti = get_cycle_VTi_mL();
+	pid_compute(pid_Volume); // result is stored in flow_setpoint
 	
-	// Prepare PID Volume controller for operation, set limits and enable controller
-	pid_H pid_Volume = pid_create(&ctrldata_Volume, &input_volume, &flow_setpoint, &objective_volume, VOL_KP, VOL_KI, VOL_KD);
-	pid_limits(pid_Volume, 0, 200);
-	pid_auto(pid_Volume);
-	
-	// Prepare PID Flowrate controller for operation, set limits and enable controller
+	// Call Debit PID
 	for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
 	{
-		pid_FlowRate[slice_index] = pid_create(&ctrldata_Debit[slice_index], &Flowrate_Slice[slice_index], &Freq_Steps[slice_index], &flow_setpoint, FLOW_KP, FLOW_KI, FLOW_KD);
-		pid_limits(pid_FlowRate[slice_index], 0, 200);
-		pid_auto(pid_FlowRate[slice_index]);
+		// Compute new PID output value
+		pid_compute(pid_FlowRate[slice_index]); // result is stored in Freq_Steps[slice_index]
+		
+		// Add the seed to the result
+		
+		// check if all slices are under max acceleration & decelaration
+		if(Freq_Steps[slice_index] > max_slope_acceleration[slice_index])
+			Freq_Steps[slice_index] = max_slope_acceleration[slice_index];
+		if(Freq_Steps[slice_index] > max_slope_deceleration[slice_index])
+			Freq_Steps[slice_index] = max_slope_deceleration[slice_index];
 	}
 	
+	// Compute motor step table ?
+	//convert_freq_to_motor_steps(new_freq, NB_SLICES, motor_step_us, &nb_stepseps);
 	
-    return nb_steps;
-  }
-  //translate sample for time to steps
-  // => F1
-
-  convert_motor_steps_to_freq(motor_steps_us, nb_steps, NB_SLICES, freq_steps_per_slices);
-
-  convert_samples_t_to_samples_steps(flow_samples_Lpm, flow_samples_count, flow_samples_period_ms, motor_steps_us, motor_max_steps, flow_samples_motor_steps);
-
-  compute_slice_flow_error(NB_SLICES, nb_steps/NB_SLICES, target_Flow_Lpm, flow_samples_motor_steps, error_per_slices);
-  //convert_freq_to_motor_steps(new_freq, NB_SLICES, motor_step_us, &nb_stepseps);
-
-
-  return nb_steps;
+	return nb_steps;
 }
 
 //----------------------------------------------------------
@@ -327,16 +364,20 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
 //----------------------------------------------------------
 // Private functions
 //----------------------------------------------------------
-static void compute_max_slope(uint32_t nb_steps_slices,
-                              uint32_t nb_steps_per_slices,
+static void compute_max_slope(uint32_t nb_slices,
+                              uint32_t nb_steps,
                               float*   max_slope_acceleration,
                               float*   max_slope_deceleration)
 {
   float VTi    = get_cycle_VTi_mL();
   float Pcrete = get_cycle_Pcrete_cmH2O();
   float PEP    = get_cycle_PEP_cmH2O();
-  float VnMax  = AxC50R5*powf(MAX_MOTOR_STEPS, PxC50R5); 
-  for(uint32_t k=0; k<nb_steps_slices; k++)
+  float VnMax  = AxC50R5*powf(MAX_MOTOR_STEPS, PxC50R5);
+  uint32_t nb_steps_per_slices = nb_steps / nb_slices;
+  //The last slice may have more steps (between 0 to NB_SLICES more)
+  uint32_t last_nb_steps_per_slices = nb_steps - (nb_steps_per_slices * nb_slices);
+
+  for(uint32_t k=0; k<nb_slices; k++)
   {
     float Vn = AxC50R5*pow(k*nb_steps_per_slices, PxC50R5);
     float motor_load_percent_n = 0.75*(VTi/Vn*Pcrete/S4H2O_cm) + 0.25*(Vn/VnMax); 
@@ -346,21 +387,20 @@ static void compute_max_slope(uint32_t nb_steps_slices,
 
 }
 
-static void compute_slice_flow_error(uint32_t nb_slices,
+static void compute_slice_flow(uint32_t nb_slices,
                                      uint32_t nb_steps_per_slices,
                                      float    target_Flow_Lpm,
                                      float*   flow_samples_motor_steps,
-                                     float*   slice_flow_error)
+                                     float*   compute_slice_flow)
 {
   for(uint32_t k=0; k<nb_slices; k++)
   {
-    slice_flow_error[k] = 0;
+    compute_slice_flow[k] = 0;
     for(uint32_t i=0; i < nb_steps_per_slices; i++)
     {
-      slice_flow_error[k] -= flow_samples_motor_steps[k*nb_steps_per_slices+i];
+      compute_slice_flow[k] += flow_samples_motor_steps[k*nb_steps_per_slices+i];
     }
-    slice_flow_error[k] /= nb_steps_per_slices;
-    slice_flow_error[k] += target_Flow_Lpm;
+    compute_slice_flow[k] /= nb_steps_per_slices;
   }
 }
 
