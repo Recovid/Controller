@@ -258,15 +258,20 @@ static void breathing_run(void *args)
             g_Pdiff_sampling=true;
             motor_press(g_motor_steps_us, nb_steps);
 
+            float cycle_Pcrete_cmH2O= 0;
+
             // Insuflation state: do
             // Pdiff and Paw sampling will be done by the samplingTimer in background
             do
             {
                 wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
-                g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
-                if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                cycle_Pcrete_cmH2O = MAX(cycle_Pcrete_cmH2O, read_Paw_cmH2O());
+                if ( g_setting_Pmax <= cycle_Pcrete_cmH2O)
                 {
                     brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                    // Clear sampled data
+                    g_Pdiff_sampling=false;
+                    init_Pdiff_Lpm_sampling();
                     next_state = Exhalation;
                 }
                 else 
@@ -309,11 +314,11 @@ static void breathing_run(void *args)
                         signal_pins(true);
                     }
                     
-                    g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
+                    cycle_Pcrete_cmH2O = MAX(cycle_Pcrete_cmH2O, read_Paw_cmH2O());
 
-                    if (g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                    if (g_setting_Pmax <= cycle_Pcrete_cmH2O)
                     {
-                        brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                        brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(cycle_Pcrete_cmH2O));
                         next_state= Exhalation;
                     }
                     else if ((g_setting_Tinspi_ms + DEFAULT_Tpins_max_ms) <= (get_time_ms() - inhalation_start_ms) )
@@ -379,7 +384,7 @@ static void breathing_run(void *args)
             // Compute cycle data
             uint32_t t_ms = get_time_ms();
             g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
-
+            g_cycle_Pcrete_cmH2O= cycle_Pcrete_cmH2O;
             g_cycle_EoI_ratio = (float)(t_ms - exhalation_start_ms - exhalation_pause_t_ms) / (exhalation_start_ms - inhalation_start_ms - inhalation_pause_t_ms);
             g_cycle_FR_pm = 1. / (((float)(t_ms - inhalation_start_ms - inhalation_pause_t_ms - exhalation_pause_t_ms)) / 1000 / 60);
             g_cycle_VTe_mL = VTe_start_mL - read_Vol_mL();

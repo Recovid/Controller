@@ -20,12 +20,18 @@ static float A;
 static float B;
 
 static float g_target_flow_Lpm;
+
+static uint32_t g_Ni; // index motor step corresponding to the beginning of the plateau
+static float    g_Ts; // time in second corresponding to the beginning of the plateau
+
+static const float g_calibration_step_s =  CALIBRATION_STEP_US*0.000001;
+
 //----------------------------------------------------------
 // Private functions prototypes
 //----------------------------------------------------------
 
-static float    compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float speed, float A, float B);
-static void     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples, float* A, float* B);
+static float    compte_motor_step_time(uint32_t step_number, float desired_flow_Ls, float A, float B);
+static bool     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples, uint32_t Ni, float* Ts, float* A, float* B);
 static bool     get_plateau(float* samples, uint32_t samples_len, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau2(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
@@ -50,6 +56,7 @@ void adaptation_init(float a, float b) {
     B= -33.674; //b; //-0.05; //b; //-(MOTOR_MIN_STEP_US*2)*0.000001 +  MOTOR_MIN_STEP_US * 0.000001;
 
     g_target_flow_Lpm=0;
+    g_Ni = 0;
 }
 
 // Compute the motor step table based on targeted Vmax, VT, and previous flow samples.
@@ -63,33 +70,24 @@ uint32_t adaptation(
     uint32_t    motor_max_steps, 
     uint32_t*   motor_steps_us) 
 {
-    // if(flow_samples_count>0)
-    // {
-    //     uint32_t low, high;
-    //     get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high);
-    // }
     
-    // float Ti_s= flow_samples_period_ms*flow_samples_count/1000;
-    // float t_s=0;
-    // uint32_t Ni;
-    // for(Ni=0; Ni<motor_max_steps; ++Ni) 
-    // {
-    //     t_s+= 0.000001* motor_steps_us[Ni];
-    //     if(t_s>=Ti_s) break;
-    // }
-
     if(g_target_flow_Lpm!=target_Flow_Lpm) 
     {
         A= get_A_guess(target_Flow_Lpm);
         B= get_B_guess(target_Flow_Lpm);
         g_target_flow_Lpm= target_Flow_Lpm;
+        g_Ni=0;
+        g_Ts=0;
     } else {
-        pid(target_Flow_Lpm, flow_samples_period_ms*0.001, flow_samples_count, flow_samples_Lpm, &A, &B);
+        if(!pid(target_Flow_Lpm, flow_samples_period_ms*0.001, flow_samples_count, flow_samples_Lpm, g_Ni, &g_Ts, &A, &B))
+        {
+            g_Ni=0;
+        }
     }
 
     // Compute ideal motor steps.
     for(uint32_t step=0; step<motor_max_steps; ++step) {
-        float step_us= compte_motor_step_time(step, target_Flow_Lpm, CALIBRATION_STEP_US*0.000001, A, B);
+        float step_us= compte_motor_step_time(step, target_Flow_Lpm, A, B);
         motor_steps_us[step]= (uint32_t) (step_us);
     }
     // Add acceleration
@@ -105,6 +103,18 @@ uint32_t adaptation(
             step_us= MOTOR_MIN_STEP_US;
         }
     }
+    // Compute step index corresponding to the beginning of the plateau (g_Ts)
+    float T_s=0;
+    g_Ni=0;
+    for(uint32_t step=0; step<motor_max_steps; ++step)
+    {
+        T_s+= step_us*0.000001;
+        if(g_Ts<=T_s) {
+            g_Ni=step;
+            break;
+        }
+    }
+
 
     return motor_max_steps;
 }
@@ -113,8 +123,8 @@ uint32_t adaptation(
 // Private functions
 //----------------------------------------------------------
 
-static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lpm, float speed, float A, float B) {
-	float step_us = (A*speed*speed*step_number) + B * speed;
+static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lpm, float A, float B) {
+	float step_us = (A*g_calibration_step_s*g_calibration_step_s*step_number) + B * g_calibration_step_s;
   	step_us = 1000000 * step_us / desired_flow_Lpm;
     if(step_us<MOTOR_MIN_STEP_US) 
     {
@@ -125,46 +135,60 @@ static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lpm
 }
 
 
-static void pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples_Lpm, float* A, float* B) {
-  if(flow_samples_count==0) return;
+static bool pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flow_samples_count, float* flow_samples_Lpm, uint32_t Ni, float* Ts, float* A, float* B) {
+  if(flow_samples_count==0) 
+  {
+      return false;
+  }
 //************************************************* PID ZONE ********************************************//
-		// Compute average flow and slope to adjust A and B coefficients
-		float P_plateau_slope = 0.1;
-		float P_plateau_mean = 0.5;
-		uint32_t low;
-		uint32_t high;
+    // Compute average flow and slope to adjust A and B coefficients
+    float P_plateau_slope = 0.1;
+    float P_plateau_mean = 0.5;
+    uint32_t low;
+    uint32_t high;
 
-		//get_plateau(flow_samples_Lpm, flow_samples_count, 10, &low, &high);
-        // get_plateau2(flow_samples_Lpm, flow_samples_count, &low, &high);
-        get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high);
+    //get_plateau(flow_samples_Lpm, flow_samples_count, 10, &low, &high);
+    // get_plateau2(flow_samples_Lpm, flow_samples_count, &low, &high);
+    if(!get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high))
+    {
+        // No plateau found !!
+        // Skip adaptation
+        return false;
+    }
 
-        float origin;
-		float plateau_slope;
-        linear_fit(&flow_samples_Lpm[low], high-low, &plateau_slope, &origin);
-		brth_printf("plateau slope idx : %ld\n",(int32_t)(1000*plateau_slope));
+    float origin;
+    float plateau_slope;
+    linear_fit(&flow_samples_Lpm[low], high-low, &plateau_slope, &origin);
+    brth_printf("plateau slope idx : %ld\n",(int32_t)(1000*plateau_slope));
 
-        // scale slope from sample_idx to seconds
-        plateau_slope= plateau_slope/flow_samples_period_s;
+    // scale slope from sample_idx to seconds
+    plateau_slope= plateau_slope/flow_samples_period_s;
 
-		float plateau_mean = 0;
-		for(uint32_t i=low; i<high; i++) {
-			plateau_mean += flow_samples_Lpm[i];
-		}
-		plateau_mean = plateau_mean/(high-low);
-        float error_mean = plateau_mean - (target_flow_Lpm);
-		brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
-		brth_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
-        brth_printf("plateau error : %ld\n",(int32_t)(1000*error_mean));
-        
-        *A += plateau_slope * P_plateau_slope;
-		*B += error_mean * P_plateau_mean;
-//        float B_corr= *B - A_error* (Ni*(Ni+1)/2); // comment to remove A-B correction
-//		*B = B_corr + (error_mean * P_plateau_mean);
+    float plateau_mean = 0;
+    for(uint32_t i=low; i<high; i++) {
+        plateau_mean += flow_samples_Lpm[i];
+    }
+    plateau_mean = plateau_mean/(high-low);
+    float error_mean = plateau_mean - (target_flow_Lpm);
+    brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
+    brth_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
+    brth_printf("plateau error : %ld\n",(int32_t)(1000*error_mean));
+    
+    float previous_A = *A;
+    *A += plateau_slope * P_plateau_slope;
+    
+    // EXPERIMENTAL : used to compensate the average speed when modifying A
+    *B += (previous_A -*A)*g_calibration_step_s*Ni;
 
+    *B += error_mean * P_plateau_mean;
 
-		brth_printf("A = %ld\n", (int32_t)(1000*(*A)));
-		brth_printf("B = %ld\n", (int32_t)(1000*(*B)));
+    // Compute the new Ts (plateau start time)
+    *Ts= low*flow_samples_period_s;
 
+    brth_printf("A = %ld\n", (int32_t)(1000*(*A)));
+    brth_printf("B = %ld\n", (int32_t)(1000*(*B)));
+
+    return true;
 }
 
 // Compute slope of samples fetched with specified time_step
@@ -271,18 +295,34 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
     uint32_t firstNonZeroIndex = 0;
     while(firstNonZeroIndex< samples_len && samples[firstNonZeroIndex++] < 0.001);
 
-    if(firstNonZeroIndex==samples_len) return false;
-    
+    if(samples_len-firstNonZeroIndex<3) 
+    {
+        brth_printf("Too few samples !!\n");
+        *low_bound=0;
+        *high_bound=0;
+        return false;
+    }
     // Now we try to find the best midpoint to fit two lines to flow data
     // TODO : dismiss the first and last N points
-    uint32_t N = 3;
+    uint32_t N;
     int32_t samples_len_no_zeros = samples_len - firstNonZeroIndex;
     // TODO Check samples_len_no_zeros !!
 
+    if(samples_len_no_zeros<40)
+    {
+        brth_printf("Very few samples !!\n");
+        N= samples_len_no_zeros/2;
+    } 
+    else 
+    {
+        N=20;        
+    }
+    brth_printf("considering %Lu first and last samples to find plateau !!\n", N);
+
     float slope1, origin1;
     float slope2, origin2;
-    float r1 = linear_fit(&samples[firstNonZeroIndex], 20, &slope1, &origin1);
-    float r2 = linear_fit(&samples[samples_len-20], 20, &slope2, &origin2);
+    float r1 = linear_fit(&samples[firstNonZeroIndex], N, &slope1, &origin1);
+    float r2 = linear_fit(&samples[samples_len-N], N, &slope2, &origin2);
 
     if(slope1==slope2) 
     {
@@ -291,12 +331,12 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
     else
     {
         origin1-= slope1*firstNonZeroIndex;
-        origin2-= slope2*(samples_len-20);
+        origin2-= slope2*(samples_len-N);
 
         float intersection = ((origin2-origin1)/(slope1-slope2));
-        if(intersection<firstNonZeroIndex || intersection>samples_len-20)
+        if(intersection<firstNonZeroIndex || intersection>samples_len-N)
         {
-            *low_bound = samples_len-20;
+            *low_bound = samples_len-N;
         }
         else
         {
@@ -306,21 +346,21 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
     
     *high_bound = samples_len-1;
 
-    for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope1*t+origin1)*1000);
-    }
-    brth_printf("\n");
-    for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope2*t+origin2)*1000);
-    }
-    brth_printf("\n");
+    // for(int t=0; t<samples_len-1; ++t) {
+    //     brth_printf("%ld, ", (int32_t)(slope1*t+origin1)*1000);
+    // }
+    // brth_printf("\n");
+    // for(int t=0; t<samples_len-1; ++t) {
+    //     brth_printf("%ld, ", (int32_t)(slope2*t+origin2)*1000);
+    // }
+    // brth_printf("\n");
 
-    float slope,origin;
-    linear_fit(&samples[*low_bound], (*high_bound)-(*low_bound), &slope,&origin);
-    for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope*t+origin)*1000);
-    }
-    brth_printf("\n");
+    // float slope,origin;
+    // linear_fit(&samples[*low_bound], (*high_bound)-(*low_bound), &slope,&origin);
+    // for(int t=0; t<samples_len-1; ++t) {
+    //     brth_printf("%ld, ", (int32_t)(slope*t+origin)*1000);
+    // }
+    // brth_printf("\n");
 
     brth_printf("plateau [%lu / %lu] | [%ld / %ld] [%ld / %ld]\n", *low_bound, *high_bound, (int32_t)(slope1*1000), (int32_t)(origin1*1000), (int32_t)(slope2*1000), (int32_t)(origin2*1000));
     return true;
