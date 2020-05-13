@@ -178,6 +178,7 @@ static bool pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
     *A += plateau_slope * P_plateau_slope;
     
     // EXPERIMENTAL : used to compensate the average speed when modifying A
+    brth_printf("Adapting B with Ni= %lu\n",Ni);
     *B += (previous_A -*A)*g_calibration_step_s*Ni;
 
     *B += error_mean * P_plateau_mean;
