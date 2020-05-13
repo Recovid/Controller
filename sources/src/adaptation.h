@@ -2,13 +2,6 @@
 #define __ADAPTATION_H__
 #include "common.h"
 
-#define NB_SLICES 10
-#define VOL_KP 1
-#define VOL_KI 0
-#define VOL_KD 0
-#define FLOW_KP 1
-#define FLOW_KI 0
-#define FLOW_KD 0
 
 // Initialize the adaptation engine.
 // Called before the recovid starts the breathing cycles.
