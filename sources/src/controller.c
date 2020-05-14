@@ -250,8 +250,9 @@ static void controller_run(void *args)
         ctrl_printf("CTRL: breathing, monitoring and hmi tasks stopped\n");
         ctrl_printf("CTRL: proceed to system shutdown\n");
 
+#ifndef NO_RASPI_REBOOT
         enable_Rpi(Off);
-
+#endif
         // TODO implement system shutdown (lowpower)
 
         ctrl_printf("CTRL: System in low power mode\n");
