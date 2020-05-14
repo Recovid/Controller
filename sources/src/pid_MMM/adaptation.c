@@ -240,7 +240,7 @@ uint32_t adaptation(
 					    &Ta_ms,  // output : total motor steps time for acceleration
 					    &Td_ms,  // output : total motor steps time before deceleration
 					    &Tf_ms ); // output : total motor steps time   
-  print_steps(motor_steps_us, nb_steps);
+  //print_steps(motor_steps_us, nb_steps);
   return nb_steps;
 }
 
@@ -369,7 +369,7 @@ void convert_motor_steps_to_freq(uint32_t* t_motor_step_us,       //input: Array
     else
       freq_steps_per_slices[slice_idx] = 0.0f;
 
-    printf("freq %d = %d\n", slice_idx,  (int) freq_steps_per_slices[slice_idx]);
+    printf("freq %ld = %d\n", slice_idx,  (int) freq_steps_per_slices[slice_idx]);
   }
 }
 
@@ -410,7 +410,7 @@ static void compute_max_slope(uint32_t nb_slices,
   uint32_t nb_steps_per_slices = nb_steps_total / nb_slices;
   //The last slice may have more steps (between 0 to NB_SLICES more)
   uint32_t last_nb_steps_per_slices = nb_steps_total%nb_slices + nb_steps_per_slices;
-
+  printf("Steps per slices = %ld\n", nb_steps_per_slices);
   float VTi    = get_cycle_VTi_mL();
   float Pcrete = get_cycle_Pcrete_cmH2O();
 //  float PEP    = get_cycle_PEP_cmH2O();
