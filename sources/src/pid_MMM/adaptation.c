@@ -1,6 +1,7 @@
 #include "breathing.h"
 #include "stdio.h"
 #include "math.h"
+#include "PID.h"
 
 #include "controller.h"
 #include "common.h"
@@ -9,7 +10,6 @@
 #include "adaptation.h"
 #include "platform.h"
 #include "platform_defs.h"
-#include "PID.h"
 #include <inttypes.h>
 // Other dependencies
 #include <stdint.h>
@@ -23,8 +23,9 @@
 #define VOL_KI 0
 #define VOL_KD 0
 #define FLOW_KP 0
-#define FLOW_KI 0 
+#define FLOW_KI 1
 #define FLOW_KD 0
+
 
 //----------------------------------------------------------
 // Private typedefs
@@ -49,7 +50,8 @@ struct pid_controller ctrldata_Volume;
 struct pid_controller ctrldata_Debit[NB_SLICES];
 pid_H pid_Volume;
 pid_H pid_FlowRate[NB_SLICES];
-float PreviousCycle_Vti, flow_command_updated, objective_volume;
+float PreviousCycle_Vti, objective_volume; 
+float flow_command_updated[NB_SLICES];
 static float flow_per_slices[NB_SLICES];
 float Freq_Steps_updated[NB_SLICES];
 
@@ -157,23 +159,29 @@ uint32_t adaptation(
   static float l_target_VT_ml = 0.0;
   static float l_target_Flow_Lpm = 0.0;
   bool settings_changed = false;
-
   settings_changed |= update_float(&l_target_VT_ml, target_VT_mL);
   settings_changed |= update_float(&l_target_Flow_Lpm, target_Flow_Lpm);
   uint32_t nb_steps = motor_max_steps;
+  
+  //printf("Samples de 20 à 50 :");
+  //for(uint32_t i = 20; i < 50; i++)
+  //{
+  //  printf("%d ", (int) flow_samples_Lpm[i]);
+  //}
+  //printf("\n");
 
   if(l_adaptation_initialized != true || settings_changed)
   {
-    compute_seed(target_Flow_Lpm, target_VT_mL, seed_steps_us, &nb_steps_seed);
-    for(uint32_t i = 0; i < nb_steps_seed; i++)
+    //compute_seed(target_Flow_Lpm, target_VT_mL, seed_steps_us, &nb_steps_seed);
+    
+    nb_steps = MOTOR_MAX_STEPS;
+    for(uint32_t i = 0; i < nb_steps; i++)
     {
-      motor_steps_us[i] = seed_steps_us[i];
+      motor_steps_us[i] = UINT32_MAX;
     }
-    nb_steps = nb_steps_seed;
 
     l_adaptation_initialized = true;
 
-    flow_command_updated = get_setting_Vmax_Lpm();
     // Prepare PID Volume controller for operation, set limits and enable controller
     /*pid_Volume = pid_create(	&ctrldata_Volume, 
 	&PreviousCycle_Vti, 
@@ -186,24 +194,42 @@ uint32_t adaptation(
     // Prepare PID Flowrate controller for operation, set limits and enable controller
     for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
     {
+
+      flow_command_updated[slice_index] = get_setting_Vmax_Lpm();
       pid_FlowRate[slice_index] = pid_create(	&ctrldata_Debit[slice_index], 
 	  &flow_per_slices[slice_index], // Input data
 	  &Freq_Steps_updated[slice_index], // Output
-	  &flow_command_updated, // Command Setpoint
+	  &flow_command_updated[slice_index], // Command Setpoint
 	  FLOW_KP, FLOW_KI, FLOW_KD);
-	  
-      pid_limits(pid_FlowRate[slice_index], 0, 200);
+	
+      pid_limits(pid_FlowRate[slice_index], 0, 10000);
+      pid_direction(pid_FlowRate[slice_index], E_PID_REVERSE);
       pid_auto(pid_FlowRate[slice_index]);
+
     }
   }
   //translate sample for time to steps
   // => F1
 
-  convert_motor_steps_to_freq(seed_steps_us, nb_steps, NB_SLICES, freq_steps_per_slices);
+  convert_motor_steps_to_freq(motor_steps_us, nb_steps, NB_SLICES, freq_steps_per_slices);
 
+
+  //printf("Samples de 20 à 50 :");
+  //for(uint32_t i = 20; i < 50; i++)
+  //{
+  //  printf("%d ", (int) flow_samples_Lpm[i]);
+  //}
+  //printf("\n");
   convert_samples_t_to_samples_steps(flow_samples_Lpm, flow_samples_count, flow_samples_period_ms, motor_steps_us, motor_max_steps, flow_samples_motor_steps);
+  //printf("Motor Samples de 200 à 250 :");
+  //for(uint32_t i = 200; i < 250; i++)
+  //{
+  //  printf("%d ", (int) flow_samples_motor_steps[i]);
+  //}
+  //printf("\n");
 
-  compute_slice_flow(NB_SLICES, nb_steps/NB_SLICES, target_Flow_Lpm, flow_samples_motor_steps, flow_per_slices);
+  compute_slice_flow(NB_SLICES, nb_steps, target_Flow_Lpm, flow_samples_motor_steps, flow_per_slices);
+
 
   float max_slope_acceleration[NB_SLICES], max_slope_deceleration[NB_SLICES];
   //// F3 Compute MAX acceleration per Slice
@@ -219,12 +245,19 @@ uint32_t adaptation(
   //// Call Debit PID
   for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
   {
+    flow_per_slices[slice_index] = 10;
     // Compute new PID output value
     pid_compute(pid_FlowRate[slice_index]); // result is stored in Freq_Steps_updated[slice_index]
 
     // Add the seed to the result
-    Freq_Steps_updated[slice_index] += freq_steps_per_slices[slice_index];
-  }
+    printf("Slice %d ", slice_index); 
+    printf("flow= %d ", (int) flow_per_slices[slice_index]); // Input data
+    printf("flow plateau = %d ", (int) flow_command_updated[slice_index]); // Input data
+    printf("Freq update %d\n",  (int) Freq_Steps_updated[slice_index]);
+    //
+    //Freq_Steps_updated[slice_index] += freq_steps_per_slices[slice_index];
+    //printf("Freq  update %d\n",  (int) Freq_Steps_updated[slice_index]);
+}
 
   uint32_t Ta_ms, Td_ms, Tf_ms;
   // Compute motor step table 
@@ -391,6 +424,7 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
     }
 
     flow_samples_motor_steps[i] = flow_samples_Lpm[current_sample_idx];
+        
     t_acc_us += motor_steps_us[i];
   }
 }
@@ -450,19 +484,28 @@ static void compute_slice_flow(uint32_t nb_slices,
   uint32_t k = 0;
   for( k=0; k<nb_slices; k++)
   {
+    //printf("\nflow_slice K[%d] = ", k);
+    compute_slice_flow[k] = 0;
     if(k == nb_slices-1) 
     {
-      nb_steps_per_slices = last_nb_steps_per_slices;   
+      nb_steps_per_slices = last_nb_steps_per_slices;
     }
-    compute_slice_flow[k] = 0;
     for(uint32_t i=0; i < nb_steps_per_slices; i++)
     {
-      compute_slice_flow[k] += flow_samples_motor_steps[k*nb_steps_per_slices+i];
+      uint32_t idx;
+      if(k == nb_slices-1) 
+      {
+	idx = ((nb_slices-1)*nb_steps_per_slices)  + i;
+      }
+      else {
+	idx = k*nb_steps_per_slices + i;
+      }
+
+      compute_slice_flow[k] += flow_samples_motor_steps[idx];
+      //printf("%d ", (int) flow_samples_motor_steps[idx]);
     }
     compute_slice_flow[k] /= nb_steps_per_slices;
   }
-  compute_slice_flow[k] = 0;
-
 }
 
 uint32_t T_minobj(uint32_t current_step, uint32_t flow_set_point_Lpm)
@@ -579,6 +622,7 @@ static uint32_t convert_samples_slice_to_steps(uint32_t nb_slices,
 	  break;
 	}
       }
+      freq_steps_per_slices[k] = (1E6 /(float)t_motor_step_us[current_step-1]);
       // TODO TSE : do you need actuated computed frequency vs requested ??
       //VM_per_slice[k] = 1000000.f/t_motor_step_us[current_step-1];
 

@@ -45,14 +45,16 @@ void pid_compute(pid_H pid)
 	float error = (*(pid->setpoint)) - in;
 	// Compute integral
 	pid->iterm += (pid->Ki * error);
-	if (pid->iterm > pid->omax)
-		pid->iterm = pid->omax;
-	else if (pid->iterm < pid->omin)
-		pid->iterm = pid->omin;
+	if (pid->iterm > ITERM_MAX)
+		pid->iterm = ITERM_MAX;
+	else if (pid->iterm < ITERM_MIN)
+		pid->iterm = ITERM_MIN;
+	printf("ITERM = %d ", (int) pid->iterm);
 	// Compute differential on input
 	float dinput = in - pid->lastin;
 	// Compute PID output
-	float out = pid->Kp * error + pid->iterm - pid->Kd * dinput;
+	float out = pid->Kp * error + pid->iterm;// - pid->Kd * dinput;
+	
 	// Apply limit to output value
 	if (out > pid->omax)
 		out = pid->omax;
@@ -107,12 +109,12 @@ void pid_auto(pid_H pid)
 {
 	// If going from manual to auto
 	if (!pid->automode) {
-		pid->iterm = *(pid->output);
+		pid->iterm = 0.0; //*(pid->output);
 		pid->lastin = *(pid->input);
-		if (pid->iterm > pid->omax)
-			pid->iterm = pid->omax;
-		else if (pid->iterm < pid->omin)
-			pid->iterm = pid->omin;
+		//if (pid->iterm > pid->omax)
+		//	pid->iterm = pid->omax;
+		//else if (pid->iterm < pid->omin)
+		//	pid->iterm = pid->omin;
 		pid->automode = true;
 	}
 }
