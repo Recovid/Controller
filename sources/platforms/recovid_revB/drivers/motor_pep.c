@@ -8,7 +8,7 @@ static void step_callback(TIM_HandleTypeDef *tim);
 
 static volatile int32_t _absolute_steps;
 static volatile int16_t _step_inc;
-static volatile uint32_t _remaining_steps;
+static volatile int32_t _remaining_steps;
 static volatile bool _moving;
 static volatile bool _homing;
 static volatile bool _home;
@@ -30,10 +30,12 @@ bool init_motor_pep()
     {
         _motor_tim = &pep_tim;
         // register IT callbacks
-        _motor_tim->PeriodElapsedCallback = step_callback;
+//        _motor_tim->PeriodElapsedCallback = step_callback;
 
-        // Enable the PWM channel
-        TIM_CCxChannelCmd(_motor_tim->Instance, PEP_TIM_CHANNEL, TIM_CCx_ENABLE);
+        HAL_TIM_RegisterCallback(_motor_tim, HAL_TIM_PWM_PULSE_FINISHED_CB_ID, step_callback);
+
+        // // Enable the PWM channel
+        // TIM_CCxChannelCmd(_motor_tim->Instance, PEP_TIM_CHANNEL, TIM_CCx_ENABLE);
 
         // microstepping 8
         set_stepping(ZERO, ONE);
@@ -55,13 +57,13 @@ bool is_motor_pep_ok()
     return _motor_tim != NULL;
 }
 
-bool motor_pep_move(int relative_cmH2O)
+bool motor_pep_move(int relative_mmH2O)
 {
     if (_motor_tim == NULL)
         return false;
-    if (relative_cmH2O != 0)
+    if (relative_mmH2O != 0)
     {
-        int32_t nb_steps= (int32_t)(relative_cmH2O*1000*MOTOR_PEP_PEP_TO_MM_FACTOR) * MOTOR_PEP_STEPS_PER_MM;
+        int32_t nb_steps= (int32_t)(relative_mmH2O*MOTOR_PEP_PEP_TO_MM_FACTOR) * MOTOR_PEP_STEPS_PER_MM;
         if(_absolute_steps+nb_steps <0 ) 
         {
             nb_steps= -_absolute_steps;
@@ -70,7 +72,9 @@ bool motor_pep_move(int relative_cmH2O)
         {
             nb_steps= MOTOR_PEP_MAX_STEPS;
         }
-        _step_inc= nb_steps<0? 1 : -1;
+        _step_inc= nb_steps<0? -1 : 1;
+        
+        if(nb_steps==0) return false;
 
         __disable_irq();
         set_direction(nb_steps < 0 ? PEP_DIR_DEC : PEP_DIR_INC);
@@ -82,7 +86,7 @@ bool motor_pep_move(int relative_cmH2O)
         _moving = true;
         _homing=false;
         __enable_irq();
-        HAL_TIM_Base_Start_IT(_motor_tim);
+        HAL_TIM_PWM_Start_IT(_motor_tim, PEP_TIM_CHANNEL);
     }
     return true;
 }
@@ -103,7 +107,7 @@ bool motor_pep_home()
         _moving = true;
         _homing = true;
         __enable_irq();
-        HAL_TIM_Base_Start_IT(_motor_tim);
+        HAL_TIM_PWM_Start_IT(_motor_tim, PEP_TIM_CHANNEL);
 
         while (!_home) 
         {
@@ -121,7 +125,7 @@ bool motor_pep_stop()
         return false;
     }
     __disable_irq();
-    HAL_TIM_Base_Stop(_motor_tim);
+    HAL_TIM_PWM_Stop_IT(_motor_tim, PEP_TIM_CHANNEL);
     _homing = false;
     _remaining_steps = 0;
     _moving = false;
@@ -165,18 +169,22 @@ static void step_callback(TIM_HandleTypeDef *tim)
 {
     if (_homing)
         return;
-    if (_remaining_steps == 0)
+    if (_remaining_steps > 0)
     {
-        motor_pep_stop();
+        --_remaining_steps;
+        _absolute_steps+= _step_inc;
+        
     }
-    --_remaining_steps;
-    _absolute_steps+= _step_inc;
-    if(_absolute_steps<0) {
+    if(_absolute_steps==0) {
         _absolute_steps=0;
-        motor_pep_stop();
+        _remaining_steps=0;
     }
-    if(_absolute_steps>MOTOR_PEP_MAX_STEPS) {
+    if(_absolute_steps>=MOTOR_PEP_MAX_STEPS) {
         _absolute_steps=MOTOR_PEP_MAX_STEPS;
+        _remaining_steps=0;
+    }
+
+    if(_remaining_steps<=0) {
         motor_pep_stop();
     }
 

@@ -77,8 +77,8 @@ bool is_motor_pep_ok();
 //! \warning after init, only ask for small moves controlling PEP during next cycles before moving again
 //! \remark unless some calibration procedure or data is added, the only relationship between steps and cm
 //!         must be computed based on further read_PEP_cmH2O()
-//! \remark any relative_move_cmH2O > +.1 should be checked during following cycles
-bool motor_pep_move(int relative_mm);
+//! \remark any relative_move_mmH2O > +1 should be checked during following cycles
+bool motor_pep_move(int relative_mmH2O);
 
 //!
 bool is_motor_pep_moving();

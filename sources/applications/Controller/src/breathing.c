@@ -291,16 +291,20 @@ static void breathing_run(void *args)
             // Insuflation state: onExit
             g_Pdiff_sampling=false;
             motor_stop();
-
+            bool released=false;
             if (Plateau == next_state)
             {
                 // Plateau state : onEntry
                 signal_state(Plateau);
                 inhalation_pause_t_ms = 0;
-
+                float release_Pdiff= read_Pdiff_Lpm()*0.25;
                 // Plateau state: do
                 do {
                     wait_ms(PLATEAU_PROCESSING_PERIOD_MS);
+                    if(!released && read_Pdiff_Lpm()<release_Pdiff) {
+                        motor_release(MOTOR_RELEASE_STEP_US);
+                        released=true;
+                    }
                     if(is_command_Tpins_expired())
                     {
                         signal_pins(false);                  
@@ -342,7 +346,7 @@ static void breathing_run(void *args)
 
             // End of (macro) state Inhalation            
             g_cycle_VTi_mL = read_Vol_mL();
-            motor_release(MOTOR_RELEASE_STEP_US);
+            if(!released) motor_release(MOTOR_RELEASE_STEP_US);
 
             // Exhalation state: onEntry
             signal_state(Exhalation);
@@ -394,7 +398,7 @@ static void breathing_run(void *args)
             xEventGroupSetBits(g_breathingEvents, BRTH_CYCLE_UPDATED);
 
             // Proceed to the PEP regulation
-            regulation_pep();
+            //regulation_pep();
 
             // Check if controller asked us to stop.
             events = xEventGroupGetBits(g_controllerEvents);
@@ -470,10 +474,12 @@ static void regulation_pep()
 {
     float pep_objective = get_setting_PEP_cmH2O(); // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
     float current_pep = get_cycle_PEP_cmH2O();
-    int relative_pep = (pep_objective * 10.f - current_pep * 10.f);
-    if (abs(relative_pep) > 3)
+    int relative_pep_mmH2O = (int) (pep_objective * 10 - current_pep * 10);
+    if (abs(relative_pep_mmH2O) > 3)
     {
-        motor_pep_move((int)((float)relative_pep / MOTOR_PEP_PEP_TO_MM_FACTOR));
+        brth_printf(">>>>>>>>>>>>>>>>>>>> Adjusting PEP: %ld\n", (int)(SIGN(relative_pep_mmH2O)*MIN(5,relative_pep_mmH2O)));
+        motor_pep_stop();
+        motor_pep_move(SIGN(relative_pep_mmH2O)*MIN(5,relative_pep_mmH2O));
     }
 }
 

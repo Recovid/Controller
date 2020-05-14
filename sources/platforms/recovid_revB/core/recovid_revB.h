@@ -57,15 +57,15 @@ extern UART_HandleTypeDef huart2;           // Dbg uart
 #define MOTOR_TIM_DMA_IRQ_PRIORITY          (5)
 #define MOTOR_LIMIT_SW_IRQ_PRIORITY         (6)
 
-#define PEP_TIM_IRQ_PRIORITY                (3)    
-#define PEP_TIM_DMA_IRQ_PRIORITY            (1)   // not used
-#define PEP_HOME_EXTI_IRQ_PRIORITY          (3)
+#define PEP_TIM_IRQ_PRIORITY                (2)    
+#define PEP_TIM_DMA_IRQ_PRIORITY            (0)   // not used
+#define PEP_HOME_EXTI_IRQ_PRIORITY          (4)
 
 
-#define SENSORS_I2C_EV_IRQ_PRIORITY         (1)
-#define SENSORS_I2C_ER_IRQ_PRIORITY         (1)
-#define SENSORS_I2C_DMA_TX_IRQ_PRIORITY     (2)
-#define SENSORS_I2C_DMA_RX_IRQ_PRIORITY     (2)
+#define SENSORS_I2C_EV_IRQ_PRIORITY         (3)
+#define SENSORS_I2C_ER_IRQ_PRIORITY         (3)
+#define SENSORS_I2C_DMA_TX_IRQ_PRIORITY     (3)
+#define SENSORS_I2C_DMA_RX_IRQ_PRIORITY     (3)
 
 
 #define HMI_UART_DMA_TX_IRQ_PRIORITY        (1)

@@ -16,6 +16,12 @@
 //----------------------------------------------------------
 // Private variables
 //----------------------------------------------------------
+#define A_COEF      (3.15)
+#define A_ORIGIN    (169.31)
+
+#define B_COEF      (0.57)
+#define B_ORIGIN    (-59.72)
+
 static float A;
 static float B;
 
@@ -35,6 +41,7 @@ static bool     pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t
 static bool     get_plateau(float* samples, uint32_t samples_len, uint8_t windows_number, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau2(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
 static bool     get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
+static bool     get_plateau4(float* samples, uint32_t samples_len, uint32_t* low_bound, uint32_t* high_bound);
 //static float    linear_fit(float* samples, uint32_t samples_len, float* a, float* b);
 
 static float get_A_guess(float flow_setpoint_lpm);
@@ -73,6 +80,7 @@ uint32_t adaptation(
     
     if(g_target_flow_Lpm!=target_Flow_Lpm) 
     {
+
         A= get_A_guess(target_Flow_Lpm);
         B= get_B_guess(target_Flow_Lpm);
         g_target_flow_Lpm= target_Flow_Lpm;
@@ -91,8 +99,8 @@ uint32_t adaptation(
         motor_steps_us[step]= (uint32_t) (step_us);
     }
     // Add acceleration
-    #define ACCEL_US  5000
-    float step_us= MOTOR_MIN_STEP_US*2;
+    #define ACCEL_US  4000
+    float step_us= MOTOR_MIN_STEP_US*2.5;
     for(uint32_t step=0; step<motor_max_steps; ++step) {
         if(motor_steps_us[step]>=step_us) break;
         motor_steps_us[step]= step_us;
@@ -115,6 +123,11 @@ uint32_t adaptation(
         }
     }
 
+    for(uint32_t t=0; t<motor_max_steps; t+=12) {
+        if(t!=0) brth_printf(",");
+        brth_printf("%lu", motor_steps_us[t]);
+    }
+    brth_printf("\n");
 
     return motor_max_steps;
 }
@@ -124,7 +137,7 @@ uint32_t adaptation(
 //----------------------------------------------------------
 
 static float compte_motor_step_time(uint32_t step_number, float desired_flow_Lpm, float A, float B) {
-	float step_us = (A*g_calibration_step_s*g_calibration_step_s*step_number) + B * g_calibration_step_s;
+	float step_us = (0.000001*0.001*step_number*step_number )+ (A*g_calibration_step_s*g_calibration_step_s*step_number) + B * g_calibration_step_s;
   	step_us = 1000000 * step_us / desired_flow_Lpm;
     if(step_us<MOTOR_MIN_STEP_US) 
     {
@@ -149,6 +162,12 @@ static bool pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
 
     //get_plateau(flow_samples_Lpm, flow_samples_count, 10, &low, &high);
     // get_plateau2(flow_samples_Lpm, flow_samples_count, &low, &high);
+    // if(!get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high))
+    // {
+    //     // No plateau found !!
+    //     // Skip adaptation
+    //     return false;
+    // }
     if(!get_plateau3(flow_samples_Lpm, flow_samples_count, &low, &high))
     {
         // No plateau found !!
@@ -318,7 +337,7 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
     {
         N=20;        
     }
-    brth_printf("considering %Lu first and last samples to find plateau !!\n", N);
+    brth_printf("considering %lu first and last samples to find plateau !!\n", N);
 
     float slope1, origin1;
     float slope2, origin2;
@@ -368,9 +387,9 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
 }
 
 static float get_A_guess(float flow_setpoint_lpm){
-    return 1.94*flow_setpoint_lpm + 52.5;
+    return A_COEF*flow_setpoint_lpm + A_ORIGIN;
 }
 
 static float get_B_guess(float flow_setpoint_lpm){
-    return -0.842*flow_setpoint_lpm + 16.4;
+    return B_COEF*flow_setpoint_lpm + B_ORIGIN;
 }
