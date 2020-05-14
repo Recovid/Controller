@@ -44,15 +44,13 @@ static const float    S4H2O_cm          = 70;         //limite haute Pcrete pour
 static const float    k_phi             = 0.7; //limit de survitesse motor
 
 static float freq_steps_per_slices[NB_SLICES];
-static float flow_per_slices[NB_SLICES];
-
 // Structure to strore PID data and pointer to PID structure
 struct pid_controller ctrldata_Volume;
 struct pid_controller ctrldata_Debit[NB_SLICES];
 pid_H pid_Volume;
 pid_H pid_FlowRate[NB_SLICES];
 float PreviousCycle_Vti, flow_command_updated, objective_volume;
-float Flowrate_Slice[NB_SLICES];
+static float flow_per_slices[NB_SLICES];
 float Freq_Steps_updated[NB_SLICES];
 
 //----------------------------------------------------------
@@ -177,22 +175,23 @@ uint32_t adaptation(
 
     flow_command_updated = get_setting_Vmax_Lpm();
     // Prepare PID Volume controller for operation, set limits and enable controller
-    pid_Volume = pid_create(	&ctrldata_Volume, 
+    /*pid_Volume = pid_create(	&ctrldata_Volume, 
 	&PreviousCycle_Vti, 
 	&flow_command_updated, 
 	&objective_volume, 
 	VOL_KP, VOL_KI, VOL_KD);
     pid_limits(pid_Volume, 0, 200);
-    pid_auto(pid_Volume);
+    pid_auto(pid_Volume);*/
 
     // Prepare PID Flowrate controller for operation, set limits and enable controller
     for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
     {
       pid_FlowRate[slice_index] = pid_create(	&ctrldata_Debit[slice_index], 
-	  &Flowrate_Slice[slice_index], 
-	  &Freq_Steps_updated[slice_index], 
-	  &flow_command_updated, 
+	  &flow_per_slices[slice_index], // Input data
+	  &Freq_Steps_updated[slice_index], // Output
+	  &flow_command_updated, // Command Setpoint
 	  FLOW_KP, FLOW_KI, FLOW_KD);
+	  
       pid_limits(pid_FlowRate[slice_index], 0, 200);
       pid_auto(pid_FlowRate[slice_index]);
     }
