@@ -241,7 +241,8 @@ static void breathing_run(void *args)
             brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
 #ifdef DEBUG_BREATHING            
             for(uint32_t t=0; t<g_Pdiff_Lpm_sample_count; ++t) {
-                dbg_printf("%lu, ",(uint32_t)g_Pdiff_Lpm_samples[t]*1000);
+                if(t) dbg_printf(",");
+                dbg_printf("%lu",(uint32_t)g_Pdiff_Lpm_samples[t]*1000);
             }
             dbg_printf("\n");
 #endif
@@ -296,28 +297,10 @@ static void breathing_run(void *args)
             {
                 // Plateau state : onEntry
                 signal_state(Plateau);
-                inhalation_pause_t_ms = 0;
-                float release_Pdiff= read_Pdiff_Lpm()*0.25;
                 // Plateau state: do
                 do {
                     wait_ms(PLATEAU_PROCESSING_PERIOD_MS);
-                    if(!released && read_Pdiff_Lpm()<release_Pdiff) {
-                        motor_release(MOTOR_RELEASE_STEP_US);
-                        released=true;
-                    }
-                    if(is_command_Tpins_expired())
-                    {
-                        signal_pins(false);                  
-                    }
-                    else
-                    {   
-                        // Update cycle Pplat with current average
-                        g_cycle_Pplat_cmH2O = get_avg_Paw_cmH2O(PPLAT_SAMPLES_COUNT);
-                        // Count pause time
-                        inhalation_pause_t_ms+= PLATEAU_PROCESSING_PERIOD_MS;                  
-                        signal_pins(true);
-                    }
-                    
+                     
                     cycle_Pcrete_cmH2O = MAX(cycle_Pcrete_cmH2O, read_Paw_cmH2O());
 
                     if (g_setting_Pmax <= cycle_Pcrete_cmH2O)
@@ -325,17 +308,41 @@ static void breathing_run(void *args)
                         brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(cycle_Pcrete_cmH2O));
                         next_state= Exhalation;
                     }
-                    else if ((g_setting_Tinspi_ms + DEFAULT_Tpins_max_ms) <= (get_time_ms() - inhalation_start_ms) )
-                    {
-                        brth_print("BRTH: MAX Tpins exceeded\n");
-                        next_state= Exhalation;
-                    }
-                    else if ( (g_setting_Tinspi_ms + inhalation_pause_t_ms) <= (get_time_ms() - inhalation_start_ms) )
+                    else if ( g_setting_Tinspi_ms <= (get_time_ms() - inhalation_start_ms) )
                     {
                         brth_print("BRTH: dt > Tinspi\n");
                         next_state= Exhalation;
                     }
                 } while (Plateau == next_state);
+
+                // --------------------------------------
+                // Start of inhalation pause processing if requested
+                inhalation_pause_t_ms = 0;
+
+                while(g_setting_Pmax > cycle_Pcrete_cmH2O && inhalation_pause_t_ms<DEFAULT_Tpins_max_ms && !is_command_Tpins_expired()) 
+                {
+                    if(inhalation_pause_t_ms==0) 
+                    {
+                        brth_printf("BRTH: Inhalation pause start\n");
+                    }
+                    wait_ms(PLATEAU_PROCESSING_PERIOD_MS);
+                    inhalation_pause_t_ms+= PLATEAU_PROCESSING_PERIOD_MS;                  
+
+                    // Update current Pcrete
+                    cycle_Pcrete_cmH2O = MAX(cycle_Pcrete_cmH2O, read_Paw_cmH2O());
+
+                    // Update cycle Pplat with current average for HMI reporting
+                    g_cycle_Pplat_cmH2O = get_avg_Paw_cmH2O(PPLAT_SAMPLES_COUNT);
+                    signal_pins(true);
+                }
+                if(inhalation_pause_t_ms>0)  
+                {
+                    brth_printf("BRTH: Inhalation pause end: %lu\n", inhalation_pause_t_ms);
+                }
+                // End of inhalation pause processing
+                // --------------------------------------
+
+
 
                 // Plateau state: onExit
                 // get the average Paw over the last Pplat samples count
@@ -353,37 +360,41 @@ static void breathing_run(void *args)
             valve_exhale();
             float VTe_start_mL = read_Vol_mL();
             exhalation_start_ms = get_time_ms();
-            exhalation_pause_t_ms = 0;
             // Exhalation state: do
             do {
                 wait_ms(EXHALATION_PROCESSING_PERIOD_MS);
-                if (is_command_Tpexp_expired())
-                {
-                    // Release valve
-                    valve_exhale();
-                    signal_pexp(false);
-                }
-                else
-                {
-                    // Block valve
-                    valve_inhale();
-                    // Update cycle PEP with current average
-                    g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
-                    exhalation_pause_t_ms+=EXHALATION_PROCESSING_PERIOD_MS;
-                    signal_pexp(true);
-                }
                 
-                if ((g_setting_Texp_ms + DEFAULT_Tpexp_max_ms) <= (get_time_ms() - exhalation_start_ms)) 
-                {
-                    next_state= Insuflation;
-                }
-                else if (g_setting_Texp_ms + exhalation_pause_t_ms <= (get_time_ms() - exhalation_start_ms))
+                if (g_setting_Texp_ms <= (get_time_ms() - exhalation_start_ms))
                 {
                     brth_print("BRTH: Tpexp expired && (T <= dt)\n");
                     next_state= Insuflation;
                 }
             } while (Exhalation == next_state);            
-            
+
+            // --------------------------------------
+            // Start of exhalation pause processing if requested
+            exhalation_pause_t_ms = 0;
+
+            while(exhalation_pause_t_ms<DEFAULT_Tpexp_max_ms && !is_command_Tpexp_expired()) 
+            {
+                if(exhalation_pause_t_ms==0) 
+                {
+                    brth_printf("BRTH: Exhalation pause start\n");
+                }
+                wait_ms(EXHALATION_PROCESSING_PERIOD_MS);
+                exhalation_pause_t_ms+= EXHALATION_PROCESSING_PERIOD_MS;                  
+
+                // Update cycle PEP with current average
+                g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
+                signal_pexp(true);
+            }
+            if(exhalation_pause_t_ms>0) 
+            {
+                brth_printf("BRTH: Exhalation pause end: %lu\n", exhalation_pause_t_ms);
+            }
+            // End of exhalation pause processing
+            // --------------------------------------
+
             // Exhalation state: onExit
             // Compute cycle data
             uint32_t t_ms = get_time_ms();
