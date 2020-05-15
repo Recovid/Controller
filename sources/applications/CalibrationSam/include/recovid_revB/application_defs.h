@@ -35,10 +35,10 @@
 #endif
 
 
-#define MOTOR_HOME_SPEED                      (225.0)   // degree/s
-#define MOTOR_RELEASE_SPEED                   (300.0)   // degree/s
-#define MOTOR_HOME_STEP_US                    ((uint32_t)((360.0*1000000.0)/(MOTOR_STEPS_PER_REV*MOTOR_HOME_SPEED)))      // us/step
-#define MOTOR_RELEASE_STEP_US                 ((uint32_t)((360.0*1000000.0)/(MOTOR_STEPS_PER_REV*MOTOR_RELEASE_SPEED)))   // us/step
+#define MOTOR_HOME_RPM                        (36.0)   // RPM
+#define MOTOR_RELEASE_RPM                     (48.0)   // RPM
+#define MOTOR_HOME_STEP_US                    (MOTOR_STEP_US(MOTOR_HOME_RPM))      // us/step
+#define MOTOR_RELEASE_STEP_US                 (MOTOR_STEP_US(MOTOR_RELEASE_RPM))   // us/step
 
 
 #endif

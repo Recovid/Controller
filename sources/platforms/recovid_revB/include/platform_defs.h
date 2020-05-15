@@ -9,10 +9,10 @@
 #define MOTOR_MAX_STEPS                       (1250) // ((uint32_t)(MOTOR_STEPS_PER_REV*MOTOR_MAX_REV)) <-- non integer define thus compilation gives a warning: variably modified 'g_motor_steps_us' at file scope
 
 
-#define MOTOR_STEP_US(dps)                    ((uint32_t)((360.0*1000000.0)/(MOTOR_STEPS_PER_REV*dps)))      // us/step
+#define MOTOR_STEP_US(rpm)                    ((uint32_t)((1000000.0*60.0)/(MOTOR_STEPS_PER_REV*rpm)))      // us/step
 
-#define MOTOR_MAX_SPEED                       (1440.0)   // degree/s
-#define MOTOR_MIN_STEP_US                     MOTOR_STEP_US(MOTOR_MAX_SPEED)
+#define MOTOR_MAX_RPM                         (240.0)   // revolution per minutes
+#define MOTOR_MIN_STEP_US                     MOTOR_STEP_US(MOTOR_MAX_RPM)
 
 
 
