@@ -79,6 +79,11 @@ SemaphoreHandle_t dbgMutex;
 EventGroupHandle_t  g_controllerEvents;
 TaskHandle_t        g_controllerTask;
 
+extern uint32_t g_stat_i2c_error_cnt;
+extern uint32_t g_stat_i2c_last_error_code;
+extern uint32_t g_stat_i2c_reset_cnt;
+
+
 //----------------------------------------------------------
 // Public functions
 //----------------------------------------------------------
@@ -210,6 +215,7 @@ static void controller_run(void *args)
 #ifdef DEBUG_CONTROLLER_WATERMARK
         uint16_t dbg_cnt=0;
 #endif
+        uint16_t dbg_i2c=0;
 
         while (!is_Failsafe_Enabled())
         {
@@ -231,6 +237,21 @@ static void controller_run(void *args)
                 dbg_cnt=0;
             }
 #endif
+
+            if(++dbg_i2c==25)
+            {
+                if(g_stat_i2c_error_cnt>0) {
+                    ctrl_printf("CTRL: >>>>>>>>>>>>>>>>>>>>>>>> i2c errors: %lu [%lu]\n", g_stat_i2c_error_cnt, g_stat_i2c_last_error_code);
+                    g_stat_i2c_error_cnt=0;
+                }
+                if(g_stat_i2c_reset_cnt>0) {
+                    ctrl_printf("CTRL: >>>>>>>>>>>>>>>>>>>>>>>> i2c reset: %lu\n", g_stat_i2c_reset_cnt);
+                    g_stat_i2c_reset_cnt=0;
+                }
+                
+                dbg_i2c=0;
+            }
+
 
 
             wait_ms(20);
@@ -369,19 +390,14 @@ static int self_tests()
     //check(&test_bits, 3, valve_exhale()); // start pos
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
-    // ctrl_printf("CTRL: Init pep motor\n");
-    // check(&test_bits, 8, init_motor_pep());
-    // motor_pep_home();
-    // while (!is_motor_pep_home())
-    // {
-    //     wait_ms(10);
-    // }    
-    // motor_pep_move(DEFAULT_setting_PEP_cmH2O*10);
-    // while (is_motor_pep_moving()) 
-    // {
-    //     wait_ms(10);
-    // }
-    
+    ctrl_printf("CTRL: Init pep motor\n");
+    check(&test_bits, 8, init_motor_pep());
+    motor_pep_home();
+    while (!is_motor_pep_home())
+    {
+        wait_ms(10);
+    }    
+   
     // TODO check(&test_bits, 8, motor_pep_...
 
     return test_bits;

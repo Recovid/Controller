@@ -16,6 +16,7 @@
 //#define DEBUG_CONTROLLER_WATERMARK
 
 #define DEBUG_BREATHING
+//#define DEBUG_ADAPTATION
 
 //#define DEBUG_MONITOR
 
@@ -69,6 +70,13 @@ extern SemaphoreHandle_t dbgMutex;
 #define brth_printf(_fmt,...)  ((void)0)
 #endif
 
+#ifdef DEBUG_ADAPTATION
+#define adpt_print(_fmt)       dbg_print(_fmt)
+#define adpt_printf(_fmt,...)  dbg_printf(_fmt,##__VA_ARGS__)
+#else
+#define adpt_print(_fmt)       ((void)0) 
+#define adpt_printf(_fmt,...)  ((void)0)
+#endif
 
 
 

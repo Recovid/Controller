@@ -63,24 +63,24 @@ bool motor_pep_move(int relative_mmH2O)
         return false;
     if (relative_mmH2O != 0)
     {
-        int32_t nb_steps= (int32_t)(relative_mmH2O*MOTOR_PEP_PEP_TO_MM_FACTOR) * MOTOR_PEP_STEPS_PER_MM;
+        int32_t nb_steps= (int32_t)(relative_mmH2O*MOTOR_PEP_mmH2O_TO_mm_FACTOR) * MOTOR_PEP_STEPS_PER_mm;
         if(_absolute_steps+nb_steps <0 ) 
         {
             nb_steps= -_absolute_steps;
         }
         if(_absolute_steps+nb_steps > MOTOR_PEP_MAX_STEPS)  
         {
-            nb_steps= MOTOR_PEP_MAX_STEPS;
+            nb_steps= MOTOR_PEP_MAX_STEPS - _absolute_steps;
         }
-        _step_inc= nb_steps<0? -1 : 1;
         
         if(nb_steps==0) return false;
+        _step_inc= nb_steps<0? -1 : 1;
 
         __disable_irq();
         set_direction(nb_steps < 0 ? PEP_DIR_DEC : PEP_DIR_INC);
         set_enable(true);
         _remaining_steps = (uint32_t)fabs(nb_steps);
-        _motor_tim->Init.Period = (uint16_t)(1000000.0 / (PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_MM));
+        _motor_tim->Init.Period = (uint16_t)(1000000.0 / (MOTOR_PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_mm));
         HAL_TIM_Base_Init(_motor_tim);
         _motor_tim->Instance->CNT = 0;
         _moving = true;
@@ -101,7 +101,7 @@ bool motor_pep_home()
         __disable_irq();
         set_direction(PEP_DIR_DEC);
         set_enable(true);
-        _motor_tim->Init.Period = (uint16_t)(1000000 / (PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_MM));
+        _motor_tim->Init.Period = (uint16_t)(1000000 / (MOTOR_PEP_HOME_SPEED * MOTOR_PEP_STEPS_PER_mm));
         HAL_TIM_Base_Init(_motor_tim);
         _motor_tim->Instance->CNT = 0;
         _moving = true;

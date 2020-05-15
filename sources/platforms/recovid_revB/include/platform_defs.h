@@ -18,9 +18,13 @@
 
 // MOTOR PEP platform specific defines
 
-#define MOTOR_PEP_STEPS_PER_MM              (200*8*1)     // steps_per_rev*microstepping*thread_mm_per_rev
-#define MOTOR_PEP_PEP_TO_MM_FACTOR          (1.1)   // PEP to mm factor
-#define MOTOR_PEP_MAX_cmH2O                 (10)    // Max PEP cmH2O
-#define MOTOR_PEP_MAX_STEPS                 ((int32_t)(MOTOR_PEP_MAX_cmH2O*1000*MOTOR_PEP_PEP_TO_MM_FACTOR) * MOTOR_PEP_STEPS_PER_MM)
+#define MOTOR_PEP_MAX_SPEED                 (4)             // mm/s
+#define MOTOR_PEP_HOME_SPEED                (4)             // mm/s
+
+#define MOTOR_PEP_STEPS_PER_mm              (200*8*1)       // steps_per_rev*microstepping*thread_mm_per_rev
+#define MOTOR_PEP_MAX_mm                    (170)           // Max motor PEP distance in mm
+
+#define MOTOR_PEP_mmH2O_TO_mm_FACTOR        (1.1)           // mmH2O to mm factor
+#define MOTOR_PEP_MAX_STEPS                 ((int32_t)(MOTOR_PEP_MAX_mm) * MOTOR_PEP_STEPS_PER_mm)
 
 #endif

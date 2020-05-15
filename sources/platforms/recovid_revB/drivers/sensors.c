@@ -33,6 +33,11 @@ typedef enum {
 static I2C_HandleTypeDef* _i2c= &sensors_i2c;
 static bool initialized = false;
 
+uint32_t g_stat_i2c_error_cnt;
+uint32_t g_stat_i2c_reset_cnt;
+uint32_t g_stat_i2c_last_error_code;
+
+
 static const uint8_t _sdp_reset_req[1]  = { 0xFE };
 static const uint8_t _sdp_readAUR_req[1]  = { 0xE5 };
 static uint8_t _sdp_writeAUR_req[3]  = { 0xE4, 0x00, 0x00};
@@ -58,6 +63,7 @@ volatile sensors_state_t _sensor_state;
 
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c);
+static void process_i2c_error(I2C_HandleTypeDef *hi2c);
 
 //--- BMP280
 static int8_t bmp280_write_direct(uint8_t i2c_addr, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
@@ -78,6 +84,10 @@ bool init_sensors() {
 		return true;
 
 
+    _i2c->Instance->CR1|=I2C_CR1_SWRST; // request soft reset
+    HAL_I2C_Init(_i2c);
+
+
     if (!initSDP610() || !initBMP280())
         return false;
 
@@ -86,10 +96,13 @@ bool init_sensors() {
 
     initialized = true;
 
-    _i2c->MasterTxCpltCallback = process_i2c_callback;
-    _i2c->MasterRxCpltCallback = process_i2c_callback;
-    _i2c->ErrorCallback = process_i2c_callback;
+    HAL_I2C_RegisterCallback(_i2c, HAL_I2C_MASTER_RX_COMPLETE_CB_ID, process_i2c_callback);
+    HAL_I2C_RegisterCallback(_i2c, HAL_I2C_MASTER_TX_COMPLETE_CB_ID, process_i2c_callback);
+    HAL_I2C_RegisterCallback(_i2c, HAL_I2C_ERROR_CB_ID, process_i2c_error);
 
+    g_stat_i2c_error_cnt=0;
+    g_stat_i2c_last_error_code=0;
+    g_stat_i2c_reset_cnt=0;
     return true;
 }	
 
@@ -253,6 +266,7 @@ static void readNPA() {
 
 static void readBMP280_stage_1() {
     _sensor_state = READ_BMP280_STAGE_1;
+  
     bmp280_DMA_buffer[0] = BMP280_PRES_MSB_ADDR;
     /*
      * Envoi de l'adresse du premier registre à lire. Dans un deuxième temps (après interruption = readBMP280_stage_2), on lira la donnée
@@ -304,6 +318,9 @@ static void bmp280_delay_ms(uint32_t period_ms) {
 bool sensors_start() {
     // Start the sensor state machine.
     // This state machine is managed in the I2C interupt routine.
+    g_stat_i2c_reset_cnt=0;
+    g_stat_i2c_error_cnt=0;
+    g_stat_i2c_last_error_code=0;
 	HAL_TIM_Base_Start(&timer_us);
 	reqSDP();
 	return true;
@@ -321,6 +338,31 @@ float compute_corrected_flow(int16_t read)
     return -(float) read / 105.f; // V1 Calibration
 }
 
+static void process_i2c_error(I2C_HandleTypeDef *hi2c) {
+    uint32_t error= HAL_I2C_GetError(hi2c);
+
+    if (error == HAL_I2C_ERROR_AF) 
+    {
+        // Ignore ACK errors.
+        process_i2c_callback(hi2c);
+    }
+    else
+    {
+        // Reset I2C bus for all other errors
+        ++g_stat_i2c_error_cnt;
+        g_stat_i2c_last_error_code=error;
+        ++g_stat_i2c_reset_cnt;
+        _i2c->Instance->CR1|=I2C_CR1_SWRST; // request soft reset
+        HAL_I2C_Init(_i2c);
+        HAL_I2C_RegisterCallback(_i2c, HAL_I2C_MASTER_RX_COMPLETE_CB_ID, process_i2c_callback);
+        HAL_I2C_RegisterCallback(_i2c, HAL_I2C_MASTER_TX_COMPLETE_CB_ID, process_i2c_callback);
+        HAL_I2C_RegisterCallback(_i2c, HAL_I2C_ERROR_CB_ID, process_i2c_error);
+        // Restart state machine
+        reqSDP();
+    }
+
+
+}
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 	switch (_sensor_state) {
@@ -335,22 +377,15 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				readNPA();
 				break;
 			}
-			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// skip
-				readSDP();
-				break;
-			}
-			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_NONE) {
-				if ((_npa_measurement_buffer[0] >> 6) == 0) {
-					uint16_t npa_t_us = (uint16_t)get_time_us();
-					uint16_t npa_dt_us = (uint16_t)npa_t_us - last_npa_t_us;
-					uint16_t praw = (((uint16_t) _npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
-					_current_Paw_cmH2O = compute_corrected_pressure(praw);
-					last_npa_t_us = npa_t_us;
-				} else if ((_npa_measurement_buffer[0] >> 6) == 3) {
-					// TODO: Manage error status !!
-				}
-			}
+            if ((_npa_measurement_buffer[0] >> 6) == 0) {
+                uint16_t npa_t_us = (uint16_t)get_time_us();
+                uint16_t npa_dt_us = (uint16_t)npa_t_us - last_npa_t_us;
+                uint16_t praw = (((uint16_t) _npa_measurement_buffer[0]) << 8 | _npa_measurement_buffer[1]) & 0x3FFF;
+                _current_Paw_cmH2O = compute_corrected_pressure(praw);
+                last_npa_t_us = npa_t_us;
+            } else if ((_npa_measurement_buffer[0] >> 6) == 3) {
+                // TODO: Manage error status !!
+            }
 			readSDP();
 
 			break;
@@ -361,22 +396,12 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 					reqSDP();
 					break;
 			}
-			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// skip
-				readSDP();
-				break;
-			}
 			readSDP();
 			break;
 		}
 		case READ_SDP_MEASUREMENT: {
 			if (HAL_I2C_GetError(hi2c) == HAL_I2C_ERROR_AF) {
 				readNPA();
-				break;
-			}
-			if (HAL_I2C_GetError(hi2c) != HAL_I2C_ERROR_NONE) {
-				// Skip
-				readBMP280_stage_1();
 				break;
 			}
 			if (_sdp_measurement_buffer[0] != 0xFF || _sdp_measurement_buffer[1] != 0xFF || _sdp_measurement_buffer[2] != 0xFF) {

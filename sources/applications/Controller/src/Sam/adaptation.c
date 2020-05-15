@@ -84,6 +84,13 @@ uint32_t adaptation(
     uint32_t    motor_max_steps, 
     uint32_t*   motor_steps_us) 
 {
+#ifdef DEBUG_ADAPTATION
+            for(uint32_t t=0; t<flow_samples_count; ++t) {
+                if(t) adpt_printf(",");
+                adpt_printf("%lu",(int32_t)(flow_samples_Lpm[t]*1000));
+            }
+            adpt_printf("\n");
+#endif
     
     if(g_target_flow_Lpm!=target_Flow_Lpm) 
     {
@@ -135,11 +142,13 @@ uint32_t adaptation(
         }
     }
 
+#ifdef DEBUG_ADAPTATION
     for(uint32_t t=0; t<motor_max_steps; t+=12) {
-        if(t!=0) brth_printf(",");
-        brth_printf("%lu", motor_steps_us[t]);
+        if(t!=0) adpt_printf(",");
+        adpt_printf("%lu", motor_steps_us[t]);
     }
-    brth_printf("\n");
+    adpt_printf("\n");
+#endif
 
     return motor_max_steps;
 }
@@ -201,16 +210,16 @@ static bool pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
     }
     plateau_mean = plateau_mean/(high-low);
     float error_mean = plateau_mean - (target_flow_Lpm);
-    brth_printf("plateau [%lu / %lu] : %ld\n",low, high);
-    brth_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
-    brth_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
-    brth_printf("plateau error : %ld\n",(int32_t)(1000*error_mean));
+    adpt_printf("plateau [%lu / %lu] : %ld\n",low, high);
+    adpt_printf("plateau slope : %ld\n",(int32_t)(1000*plateau_slope));
+    adpt_printf("plateau mean : %ld\n",(int32_t)(1000*plateau_mean));
+    adpt_printf("plateau error : %ld\n",(int32_t)(1000*error_mean));
     
     float previous_A = *A;
     *A += plateau_slope * P_plateau_slope;
     
     // // EXPERIMENTAL : used to compensate the average speed when modifying A
-     brth_printf("Adapting B with Ni= %lu\n",Ni);
+     adpt_printf("Adapting B with Ni= %lu\n",Ni);
      *B += (previous_A -*A)*g_calibration_step_s*Ni;
 
     *B += error_mean * P_plateau_mean;
@@ -218,8 +227,8 @@ static bool pid(float target_flow_Lpm, float flow_samples_period_s, uint32_t flo
     // Compute the new Ts (plateau start time)
     *Ts= low*flow_samples_period_s;
 
-    brth_printf("A = %ld\n", (int32_t)(1000*(*A)));
-    brth_printf("B = %ld\n", (int32_t)(1000*(*B)));
+    adpt_printf("A = %ld\n", (int32_t)(1000*(*A)));
+    adpt_printf("B = %ld\n", (int32_t)(1000*(*B)));
 
     return true;
 }
@@ -241,7 +250,7 @@ float linear_fit(float* samples, uint32_t samples_len, float* a, float *b){
 	}
 	float denom = (samples_len * sumx2 - (sumx * sumx));
 	if(denom == 0.) {
-		brth_printf("no fit\n");
+		adpt_printf("no fit\n");
 		return -1;
 	}
 	// compute slope a
@@ -263,19 +272,19 @@ static bool get_plateau(float* samples, uint32_t samples_len, uint8_t windows_nu
         float a,b;
 		float r = linear_fit(&samples[window*(samples_len/windows_number)], samples_len/windows_number, &a, &b);
         slopes[window]=a;
-		brth_printf("%ld    ", (int32_t)(slopes[window] * 1000));
+		adpt_printf("%ld    ", (int32_t)(slopes[window] * 1000));
 	}
-	brth_printf("\n");
+	adpt_printf("\n");
 	for(uint32_t window=1; window<windows_number; window++) {
 		float delta_slope = slopes[window-1] - slopes[window];
 		if(delta_slope > 60.) {
 			*low_bound = (uint32_t)((samples_len/windows_number)*(window+1));
-			brth_printf("plateau begin at %lu over %lu points\n", *low_bound, (uint32_t)samples_len);
+			adpt_printf("plateau begin at %lu over %lu points\n", *low_bound, (uint32_t)samples_len);
 			return true;
 		}
 	}
 	*low_bound = (uint32_t)(samples_len/2);
-	brth_printf("No plateau found\n");
+	adpt_printf("No plateau found\n");
 	return false;
 }
 
@@ -306,7 +315,7 @@ static bool get_plateau2(float* samples, uint32_t samples_len, uint32_t* low_bou
         // Compute score based on fit RSQ and points number
         float score = (r1 * (float)(midpointIndex-firstNonZeroIndex+1)/(float)(samples_len_no_zeros)) + (r2 * (float)(samples_len-midpointIndex)/(float)(samples_len_no_zeros) );
 //        float score = (r1 * 2.0/3.0) + (r2 * 1.0/3.0);
-        //brth_printf("plateau: r1=%lu, r2=%lu, score=%lu\n", (uint32_t)(r1*1000),(uint32_t)(r2*1000),(uint32_t)(score*1000) )
+        //adpt_printf("plateau: r1=%lu, r2=%lu, score=%lu\n", (uint32_t)(r1*1000),(uint32_t)(r2*1000),(uint32_t)(score*1000) )
         if(score > bestRScore) 
         {
             bestRScore = score;
@@ -318,7 +327,7 @@ static bool get_plateau2(float* samples, uint32_t samples_len, uint32_t* low_bou
     *high_bound = samples_len-1;
     *low_bound = (uint32_t)(bestMidpointIndex);
 
-    brth_printf("plateau begin at %lu and ends at %lu with score %lu\n", *low_bound, *high_bound, (uint32_t)(1000*bestRScore));
+    adpt_printf("plateau begin at %lu and ends at %lu with score %lu\n", *low_bound, *high_bound, (uint32_t)(1000*bestRScore));
     return true;
 }
 
@@ -330,7 +339,7 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
 
     if(samples_len-firstNonZeroIndex<3) 
     {
-        brth_printf("Too few samples !!\n");
+        adpt_printf("Too few samples !!\n");
         *low_bound=0;
         *high_bound=0;
         return false;
@@ -343,14 +352,14 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
 
     if(samples_len_no_zeros<40)
     {
-        brth_printf("Very few samples !!\n");
+        adpt_printf("Very few samples !!\n");
         N= samples_len_no_zeros/2;
     } 
     else 
     {
         N=20;        
     }
-    brth_printf("considering %lu first and last samples to find plateau !!\n", N);
+    adpt_printf("considering %lu first and last samples to find plateau !!\n", N);
 
     float slope1, origin1;
     float slope2, origin2;
@@ -379,23 +388,27 @@ static bool get_plateau3(float* samples, uint32_t samples_len, uint32_t* low_bou
     
     *high_bound = samples_len-1;
 
+#ifdef DEBUG_ADAPTATION
     for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope1*t+origin1)*1000);
+        adpt_printf("%ld, ", (int32_t)(slope1*t+origin1)*1000);
     }
-    brth_printf("\n");
+    adpt_printf("\n");
     for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope2*t+origin2)*1000);
+        adpt_printf("%ld, ", (int32_t)(slope2*t+origin2)*1000);
     }
-    brth_printf("\n");
+    adpt_printf("\n");
 
     float slope,origin;
     linear_fit(&samples[*low_bound], (*high_bound)-(*low_bound), &slope,&origin);
+    origin-= slope*(*low_bound);
     for(int t=0; t<samples_len-1; ++t) {
-        brth_printf("%ld, ", (int32_t)(slope*t+origin)*1000);
+        adpt_printf("%ld, ", (int32_t)(slope*t+origin)*1000);
     }
-    brth_printf("\n");
+    adpt_printf("\n");
 
-    brth_printf("plateau [%lu / %lu] | [%ld / %ld] [%ld / %ld]\n", *low_bound, *high_bound, (int32_t)(slope1*1000), (int32_t)(origin1*1000), (int32_t)(slope2*1000), (int32_t)(origin2*1000));
+    adpt_printf("plateau [%lu / %lu] | [%ld / %ld] [%ld / %ld]\n", *low_bound, *high_bound, (int32_t)(slope1*1000), (int32_t)(origin1*1000), (int32_t)(slope2*1000), (int32_t)(origin2*1000));
+#endif
+
     return true;
 }
 
@@ -407,7 +420,7 @@ static bool get_plateau4(float* samples, uint32_t samples_len, uint32_t* low_bou
 
     if(samples_len-firstNonZeroIndex<15) 
     {
-        brth_printf("Too few samples !!\n");
+        adpt_printf("Too few samples !!\n");
         *low_bound=0;
         *high_bound=0;
         return false;
@@ -420,7 +433,7 @@ static bool get_plateau4(float* samples, uint32_t samples_len, uint32_t* low_bou
 
     if(samples_len_no_zeros<45)
     {
-        brth_printf("Very few samples !!\n");
+        adpt_printf("Very few samples !!\n");
         N1 = N2 = samples_len_no_zeros/3;
     } 
     else 
@@ -433,6 +446,8 @@ static bool get_plateau4(float* samples, uint32_t samples_len, uint32_t* low_bou
     float slope2, origin2;
     float r1 = linear_fit(&samples[firstNonZeroIndex], N1, &slope1, &origin1);
     float r2 = linear_fit(&samples[samples_len-N2], N2, &slope2, &origin2);
+    origin1-= slope1*firstNonZeroIndex;
+    origin2-= slope2*(samples_len-N2);
 
     // if(slope1==slope2) 
     // {
@@ -455,33 +470,34 @@ static bool get_plateau4(float* samples, uint32_t samples_len, uint32_t* low_bou
     // }
     
     *low_bound =  samples_len-N2;
-    *high_bound = samples_len-1;
+    *high_bound = samples_len;
 
+#ifdef DEBUG_ADAPTATION
     for(int t=0; t<samples_len-1; ++t) {
-        if(t) brth_printf(",");
-        brth_printf("%ld", (int32_t)(slope1*t+origin1)*1000);
+        if(t) adpt_printf(",");
+        adpt_printf("%ld", (int32_t)(slope1*t+origin1)*1000);
     }
-    brth_printf("\n");
+    adpt_printf("\n");
     for(int t=0; t<samples_len-1; ++t) {
-        if(t) brth_printf(",");
-        brth_printf("%ld", (int32_t)(slope2*t+origin2)*1000);
+        if(t) adpt_printf(",");
+        adpt_printf("%ld", (int32_t)(slope2*t+origin2)*1000);
     }
-    brth_printf("\n");
-
+    adpt_printf("\n");
+#endif
     // float slope,origin;
     // linear_fit(&samples[*low_bound], (*high_bound)-(*low_bound), &slope,&origin);
     // origin-= slope*(*low_bound);
 
     // for(int t=0; t<samples_len-1; ++t) {
-    //     if(t) brth_printf(",");
-    //     brth_printf("%ld", (int32_t)(slope*t+origin)*1000);
+    //     if(t) adpt_printf(",");
+    //     adpt_printf("%ld", (int32_t)(slope*t+origin)*1000);
     // }
-    // brth_printf("\n");
+    // adpt_printf("\n");
 
-    brth_printf("considering %lu first and %lu last samples to find plateau !!\n", N1, N2);
+    adpt_printf("considering %lu first and %lu last samples to find plateau !!\n", N1, N2);
 
 
-    brth_printf("plateau [%lu / %lu] | [%ld / %ld] [%ld / %ld]\n", *low_bound, *high_bound, (int32_t)(slope1*1000), (int32_t)(origin1*1000), (int32_t)(slope2*1000), (int32_t)(origin2*1000));
+    adpt_printf("plateau [%lu / %lu] | [%ld / %ld] [%ld / %ld]\n", *low_bound, *high_bound, (int32_t)(slope1*1000), (int32_t)(origin1*1000), (int32_t)(slope2*1000), (int32_t)(origin2*1000));
     return true;
 }
 

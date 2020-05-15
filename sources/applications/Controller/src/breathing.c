@@ -25,6 +25,12 @@
 #define MAX_PDIFF_SAMPLES       (2000 / SAMPLING_PERIOD_MS)
 
 
+#define AVG_CYCLE_PEP_SAMPLES       (1)
+#define MAX_PEP_ADJUSTEMENT_mmH2O   (10)  
+#define PEP_ADJUSTMENT_KP           (0.5)
+#define PEP_ADJUSTMENT_KD           (0.5)
+
+
 //----------------------------------------------------------
 // Private typedefs
 //----------------------------------------------------------
@@ -66,6 +72,12 @@ static volatile uint16_t    g_Paw_cmH2O_sample_idx;
 static float                g_Pdiff_Lpm_samples[MAX_PDIFF_SAMPLES];
 static volatile uint16_t    g_Pdiff_Lpm_sample_count;
 
+static float                g_cycle_PEP_samples[AVG_CYCLE_PEP_SAMPLES];
+static uint32_t             g_cycle_PEP_sample_idx;
+static uint32_t             g_cycle_PEP_sample_cnt;
+static float                g_cycle_PEP_adjustment_error;
+
+
 static volatile BreathingState g_state;
 
 
@@ -77,10 +89,15 @@ static volatile bool g_Pdiff_sampling;
 //----------------------------------------------------------
 // Private functions prototypes
 //----------------------------------------------------------
-static void regulation_pep();
+static void regulation_pep(float target_PEP_cmH2O, float cycle_PEP_cmH2O);
 
-static void init_Paw_cmH2O_sampling();
+static void  init_cycle_PEP_adjustment();
+static float get_cycle_PEP_average(float cycle_PEP_cmH2O);
+static float get_cycle_PEP_adjustment(float target_PEP_cmH2O, float cycle_PEP_cmH2O);
+
+
 static void init_Pdiff_Lpm_sampling();
+static void init_Paw_cmH2O_sampling();
 static float get_avg_Paw_cmH2O(uint16_t count);
 
 
@@ -170,7 +187,19 @@ static void breathing_run(void *args)
         events = xEventGroupWaitBits(g_controllerEvents, BREATHING_RUN_FLAG, pdFALSE, pdTRUE, portMAX_DELAY);
         brth_printf("BRTH: Started\n");
 
-        motor_enable(true);
+        init_motor(MOTOR_HOME_STEP_US);
+
+        motor_pep_home();
+        while (!is_motor_pep_home()) 
+        {
+            wait_ms(10);
+        }
+        motor_pep_move(get_setting_PEP_cmH2O()*10);
+        while (is_motor_pep_moving()) 
+        {
+            wait_ms(10);
+        }
+
 
         float a=0,b=0;
 #if 0
@@ -188,7 +217,8 @@ static void breathing_run(void *args)
         g_cycle_Pplat_cmH2O = 0;
         g_cycle_PEP_cmH2O = 0;
 
-
+        // Init cycle PEP adjustment PID
+        init_cycle_PEP_adjustment();
         // Init Paw samples
         init_Paw_cmH2O_sampling();
         // Init Pdiff sampling
@@ -239,13 +269,6 @@ static void breathing_run(void *args)
             brth_printf("BRTH: Tinsu : %lu\n", g_setting_Tinsu_ms);
             brth_printf("BRTH: Tinspi: %lu\n", g_setting_Tinspi_ms);
             brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
-#ifdef DEBUG_BREATHING            
-            for(uint32_t t=0; t<g_Pdiff_Lpm_sample_count; ++t) {
-                if(t) dbg_printf(",");
-                dbg_printf("%lu",(uint32_t)g_Pdiff_Lpm_samples[t]*1000);
-            }
-            dbg_printf("\n");
-#endif
 
             uint32_t nb_steps= adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
 
@@ -409,7 +432,7 @@ static void breathing_run(void *args)
             xEventGroupSetBits(g_breathingEvents, BRTH_CYCLE_UPDATED);
 
             // Proceed to the PEP regulation
-            //regulation_pep();
+            regulation_pep(get_setting_PEP_cmH2O(),  g_cycle_PEP_cmH2O);
 
             // Check if controller asked us to stop.
             events = xEventGroupGetBits(g_controllerEvents);
@@ -481,17 +504,52 @@ static void signal_state(BreathingState state)
 }
 
 
-static void regulation_pep()
+static void regulation_pep(float target_PEP_cmH2O, float cycle_PEP_cmH2O)
 {
-    float pep_objective = get_setting_PEP_cmH2O(); // TODO: is it really what we want ? Should we use the setting retreived at the beginning of the cycle instead ?
-    float current_pep = get_cycle_PEP_cmH2O();
-    int relative_pep_mmH2O = (int) (pep_objective * 10 - current_pep * 10);
-    if (abs(relative_pep_mmH2O) > 3)
+    float pep_adjustment_cmH2O  = get_cycle_PEP_adjustment(target_PEP_cmH2O, cycle_PEP_cmH2O);
+
+    int32_t pep_adjustment_mmH2O = (int32_t) (10.0*pep_adjustment_cmH2O);
+    brth_printf("BRTH: >>>>>>>>>>>>>>>> PEP adjustment mmH2O: %ld\n", pep_adjustment_mmH2O);
+    motor_pep_stop();
+//    int32_t pep_adjustment_mmH2O= (int32_t) (SIGN(pep_adjustment_mmH2O)*MIN(MAX_PEP_ADJUSTEMENT_mmH2O,abs(pep_adjustment_mmH2O)));
+    // if(abs(pep_adjustment_mmH2O)>1)
+    // {
+        motor_pep_move(pep_adjustment_mmH2O);
+    // }
+}
+
+static void init_cycle_PEP_adjustment() {
+    memset((void*)g_cycle_PEP_samples, 0, sizeof(g_cycle_PEP_samples));
+    g_cycle_PEP_sample_idx = 0;
+    g_cycle_PEP_sample_cnt = 0;
+    g_cycle_PEP_adjustment_error=0;
+}
+
+static float get_cycle_PEP_average(float cycle_PEP_cmH2O) 
+{
+    g_cycle_PEP_samples[g_cycle_PEP_sample_idx]= cycle_PEP_cmH2O;
+    g_cycle_PEP_sample_idx= (g_cycle_PEP_sample_idx +1)% AVG_CYCLE_PEP_SAMPLES;
+    g_cycle_PEP_sample_cnt+= (g_cycle_PEP_sample_cnt<AVG_CYCLE_PEP_SAMPLES) ? 1 : 0;
+
+    float avg_PEP=0;
+    for(uint16_t i=0; i<g_cycle_PEP_sample_cnt; ++i) 
     {
-        brth_printf(">>>>>>>>>>>>>>>>>>>> Adjusting PEP: %ld\n", (int)(SIGN(relative_pep_mmH2O)*MIN(5,relative_pep_mmH2O)));
-        motor_pep_stop();
-        motor_pep_move(SIGN(relative_pep_mmH2O)*MIN(5,relative_pep_mmH2O));
+        avg_PEP+= g_cycle_PEP_samples[ (AVG_CYCLE_PEP_SAMPLES + g_cycle_PEP_sample_idx + i - g_cycle_PEP_sample_cnt) % AVG_CYCLE_PEP_SAMPLES ];
     }
+    avg_PEP/= g_cycle_PEP_sample_cnt;
+
+    return avg_PEP;
+}
+
+static float get_cycle_PEP_adjustment(float target_PEP_cmH2O, float cycle_PEP_cmH2O) {
+    
+    float avg_PEP= get_cycle_PEP_average(cycle_PEP_cmH2O);
+
+    float last_error= g_cycle_PEP_adjustment_error;
+    g_cycle_PEP_adjustment_error = target_PEP_cmH2O - avg_PEP;
+
+    float adjustment = (PEP_ADJUSTMENT_KP * g_cycle_PEP_adjustment_error) + (PEP_ADJUSTMENT_KD * (g_cycle_PEP_adjustment_error - last_error));
+    return adjustment;
 }
 
 static void init_Paw_cmH2O_sampling()
@@ -517,7 +575,7 @@ static float get_avg_Paw_cmH2O(uint16_t count)
     taskENTER_CRITICAL();
     float sum = 0.;
     count = MIN(count, g_Paw_cmH2O_sample_count);
-    for (uint16_t i = 1; i <= count; i++)
+    for (uint16_t i = 0; i < count; i++)
     {
         sum += g_Paw_cmH2O_samples[ (MAX_PAW_SAMPLES + g_Paw_cmH2O_sample_idx + i - count ) % MAX_PAW_SAMPLES ];
     }
@@ -529,7 +587,7 @@ static void samplingCallback(TimerHandle_t timer) {
     taskENTER_CRITICAL();
     // sample Paw
     g_Paw_cmH2O_samples[g_Paw_cmH2O_sample_idx]= read_Paw_cmH2O();
-    g_Paw_cmH2O_sample_idx = (g_Paw_cmH2O_sample_idx + 1) % MAX_PAW_SAMPLES;
+    g_Paw_cmH2O_sample_idx = (g_Paw_cmH2O_sample_idx +1) % MAX_PAW_SAMPLES;
     if(g_Paw_cmH2O_sample_count<MAX_PAW_SAMPLES) 
     {
         ++g_Paw_cmH2O_sample_count;
