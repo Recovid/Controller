@@ -49,12 +49,12 @@ void pid_compute(pid_H pid)
 		pid->iterm = ITERM_MAX;
 	else if (pid->iterm < ITERM_MIN)
 		pid->iterm = ITERM_MIN;
-	printf("ITERM = %d ", (int) pid->iterm);
 	// Compute differential on input
 	float dinput = in - pid->lastin;
 	// Compute PID output
+    printf("errror %d ", (int) error);
 	float out = pid->Kp * error + pid->iterm;// - pid->Kd * dinput;
-	
+	//
 	// Apply limit to output value
 	if (out > pid->omax)
 		out = pid->omax;

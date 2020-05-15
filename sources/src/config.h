@@ -33,7 +33,7 @@ extern SemaphoreHandle_t dbgMutex;
 #endif
 
 
-
+#define DEBUG_HMI
 #ifdef DEBUG_HMI
 #define hmi_print(_fmt)       dbg_print(_fmt)
 #define hmi_printf(_fmt,...)  dbg_printf(_fmt,##__VA_ARGS__)

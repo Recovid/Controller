@@ -19,12 +19,12 @@
 // Private defines
 //----------------------------------------------------------
 #define NB_SLICES 10
-#define VOL_KP 0
-#define VOL_KI 0
-#define VOL_KD 0
-#define FLOW_KP 0
-#define FLOW_KI 1
-#define FLOW_KD 0
+#define VOL_KP (0.0001f)
+#define VOL_KI (0.0f)
+#define VOL_KD (0.0f)
+#define FLOW_KP (15.0f)        //10.0f
+#define FLOW_KI (1.0f)        //2.0f
+#define FLOW_KD (0.0f)
 
 
 //----------------------------------------------------------
@@ -45,13 +45,15 @@ static const float    S4H2O_cm          = 70;         //limite haute Pcrete pour
 static const float    k_phi             = 0.7; //limit de survitesse motor
 
 static float freq_steps_per_slices[NB_SLICES];
+static float freq_steps_per_slices_for_seed[NB_SLICES];
 // Structure to strore PID data and pointer to PID structure
 struct pid_controller ctrldata_Volume;
 struct pid_controller ctrldata_Debit[NB_SLICES];
 pid_H pid_Volume;
 pid_H pid_FlowRate[NB_SLICES];
 float PreviousCycle_Vti, objective_volume; 
-float flow_command_updated[NB_SLICES];
+float flow_command_updated;
+float volume_updated = 0.0f;
 static float flow_per_slices[NB_SLICES];
 float Freq_Steps_updated[NB_SLICES];
 
@@ -92,7 +94,6 @@ static uint32_t convert_samples_slice_to_steps(uint32_t nb_slices,
                                            float*   max_slope_acceleration,
                                            float*   max_slope_deceleration,
 					   uint32_t Ti_ms,
-					   uint32_t nb_steps,
                                            uint32_t* t_motor_step_us, //output: Array of steps time [MAX_MOTOR_STEPS]
 					   uint32_t* Ta_ms,  // output : total motor steps time for acceleration
 					   uint32_t* Td_ms,  // output : total motor steps time before deceleration
@@ -117,20 +118,23 @@ void reset_adaptation()
 // fills the motor step table and return the number of steps.
 
 void print_samples(float* samples,
-		   uint32_t nb_samples)
+		   uint32_t nb_samples,
+		   uint32_t sampling_period)
 {
   for(uint32_t i = 0; i < nb_samples; i++)
   {
-    printf("sample[%ld] = %d\n", i, (int) samples[i]);
+    printf("%ld;%d\n", i*sampling_period, ((int) (samples[i]*1000.f)));
   }
 }
 
 void print_steps(uint32_t* steps_t_us, unsigned int nb_steps)
 {
     printf("Steps %u\n", nb_steps);
+    uint32_t t_acc = 0;
     for(unsigned int j=0; j < nb_steps; j+=1)
     {
-      printf("%ld\n", steps_t_us[j]);
+      printf("%ld;%ld\n", t_acc/1000, steps_t_us[j]);
+      t_acc += steps_t_us[j];
     }
 }
 static bool update_float(float* value_to_update, float new_value)
@@ -162,7 +166,8 @@ uint32_t adaptation(
   settings_changed |= update_float(&l_target_VT_ml, target_VT_mL);
   settings_changed |= update_float(&l_target_Flow_Lpm, target_Flow_Lpm);
   uint32_t nb_steps = motor_max_steps;
-  
+  //print_steps(motor_steps_us, nb_steps);
+  //print_samples(flow_samples_Lpm, flow_samples_count, flow_samples_period_ms);
   //printf("Samples de 20 à 50 :");
   //for(uint32_t i = 20; i < 50; i++)
   //{
@@ -172,7 +177,8 @@ uint32_t adaptation(
 
   if(l_adaptation_initialized != true || settings_changed)
   {
-    //compute_seed(target_Flow_Lpm, target_VT_mL, seed_steps_us, &nb_steps_seed);
+    compute_seed(target_Flow_Lpm, target_VT_mL, seed_steps_us, &nb_steps_seed);
+    convert_motor_steps_to_freq(seed_steps_us, nb_steps_seed, NB_SLICES, freq_steps_per_slices_for_seed);
     
     nb_steps = MOTOR_MAX_STEPS;
     for(uint32_t i = 0; i < nb_steps; i++)
@@ -182,28 +188,29 @@ uint32_t adaptation(
 
     l_adaptation_initialized = true;
 
+    objective_volume = 300.0f;
     // Prepare PID Volume controller for operation, set limits and enable controller
-    /*pid_Volume = pid_create(	&ctrldata_Volume, 
-	&PreviousCycle_Vti, 
-	&flow_command_updated, 
-	&objective_volume, 
-	VOL_KP, VOL_KI, VOL_KD);
-    pid_limits(pid_Volume, 0, 200);
-    pid_auto(pid_Volume);*/
+    pid_Volume = pid_create(	&ctrldata_Volume, 
+        &PreviousCycle_Vti, 
+        &volume_updated, 
+        &objective_volume, 
+        VOL_KP, VOL_KI, VOL_KD);
+    pid_limits(pid_Volume, -30, 30);
+    pid_direction(pid_Volume, E_PID_REVERSE);
+    pid_auto(pid_Volume);
 
     // Prepare PID Flowrate controller for operation, set limits and enable controller
     for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
     {
-
-      flow_command_updated[slice_index] = get_setting_Vmax_Lpm();
+      //flow_command_updated[slice_index] = get_setting_Vmax_Lpm();
       pid_FlowRate[slice_index] = pid_create(	&ctrldata_Debit[slice_index], 
 	  &flow_per_slices[slice_index], // Input data
 	  &Freq_Steps_updated[slice_index], // Output
-	  &flow_command_updated[slice_index], // Command Setpoint
+	  &volume_updated, // Command Setpoint
 	  FLOW_KP, FLOW_KI, FLOW_KD);
 	
-      pid_limits(pid_FlowRate[slice_index], 0, 10000);
-      pid_direction(pid_FlowRate[slice_index], E_PID_REVERSE);
+      pid_limits(pid_FlowRate[slice_index], -3000, 3000);
+      pid_direction(pid_FlowRate[slice_index], E_PID_DIRECT);
       pid_auto(pid_FlowRate[slice_index]);
 
     }
@@ -239,35 +246,47 @@ uint32_t adaptation(
       max_slope_deceleration);
 
   //// Call Volume PID every X cycles: Read process feedback, Compute new PID output value
-  //PreviousCycle_Vti = get_cycle_VTi_mL();
-  //pid_compute(pid_Volume); // result is stored in flow_command_updated
+  PreviousCycle_Vti = get_cycle_VTi_mL();
+  pid_compute(pid_Volume); // result is stored in volume_updated
+  printf("objective_volume = %d", (int) objective_volume); 
 
   //// Call Debit PID
+  //float stumb[] = { 0.0f , 2.0f , 7.0f, 22.0f , 39.0f, 51.0f, 60.0f, 0.0f, 0.0f, 8.0f}; 
+  
+
+
+  volume_updated += 30.f;
+  printf("PreviousCycle_Vti = %d volume_updated = %d\n", (int) PreviousCycle_Vti, (int) volume_updated); 
+
   for(int slice_index=0; slice_index<NB_SLICES; slice_index++)
   {
-    flow_per_slices[slice_index] = 10;
     // Compute new PID output value
     pid_compute(pid_FlowRate[slice_index]); // result is stored in Freq_Steps_updated[slice_index]
 
     // Add the seed to the result
-    printf("Slice %d ", slice_index); 
-    printf("flow= %d ", (int) flow_per_slices[slice_index]); // Input data
-    printf("flow plateau = %d ", (int) flow_command_updated[slice_index]); // Input data
-    printf("Freq update %d\n",  (int) Freq_Steps_updated[slice_index]);
+    //printf("Slice %d ", slice_index); 
+    //printf("flow= %x ", flow_per_slices[slice_index]); // Input data
+    //printf("flow plateau = %d ", (int) flow_command_updated[slice_index]); // Input data
+    //printf("Freq update %d\n",  (int) Freq_Steps_updated[slice_index]);
     //
-    //Freq_Steps_updated[slice_index] += freq_steps_per_slices[slice_index];
+    Freq_Steps_updated[slice_index] += freq_steps_per_slices_for_seed[slice_index];
     //printf("Freq  update %d\n",  (int) Freq_Steps_updated[slice_index]);
 }
 
   uint32_t Ta_ms, Td_ms, Tf_ms;
   // Compute motor step table 
+  for(uint32_t k=0; k < NB_SLICES; k++)
+  {
+  //  Freq_Steps_updated[k] = 1000;
+    max_slope_acceleration[k] = 45000;
+    max_slope_deceleration[k] = 45000;
+  }
   nb_steps = convert_samples_slice_to_steps(NB_SLICES,
-                                            nb_steps,
+                                            1250,
 					    Freq_Steps_updated,
                                             max_slope_acceleration,
                                             max_slope_deceleration,
-					    get_setting_Tinsu_ms(),
-					    nb_steps,
+					    2000,
                                             motor_steps_us, //output: Array of steps time [MAX_MOTOR_STEPS]
 					    &Ta_ms,  // output : total motor steps time for acceleration
 					    &Td_ms,  // output : total motor steps time before deceleration
@@ -413,7 +432,7 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
 					float* flow_samples_motor_steps)//output a array of samples feated on motor steps
 {
   uint32_t t_acc_us = 0;
-  uint32_t current_sample_idx = 0;
+  uint32_t current_sample_idx = 100/flow_samples_period_ms;
   for (uint32_t i=0 ; i< nb_steps; ++i) 
   {
     uint32_t current_sample_time = current_sample_idx * flow_samples_period_ms;
@@ -423,8 +442,11 @@ void convert_samples_t_to_samples_steps(float*    flow_samples_Lpm,         //ar
       current_sample_idx++;
     }
 
-    flow_samples_motor_steps[i] = flow_samples_Lpm[current_sample_idx];
-        
+    if(current_sample_idx > flow_samples_count) 
+      flow_samples_motor_steps[i] = 0.0f;
+    else
+      flow_samples_motor_steps[i] = flow_samples_Lpm[current_sample_idx];
+
     t_acc_us += motor_steps_us[i];
   }
 }
@@ -443,7 +465,6 @@ static void compute_max_slope(uint32_t nb_slices,
   uint32_t nb_steps_per_slices = nb_steps_total / nb_slices;
   //The last slice may have more steps (between 0 to NB_SLICES more)
   uint32_t last_nb_steps_per_slices = nb_steps_total%nb_slices + nb_steps_per_slices;
-  printf("Steps per slices = %ld\n", nb_steps_per_slices);
   float VTi    = get_cycle_VTi_mL();
   float Pcrete = get_cycle_Pcrete_cmH2O();
 //  float PEP    = get_cycle_PEP_cmH2O();
@@ -502,9 +523,10 @@ static void compute_slice_flow(uint32_t nb_slices,
       }
 
       compute_slice_flow[k] += flow_samples_motor_steps[idx];
-      //printf("%d ", (int) flow_samples_motor_steps[idx]);
+      //printf("%d ", ((int) flow_samples_motor_steps[idx]));
     }
     compute_slice_flow[k] /= nb_steps_per_slices;
+
   }
 }
 
@@ -516,18 +538,17 @@ uint32_t T_minobj(uint32_t current_step, uint32_t flow_set_point_Lpm)
 #define pow2(_a_) ((_a_)*(_a_))
 
 static uint32_t convert_samples_slice_to_steps(uint32_t nb_slices,
-                                           uint32_t nb_steps_total,
-					   float*   freq_steps_per_slices,
-                                           float*   max_slope_acceleration,
-                                           float*   max_slope_deceleration,
-					   uint32_t Ti_ms,
-					   uint32_t nb_steps,
-                                           uint32_t* t_motor_step_us, //output: Array of steps time [MAX_MOTOR_STEPS]
-					   uint32_t* Ta_ms,  // output : total motor steps time for acceleration
-					   uint32_t* Td_ms,  // output : total motor steps time before deceleration
-					   uint32_t* Tf_ms ) // output : total motor steps time             
+                                               uint32_t nb_steps_total,
+                                               float*   freq_steps_per_slices,
+                                               float*   max_slope_acceleration,
+                                               float*   max_slope_deceleration,
+                                               uint32_t Ti_ms,
+                                               uint32_t* t_motor_step_us, //output: Array of steps time [MAX_MOTOR_STEPS]
+                                               uint32_t* Ta_ms,  // output : total motor steps time for acceleration
+                                               uint32_t* Td_ms,  // output : total motor steps time before deceleration
+                                               uint32_t* Tf_ms ) // output : total motor steps time             
 {
-    uint32_t nb_steps_per_slices = nb_steps_total / nb_slices;
+  uint32_t nb_steps_per_slices = nb_steps_total / nb_slices;
   //The last slice may have more steps (between 0 to NB_SLICES more)
   uint32_t last_nb_steps_per_slices = nb_steps_total%nb_slices + nb_steps_per_slices;
 
@@ -536,114 +557,99 @@ static uint32_t convert_samples_slice_to_steps(uint32_t nb_slices,
   uint32_t nb_steps_for_stop;
   for(uint32_t k=0; k<nb_slices; k++)
   {
-    float Sa;
-    
+    bool     trigger_stop = false;
+    bool     is_first_acceleration_ended = false;
+    *Ta_ms = 0;
+    float    initial_freq_steps_per_slices_pow2;
+    float    final_freq_steps_per_slices_pow2  = freq_steps_per_slices[k]*freq_steps_per_slices[k];
 
+    if(k == nb_slices-1) 
+    {
+      nb_steps_per_slices = last_nb_steps_per_slices;   
+    }  
 
     if (k==0)
     {
-      //		Sa = freq_steps_per_slices[0]*2;
-      Sa = Sa_max_pas_par_s2;
-      freq_steps_per_slices[0] = 0.0;
-      for(uint32_t i=0; i < nb_steps_per_slices; i++, current_step++)
-      {
-	t_motor_step_us[i] = 1E6/(sqrtf(2*Sa*(i+1)));
-	t_accumulated_steps+= t_motor_step_us[i];
-	//freq_steps_per_slices[0] += ((1E6 /(float)t_motor_step_us[i]) / (float)nb_steps_per_slices);
-      }
-      freq_steps_per_slices[0] = (1E6 /(float)t_motor_step_us[current_step-1]);
+      initial_freq_steps_per_slices_pow2 = 0;        
+
     }
     else
     {
-      bool     trigger_stop = false;
-      bool     is_first_acceleration_ended = false;
-      float    steps_offset_per_slice;
-      float    freq_steps_per_slices_pow2 = freq_steps_per_slices[k-1]*freq_steps_per_slices[k-1];
+      initial_freq_steps_per_slices_pow2 = freq_steps_per_slices[k-1]*freq_steps_per_slices[k-1];
 
-      if(k == nb_slices-1) 
+    }
+
+    // Compute Sa and Apply SAmax
+    float Sa;
+    Sa = (final_freq_steps_per_slices_pow2-initial_freq_steps_per_slices_pow2)/(2*nb_steps_per_slices);
+    // Compute Sa Sd (=-Sa) and limit to Smax
+    Sa = MIN(Sa,  max_slope_acceleration[k]);
+    Sa = MAX(Sa, -max_slope_deceleration[k]);
+
+    if ((Sa < 0) && !is_first_acceleration_ended)
+    {
+      *Ta_ms = t_accumulated_steps/1000;
+      is_first_acceleration_ended = true;
+    }
+    printf("Sa[%"PRIu32"] = %d Samax =%d Sdmax %d\n", k, (int)Sa, (int) max_slope_acceleration[k], (int) max_slope_deceleration[k]);
+
+
+
+    for(uint32_t i=0; i < nb_steps_per_slices; i++, current_step++)
+    {
+      if(TEST_FLT_EQUALS(Sa, 0.f) )
       {
-	nb_steps_per_slices = last_nb_steps_per_slices;   
+	//Acceleration is 0. so speed is constant for all the slice
+	t_motor_step_us[current_step] = t_motor_step_us[current_step-1];
       }
-
-      Sa = (pow2(freq_steps_per_slices[k])-pow2(freq_steps_per_slices[k-1]))/(2*nb_steps_per_slices);
-      // Compute Sa Sd (=-Sa) and limit to Smax
-      Sa = MIN(Sa,  max_slope_acceleration[k]);
-      Sa = MAX(Sa, -max_slope_deceleration[k]);
-
-      if ((Sa < 0) && !is_first_acceleration_ended)
+      else
       {
-        *Ta_ms = t_accumulated_steps/1000;
-        is_first_acceleration_ended = true;
-      }
-
-      printf("Sa[%ld] = %d Samax =%d Sdmax %d\n", k, (int)Sa, (int) max_slope_acceleration[k], (int) max_slope_deceleration[k]);
-      // Compute offsets
-      // Compute  step time for each slices > 0
-
-      for(uint32_t i=0; i < nb_steps_per_slices; i++, current_step++)
-      {
-
-	//current_step = k*nb_steps_per_slices+i;	
-	if(! TEST_FLT_EQUALS(Sa, 0.f) ) // TODO SMA sign of float ??
+	t_motor_step_us[current_step] = 1E6/(sqrtf(initial_freq_steps_per_slices_pow2 + 2*Sa*(i+1))); // previously for k=0 (i+1) and for other (i+0), why ?
+	if (k!=0)
 	{
-	  t_motor_step_us[current_step] = 1E6 / ( sqrtf(freq_steps_per_slices_pow2 + 2*(Sa*i)));
-	}
-	else
-	{ 
-	  //Acceleration is 0. so speed is constant for all the slice
-	  //Mean speed
-	  t_motor_step_us[current_step] = t_motor_step_us[current_step-1];
-	}
-	 //limit to motor max speed and throughput max for patient safety
-	//printf("T omega = %ld minobj = %ld motor_step = %ld\n",
-	//    T_omegamax_us,
-	//    T_minobj(current_step, get_setting_Vmax_Lpm()), 
-	//    t_motor_step_us[current_step]);
-	t_motor_step_us[current_step] = MAX(T_omegamax_us,  MAX(T_minobj(current_step, get_setting_Vmax_Lpm()), t_motor_step_us[current_step]));
-	t_accumulated_steps += t_motor_step_us[current_step];
-        //printf("t_accumulated_steps[%d] = %d\n", current_step, t_accumulated_steps);
-	
-	// Compute nb of steps for stop
-	// TODO SMA : check compute in float
-  
+	  // limit motor speed by compliance
+	   t_motor_step_us[current_step] = MAX(T_minobj(current_step, get_setting_Vmax_Lpm()), t_motor_step_us[current_step]);
 
-	float V_end           = (1E6/(float) t_motor_step_us[current_step]);
-	float t_for_stop_us_f = (V_end / (max_slope_deceleration[k])) *1E6 ; 
-	nb_steps_for_stop     = (uint32_t) ((V_end * (t_for_stop_us_f/1E6)) / 2.0); 
-      
-	////// TDO CDE check > vs >= (step_count calculation)
-	////	
-	if( ((k == (nb_slices - 1) ) && ((current_step+nb_steps_for_stop) >= nb_steps)) || 
-	    ((t_accumulated_steps + ((uint32_t)t_for_stop_us_f) )> Ti_ms*1000))
-	{
-	  //printf("current_step %ld +nb_steps_for_stop %ld) >= nb_steps %ld\n", current_step, nb_steps_for_stop, nb_steps);
-	  //printf("t_accumulated_steps %ld t_for_stop_us %ld Ti_ms*1000 %ld\n", t_accumulated_steps, ((uint32_t)t_for_stop_us_f), Ti_ms*1000);
-	  trigger_stop = true;
-	  break;
+	  // limit to max motor speed
+	  t_motor_step_us[current_step] = MAX(T_omegamax_us, t_motor_step_us[current_step]);
 	}
       }
-      freq_steps_per_slices[k] = (1E6 /(float)t_motor_step_us[current_step-1]);
-      // TODO TSE : do you need actuated computed frequency vs requested ??
-      //VM_per_slice[k] = 1000000.f/t_motor_step_us[current_step-1];
+      t_accumulated_steps+= t_motor_step_us[current_step];  
 
-      // Compute final deceleration
-      if ((k == (nb_slices-1)) || (trigger_stop))
+      // Check if there is enought steps and time for deceleration
+      float V_end           = (1E6/(float) t_motor_step_us[current_step]);
+      float t_for_stop_us_f = (V_end / (max_slope_deceleration[k])) *1E6 ; 
+      nb_steps_for_stop     = (uint32_t) ((V_end * (t_for_stop_us_f/1E6)) / 2.0); 
+
+      if( ((current_step+nb_steps_for_stop) >= nb_steps_total) || 
+	  ((t_accumulated_steps + ((uint32_t)t_for_stop_us_f) )> Ti_ms*1000))
       {
-        *Td_ms = t_accumulated_steps/1000;
-        for(uint32_t j=1;j<nb_steps_for_stop;j++, current_step++)
-        {
-          t_motor_step_us[current_step] = 1E6/sqrtf(2*(nb_steps_for_stop-j)*max_slope_deceleration[k]);
-          t_accumulated_steps += t_motor_step_us[current_step];
-        }
-        *Tf_ms = t_accumulated_steps/1000;
-        for(uint32_t i = current_step; i < nb_steps; i++)
-        {
-          t_motor_step_us[i] = 0;
-        }
-        return current_step;
+	//printf("current_step %"PRIu32" +nb_steps_for_stop %"PRIu32") >= nb_steps %"PRIu32"\n", current_step, nb_steps_for_stop, nb_steps_total);
+	//printf("t_accumulated_steps %"PRIu32" t_for_stop_us %"PRIu32" Ti_ms*1000 %"PRIu32"\n", t_accumulated_steps, ((uint32_t)t_for_stop_us_f), Ti_ms*1000);
+	trigger_stop = true;
+	break;
       }
     }
+
+    freq_steps_per_slices[k] = (1E6 /(float)t_motor_step_us[current_step-1]);
+
+    // Compute final deceleration
+    if ((k == (nb_slices-1)) || (trigger_stop))
+    {
+      *Td_ms = t_accumulated_steps/1000;
+      for(uint32_t j=1;j<nb_steps_for_stop;j++, current_step++)
+      {
+	t_motor_step_us[current_step] = 1E6/sqrtf(2*(nb_steps_for_stop-j)*max_slope_deceleration[k]);
+	t_accumulated_steps += t_motor_step_us[current_step];
+      }
+      *Tf_ms = t_accumulated_steps/1000;
+      for(uint32_t i = current_step; i < nb_steps_total; i++)
+      {
+	t_motor_step_us[i] = 0;
+      }
+      break;
+    }
   }
-  //We shoulod never be here => the stop condition is on Compute final deceleration
-  return 0;
+  return current_step;
 }
+

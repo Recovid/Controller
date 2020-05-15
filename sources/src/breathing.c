@@ -47,6 +47,7 @@ static float g_cycle_VTe_mL;
 static float g_cycle_VTi_mL;
 static float g_cycle_VMe_Lpm;
 static float g_cycle_Pcrete_cmH2O;
+static float g_Pcrete_cmH2O;
 static float g_cycle_Pplat_cmH2O;
 static float g_cycle_PEP_cmH2O;
 static uint32_t g_cycle_nb_steps = MAX_MOTOR_STEPS;
@@ -173,7 +174,19 @@ static void breathing_run(void *args)
         g_cycle_Pcrete_cmH2O = 0;
         g_cycle_Pplat_cmH2O = 0;
         g_cycle_PEP_cmH2O = 0;
-
+        // Init Paw samples
+        init_Paw_cmH2O_sampling();
+ 
+        // Init Pdiff samples
+        init_Pdiff_Lpm_sampling(); 
+        
+        printf("After init ");
+        for(uint32_t i = 0; i < MAX_PDIFF_SAMPLES; i++)
+        {
+            printf("%x ", g_Pdiff_Lpm_samples[i]);
+        }
+        printf("\n");
+        //
         // Init state machine
         BreathingState next_state = Insuflation;
         uint32_t inhalation_start_ms;
@@ -197,6 +210,9 @@ static void breathing_run(void *args)
 
             // Get current controller settings
             taskENTER_CRITICAL();
+
+            g_Pcrete_cmH2O = 0;
+            printf("Reset Pcrete = %d\n", (int) g_Pcrete_cmH2O);
             g_setting_T = get_setting_T_ms();
             g_setting_VT = get_setting_VT_mL();
             g_setting_VM = get_setting_Vmax_Lpm();
@@ -242,18 +258,19 @@ static void breathing_run(void *args)
             do
             {
                 wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
-                g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
-                if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
-                {
-                    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
-                    next_state = Exhalation;
-                }
-                else if (g_setting_VT <= read_Vol_mL())
-                {
-                    brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-                    next_state = Plateau;
-                }
-                else if (g_setting_Tinsu_ms*3 <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
+                g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
+                //if ( g_setting_Pmax <= g_Pcrete_cmH2O)
+                //{
+                //    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_Pcrete_cmH2O));
+                //    next_state = Exhalation;
+                //}
+                //else if (g_setting_VT <= read_Vol_mL())
+                //{
+                //    brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
+                //    next_state = Plateau;
+                //}
+                //else 
+                if (5000 <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
                 {
                      brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - inhalation_start_ms));
                      next_state = Plateau;
@@ -287,11 +304,11 @@ static void breathing_run(void *args)
                         signal_pins(true);
                     }
                     
-                    g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
+                    g_Pcrete_cmH2O = MAX(g_Pcrete_cmH2O, read_Paw_cmH2O());
 
-                    if (g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                    if (g_setting_Pmax <= g_Pcrete_cmH2O)
                     {
-                        brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                        brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_Pcrete_cmH2O));
                         next_state= Exhalation;
                     }
                     else if ((g_setting_Tinspi_ms + DEFAULT_Tpins_max_ms) <= (get_time_ms() - inhalation_start_ms) )
@@ -368,7 +385,7 @@ static void breathing_run(void *args)
             g_cycle_FR_pm = 1. / (((float)(t_ms - inhalation_start_ms - inhalation_pause_t_ms - exhalation_pause_t_ms)) / 1000 / 60);
             g_cycle_VTe_mL = VTe_start_mL - read_Vol_mL();
             g_cycle_VMe_Lpm = (g_cycle_VTe_mL / 1000) * g_cycle_FR_pm;
-
+            g_cycle_Pcrete_cmH2O = g_Pcrete_cmH2O;
             // Notify system that new cycle data is available.
             xEventGroupSetBits(g_breathingEvents, BRTH_CYCLE_UPDATED);
 
