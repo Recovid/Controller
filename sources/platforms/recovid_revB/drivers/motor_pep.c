@@ -2,16 +2,16 @@
 #include "platform.h"
 #include <math.h>
 
-static TIM_HandleTypeDef *_motor_tim = NULL;
+static TIM_HandleTypeDef *g_motor_tim = NULL;
 
 static void step_callback(TIM_HandleTypeDef *tim);
 
 static volatile int32_t _absolute_steps;
 static volatile int16_t _step_inc;
 static volatile int32_t _remaining_steps;
-static volatile bool _moving;
-static volatile bool _homing;
-static volatile bool _home;
+static volatile bool g_is_moving;
+static volatile bool g_is_homing;
+static volatile bool g_is_home;
 
 typedef enum
 {
@@ -24,18 +24,16 @@ static void set_stepping(step_mode_t m0, step_mode_t m1);
 static void set_direction(GPIO_PinState dir);
 static void set_enable(bool ena);
 
-bool init_motor_pep()
+bool motor_pep_init()
 {
-    if (_motor_tim == NULL)
+    if (g_motor_tim == NULL)
     {
-        _motor_tim = &pep_tim;
+        g_motor_tim = &pep_tim;
         // register IT callbacks
-//        _motor_tim->PeriodElapsedCallback = step_callback;
-
-        HAL_TIM_RegisterCallback(_motor_tim, HAL_TIM_PWM_PULSE_FINISHED_CB_ID, step_callback);
+        HAL_TIM_RegisterCallback(g_motor_tim, HAL_TIM_PERIOD_ELAPSED_CB_ID, step_callback);
 
         // // Enable the PWM channel
-        // TIM_CCxChannelCmd(_motor_tim->Instance, PEP_TIM_CHANNEL, TIM_CCx_ENABLE);
+        TIM_CCxChannelCmd(g_motor_tim->Instance, PEP_TIM_CHANNEL, TIM_CCx_ENABLE);
 
         // microstepping 8
         set_stepping(ZERO, ONE);
@@ -46,20 +44,20 @@ bool init_motor_pep()
 
         set_enable(false);
 
-        _home = !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
+        g_is_home = !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
         motor_pep_home();
     }
     return true;
 }
 
-bool is_motor_pep_ok()
+bool motor_pep_is_ok()
 {
-    return _motor_tim != NULL;
+    return g_motor_tim != NULL;
 }
 
 bool motor_pep_move(int relative_mmH2O)
 {
-    if (_motor_tim == NULL)
+    if (g_motor_tim == NULL)
         return false;
     if (relative_mmH2O != 0)
     {
@@ -80,36 +78,34 @@ bool motor_pep_move(int relative_mmH2O)
         set_direction(nb_steps < 0 ? PEP_DIR_DEC : PEP_DIR_INC);
         set_enable(true);
         _remaining_steps = (uint32_t)fabs(nb_steps);
-        _motor_tim->Init.Period = (uint16_t)(1000000.0 / (MOTOR_PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_mm));
-        HAL_TIM_Base_Init(_motor_tim);
-        _motor_tim->Instance->CNT = 0;
-        _moving = true;
-        _homing=false;
+        g_motor_tim->Init.Period = (uint16_t)(1000000.0 / (MOTOR_PEP_MAX_SPEED * MOTOR_PEP_STEPS_PER_mm));
+        HAL_TIM_Base_Init(g_motor_tim);
+        g_is_moving = true;
+        g_is_homing=false;
         __enable_irq();
-        HAL_TIM_PWM_Start_IT(_motor_tim, PEP_TIM_CHANNEL);
+        HAL_TIM_Base_Start_IT(g_motor_tim);
     }
     return true;
 }
 
 bool motor_pep_home()
 {
-    if (_motor_tim == NULL) 
+    if (g_motor_tim == NULL) 
     {
         return false;
     }
-    if(!_home) {
+    if(!g_is_home) {
         __disable_irq();
         set_direction(PEP_DIR_DEC);
         set_enable(true);
-        _motor_tim->Init.Period = (uint16_t)(1000000 / (MOTOR_PEP_HOME_SPEED * MOTOR_PEP_STEPS_PER_mm));
-        HAL_TIM_Base_Init(_motor_tim);
-        _motor_tim->Instance->CNT = 0;
-        _moving = true;
-        _homing = true;
+        g_motor_tim->Init.Period = (uint16_t)(1000000 / (MOTOR_PEP_HOME_SPEED * MOTOR_PEP_STEPS_PER_mm));
+        HAL_TIM_Base_Init(g_motor_tim);
+        g_is_moving = true;
+        g_is_homing = true;
         __enable_irq();
-        HAL_TIM_PWM_Start_IT(_motor_tim, PEP_TIM_CHANNEL);
+        HAL_TIM_Base_Start(g_motor_tim);
 
-        while (!_home) 
+        while (!g_is_home) 
         {
             wait_ms(5);
         }
@@ -120,29 +116,30 @@ bool motor_pep_home()
 
 bool motor_pep_stop()
 {
-    if (_motor_tim == NULL) 
+    if (g_motor_tim == NULL) 
     {
         return false;
     }
     __disable_irq();
-    HAL_TIM_PWM_Stop_IT(_motor_tim, PEP_TIM_CHANNEL);
-    _homing = false;
+    // Stop TIM
+    g_motor_tim->Instance->CR1 &= ~(TIM_CR1_CEN);
+    g_is_homing = false;
     _remaining_steps = 0;
-    _moving = false;
+    g_is_moving = false;
     set_enable(false);
     __enable_irq();
     return true;
 }
 
-bool is_motor_pep_moving()
+bool motor_pep_is_moving()
 {
-    return _moving;
+    return g_is_moving;
 }
 
 //!
-bool is_motor_pep_home()
+bool motor_pep_is_home()
 {
-    return _home;
+    return g_is_home;
 }
 
 void pep_home_irq()
@@ -151,8 +148,8 @@ void pep_home_irq()
     uint32_t time = HAL_GetTick();
     if (time - last_time > 20)
     {
-        _home = !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
-        if (_home && _homing)
+        g_is_home = !HAL_GPIO_ReadPin(PEP_HOME_GPIO_Port, PEP_HOME_Pin);
+        if (g_is_home && g_is_homing)
         {
             motor_pep_stop();
         }
@@ -167,7 +164,7 @@ void pep_nfault_irq()
 
 static void step_callback(TIM_HandleTypeDef *tim)
 {
-    if (_homing)
+    if (g_is_homing)
         return;
     if (_remaining_steps > 0)
     {

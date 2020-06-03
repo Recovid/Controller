@@ -21,6 +21,7 @@ add_library(recovid_revB OBJECT
     drivers/pep_valve.c
     drivers/gpio.c
     drivers/bmp280.c
+    drivers/log.c
 )
 
 target_include_directories(recovid_revB PUBLIC 

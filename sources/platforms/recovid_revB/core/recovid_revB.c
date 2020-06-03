@@ -165,7 +165,7 @@ static void MX_TIM2_Init(void)
 
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = (SystemCoreClock / 1000000) -1;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_DOWN;
   htim2.Init.Period = 0;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -214,7 +214,7 @@ static void MX_TIM3_Init(void)
 
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = (SystemCoreClock / 1000000) -1;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_DOWN;
   htim3.Init.Period = 0;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -385,11 +385,11 @@ static void MX_GPIO_Init(void)
                           |PEP_MODE0_Pin|PEP_MODE1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-// #ifndef NO_RASPI_REBOOT  
-//   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
-// #else
+#ifndef NO_RASPI_REBOOT  
+   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_SET);
+#else
   HAL_GPIO_WritePin(GPIOB, Enable_P5V_Rpi_Pin, GPIO_PIN_RESET);
-// #endif
+#endif
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MOTOR_ENA_GPIO_Port, MOTOR_ENA_Pin, GPIO_PIN_RESET);

@@ -22,8 +22,8 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # Common flags
 
 set(COMMON_TOOLCHAIN_CFLAGS "\
-    -mthumb -mcpu=cortex-m4 \
-    \
+    -mcpu=cortex-m4 \
+    -mthumb \
     -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
     \
     -mabi=aapcs \
@@ -42,9 +42,11 @@ set(COMMON_TOOLCHAIN_CFLAGS "\
 
 set(COMMON_TOOLCHAIN_LFLAGS "\
     ${COMMON_TOOLCHAIN_CFLAGS} \
-    -Wl,--gc-sections \
     --specs=nosys.specs \
     --specs=nano.specs \
+    -Wl,--gc-sections \
+    -static \
+    -Wl,--start-group -lc -lm -Wl,--end-group \
 ")
 
 SET(CMAKE_C_FLAGS_DEBUG          "-O0 -g" CACHE INTERNAL "c compiler flags debug")
@@ -71,9 +73,6 @@ set(HAL_CFLAGS "\
     -D__weak=__attribute__\\(\\(weak\\)\\) \
     -D__packed=__attribute__\\(\\(__packed__\\)\\) \
 ")
-set(HAL_LFLAGS "\
-    -T${LINKER_SCRIPT} \
-")
 set(BMP280_CFLAGS "\
 	-DBMP280_DISABLE_64BIT_COMPENSATION \
 	-DBMP280_DISABLE_DOUBLE_COMPENSATION \
@@ -97,9 +96,9 @@ set(CMAKE_ASM_FLAGS
     "-mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -Wa,--no-warn -x assembler-with-cpp"
     CACHE INTERNAL "Assembly cflags")
 
-set(CMAKE_EXE_LINKER_FLAGS      "${COMMON_TOOLCHAIN_LFLAGS} ${HAL_LFLAGS}"
+set(CMAKE_EXE_LINKER_FLAGS      "${COMMON_TOOLCHAIN_LFLAGS} -T${LINKER_SCRIPT}"
     CACHE INTERNAL "executable linker flags")
-set(CMAKE_MODULE_LINKER_FLAGS   "${COMMON_TOOLCHAIN_LFLAGS} ${HAL_LFLAGS}"
+set(CMAKE_MODULE_LINKER_FLAGS   "${COMMON_TOOLCHAIN_LFLAGS} -T${LINKER_SCRIPT}"
     CACHE INTERNAL "module linker flags")
-set(CMAKE_SHARED_LINKER_FLAGS   "${COMMON_TOOLCHAIN_LFLAGS} ${HAL_LFLAGS}"
+set(CMAKE_SHARED_LINKER_FLAGS   "${COMMON_TOOLCHAIN_LFLAGS} -T${LINKER_SCRIPT}"
     CACHE INTERNAL "shared linker flags")

@@ -103,6 +103,24 @@ void application_main()
     xSemaphoreGive(dbgMutex);
 #endif
 
+
+    // while(true) 
+    // {
+    //     printf("Logging...\n");
+    //     log_str(0, "Logging Test\n");
+    //     for(int t=0; t<100; ++t)
+    //     {
+    //         log_uint32(1, (uint32_t)((100.0*rand())/(float)RAND_MAX));
+    //         log_float(2, ((100.0*rand())/(float)RAND_MAX));
+    //         wait_ms(5);
+    //     }
+    //     wait_ms(1000);
+    // }
+
+
+
+
+
     if(controller_init() == false) 
     {
         return;
@@ -177,7 +195,6 @@ static void controller_run(void *args)
 
     while (true)
     {
-
         // TODO: Implemente the actual startup process
         ctrl_printf("CTRL: Waiting for failsafe signal\n");
         while (is_Failsafe_Enabled())
@@ -271,8 +288,9 @@ static void controller_run(void *args)
         ctrl_printf("CTRL: breathing, monitoring and hmi tasks stopped\n");
         ctrl_printf("CTRL: proceed to system shutdown\n");
 
-        //enable_Rpi(Off);
-
+#ifndef NO_RASPI_REBOOT  
+        enable_Rpi(Off);
+#endif
         // TODO implement system shutdown (lowpower)
 
         ctrl_printf("CTRL: System in low power mode\n");
@@ -355,7 +373,7 @@ static int self_tests()
     check(&test_bits, 10, light_green(Off)); // start pos
 
     ctrl_printf("CTRL: Start sensors\n");
-    check(&test_bits, 5, init_sensors());
+    check(&test_bits, 5, sensors_init());
     check(&test_bits, 11, sensors_start());
 
     // TODO: Tests not working !!!
@@ -364,11 +382,11 @@ static int self_tests()
     //    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); ctrl_printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
 
     ctrl_printf("CTRL: Init valve\n");
-    check(&test_bits, 3, init_valve());
+    check(&test_bits, 3, valve_init());
     check(&test_bits, 3, valve_exhale());
 
     ctrl_printf("CTRL: Init motor\n");
-    check(&test_bits, 4, init_motor(MOTOR_HOME_STEP_US));
+    check(&test_bits, 4, motor_init(MOTOR_HOME_STEP_US));
     //    ctrl_printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
     // check(&test_bits, 4, motor_release());
     // while(is_motor_moving()) wait_ms(10);
@@ -391,9 +409,9 @@ static int self_tests()
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
 
     ctrl_printf("CTRL: Init pep motor\n");
-    check(&test_bits, 8, init_motor_pep());
+    check(&test_bits, 8, motor_pep_init());
     motor_pep_home();
-    while (!is_motor_pep_home())
+    while (!motor_pep_is_home())
     {
         wait_ms(10);
     }    
@@ -434,7 +452,7 @@ float set_setting_FR_pm(float desired)
 //! \returns a value within the range defined by physical constraints and FR, Vmax, EoI
 float set_setting_VT_mL(float desired)
 {
-    float max = get_setting_Vmax_Lpm() / 60 /*(mL/ms)*/ * get_setting_Tinspi_ms();
+    float max = get_setting_Vmax_Lpm() / 60 /*(mL/ms)*/ * get_setting_Tinha_ms();
     setting_VT_mL = MIN(max, desired);
     return setting_VT_mL;
 }
@@ -442,7 +460,7 @@ float set_setting_VT_mL(float desired)
 //! \returns a value within the range defined by physical constraints and FR, VT, EoI
 float set_setting_Vmax_Lpm(float desired)
 {
-    float min = 60 * get_setting_VT_mL() / get_setting_Tinspi_ms() /*(mL/ms)*/;
+    float min = 60 * get_setting_VT_mL() / get_setting_Tinha_ms() /*(mL/ms)*/;
     setting_Vmax_Lpm = MAX(min, desired);
     return setting_Vmax_Lpm;
 }
@@ -548,14 +566,14 @@ uint16_t set_command_Tpbip_ms(uint16_t ms)
     return ms;
 }
 
-bool is_command_Tpins_expired()
+bool is_command_Tpinha_expired()
 {
     taskENTER_CRITICAL();
     bool val = command_Tpins_ms < get_time_ms() - command_Tpins_timestamp;
     taskEXIT_CRITICAL();
     return val;
 }
-bool is_command_Tpexp_expired()
+bool is_command_Tpexha_expired()
 {
     taskENTER_CRITICAL();
     bool val = command_Tpexp_ms < get_time_ms() - command_Tpexp_timestamp;

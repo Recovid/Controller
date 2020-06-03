@@ -21,7 +21,7 @@
 
 
 // platform specific FreeRTOS stack size
-#define FREERTOS_HEAP_SIZE          (14*1024)    // in bytes
+#define FREERTOS_HEAP_SIZE          (18*1024)    // in bytes
 #define BREATHING_TASK_STACK_SIZE   (512)       // in word
 #define MONITORING_TASK_STACK_SIZE  (512)       // in word
 #define CONTROLLER_TASK_STACK_SIZE  (512)       // in word
@@ -41,10 +41,10 @@
 #endif
 
 
-#define MOTOR_HOME_RPM                        (36.0)   // RPM
-#define MOTOR_RELEASE_RPM                     (48.0)   // RPM
-#define MOTOR_HOME_STEP_US                    (MOTOR_STEP_US(MOTOR_HOME_RPM))      // us/step
-#define MOTOR_RELEASE_STEP_US                 (MOTOR_STEP_US(MOTOR_RELEASE_RPM))   // us/step
+#define MOTOR_HOME_SPEED_DPS                  (225.0)   // degree per second
+#define MOTOR_RELEASE_SPEED_DPS               (300.0)   // degree per second
+#define MOTOR_HOME_STEP_US                    (MOTOR_STEP_US(MOTOR_HOME_SPEED_DPS))      // us/step
+#define MOTOR_RELEASE_STEP_US                 (MOTOR_STEP_US(MOTOR_RELEASE_SPEED_DPS))   // us/step
 
 
 #endif

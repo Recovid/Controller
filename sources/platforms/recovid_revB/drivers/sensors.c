@@ -79,7 +79,7 @@ static bool initSDP610();
 
 static inline uint16_t get_time_us() { return timer_us.Instance->CNT; }
 
-bool init_sensors() {
+bool sensors_init() {
 	if (initialized)
 		return true;
 
@@ -207,15 +207,15 @@ bool is_sensors_ok() {
 }
 
 //! \returns false in case of hardware failure
-bool is_Pdiff_ok() {
+bool Pdiff_is_ok() {
   return initialized;
 }
 
-bool is_Paw_ok() {
+bool Paw_is_ok() {
   return initialized;
 }
 
-bool is_Patmo_ok() {
+bool Patmo_is_ok() {
   return initialized;
 }
 

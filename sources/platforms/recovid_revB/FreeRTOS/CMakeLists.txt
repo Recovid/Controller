@@ -11,6 +11,7 @@ add_library(freertos OBJECT
     ${FREERTOS_SRC_DIR_STM32}/event_groups.c
     ${FREERTOS_SRC_DIR_STM32}/list.c
     ${FREERTOS_SRC_DIR_STM32}/portable/MemMang/heap_4.c
+#    ${FREERTOS_SRC_DIR_STM32}/portable/MemMang/heap_useNewlib.c
     ${FREERTOS_SRC_DIR_STM32}/portable/GCC/ARM_CM4F/port.c
 )
 

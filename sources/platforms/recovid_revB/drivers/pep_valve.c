@@ -4,12 +4,12 @@
 
 
 
-bool init_valve() {
+bool valve_init() {
   return true;
 }
 
 //! \returns false in case of hardware failure
-bool is_valve_ok() {
+bool valve_is_ok() {
   return true;
 }
 

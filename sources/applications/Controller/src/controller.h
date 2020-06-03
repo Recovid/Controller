@@ -82,7 +82,7 @@ uint32_t get_setting_T_ms()
 
 //! \returns exhalation duration based on FR, I/E
 static inline
-uint32_t get_setting_Texp_ms()
+uint32_t get_setting_Texha_ms()
 {
     const float EoI = get_setting_EoI_ratio();
     return (uint32_t)(get_setting_T_ms() * (EoI/(1+EoI))); // BEWARE to not multiply ms before dividing EoI to avoid wrap-around
@@ -99,9 +99,9 @@ uint32_t get_setting_Tinsu_ms()
 //! \returns inspiration duration based on T, Texp
 //! \sa get_setting_Tinsu_ms()
 static inline
-uint32_t get_setting_Tinspi_ms()
+uint32_t get_setting_Tinha_ms()
 {
-    uint32_t  used_ms = get_setting_Texp_ms();
+    uint32_t  used_ms = get_setting_Texha_ms();
     uint32_t     T_ms = get_setting_T_ms();
     assert(T_ms >=used_ms);
     return T_ms - used_ms ;
@@ -111,7 +111,7 @@ uint32_t get_setting_Tinspi_ms()
 static inline
 uint32_t get_setting_Tplat_ms()
 {
-    uint32_t  used_ms = get_setting_Tinsu_ms()+get_setting_Texp_ms();
+    uint32_t  used_ms = get_setting_Tinsu_ms()+get_setting_Texha_ms();
     uint32_t     T_ms = get_setting_T_ms();
     assert(T_ms >=used_ms);
     return T_ms - used_ms ;
@@ -135,8 +135,8 @@ uint16_t set_command_Tpins_ms(uint16_t ms);
 uint16_t set_command_Tpexp_ms(uint16_t ms);
 uint16_t set_command_Tpbip_ms(uint16_t ms);
 
-bool is_command_Tpins_expired();
-bool is_command_Tpexp_expired();
+bool is_command_Tpinha_expired();
+bool is_command_Tpexha_expired();
 bool is_command_Tpbip_expired();
 
 void set_command_soft_reset();

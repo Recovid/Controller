@@ -6,6 +6,14 @@
 
 
 
+void log_float(uint8_t channel, float val);
+void log_uint32(uint8_t channel, uint32_t val);
+void log_int32(uint8_t channel, int32_t val);
+void log_uint16(uint8_t channel, uint16_t val);
+void log_int16(uint8_t channel, int16_t val);
+void log_uint8(uint8_t channel, uint8_t val);
+void log_int8(uint8_t channel, int8_t val);
+void log_str(uint8_t channel, const char* str);
 
 
 uint32_t get_time_ms();
@@ -39,15 +47,25 @@ int uart_recv();
 // ------------------------------------------------------------------------------------------------
 //! HW actuators
 
+typedef enum {
+    MOTOR_PRESS,
+    MOTOR_RELEASE
+} motor_dir_t;
+
+typedef uint32_t (*motor_step_callback_t)(uint32_t elapsed_step_us);
+
+
 //! Called during initialisation only
-bool init_motor(uint32_t home_step_us);
+bool motor_init(uint32_t home_step_us);
 
 //! \returns false in case of hardware failure
-bool is_motor_ok();
+bool motor_is_ok();
 
 //! Press the BAVU to insufflate air to the patient according to the defined steps_profile in µs/step
 //! \warning motor driver is responsible to handle low-level errors in the best way to ensure corresponding action
 bool motor_press(uint32_t* steps_profile_us, unsigned int nb_steps);
+
+uint32_t motor_press_get_current_step();
 
 //! Release the BAVU to prepare next insufflation at any appropriate speed
 //! \remark this includes releasing BAVU until motor home position and possibly moving forward to erase a flat part of pos(Vol) map
@@ -57,21 +75,26 @@ bool motor_release(uint32_t step_us);
 void motor_enable(bool ena);
 
 //!
-bool is_motor_moving();
+bool motor_is_moving();
 
 //!
-bool is_motor_home();
+bool motor_is_home();
 
 //!
 bool motor_stop();
 
+//!
+bool motor_move(motor_dir_t dir, uint32_t step_us, motor_step_callback_t callback);
+
+
+
 // ------------------------------------------------------------------------------------------------
 
 //! Called during initialisation only
-bool init_motor_pep();
+bool motor_pep_init();
 
 //! \returns false in case of hardware failure
-bool is_motor_pep_ok();
+bool motor_pep_is_ok();
 
 //! Move up if steps > 0 else down
 //! \warning after init, only ask for small moves controlling PEP during next cycles before moving again
@@ -81,7 +104,7 @@ bool is_motor_pep_ok();
 bool motor_pep_move(int relative_mmH2O);
 
 //!
-bool is_motor_pep_moving();
+bool motor_pep_is_moving();
 
 //!
 bool motor_pep_stop();
@@ -90,15 +113,15 @@ bool motor_pep_stop();
 bool motor_pep_home();
 
 //!
-bool is_motor_pep_home();
+bool motor_pep_is_home();
 
 // ------------------------------------------------------------------------------------------------
 
 //! Called during initialisation only
-bool init_valve();
+bool valve_init();
 
 //! \returns false in case of hardware failure
-bool is_valve_ok();
+bool valve_is_ok();
 
 //! Positions electrovalve to connect patient with PEP to allow him to exhale
 bool valve_exhale();
@@ -111,15 +134,15 @@ bool valve_inhale();
 //! HW sensors
 
 //! Called during initialisation only
-bool init_sensors();
+bool sensors_init();
 
 bool sensors_start(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 bool sensors_stop(); //!< Starts I2C sensing of Pdiff, Paw, Patmo using interrupts
 
 //! \returns false in case of hardware failure
-bool is_Pdiff_ok();
-bool is_Paw_ok();
-bool is_Patmo_ok();
+bool Pdiff_is_ok();
+bool Paw_is_ok();
+bool Patmo_is_ok();
 
 //! \returns the airflow corresponding to a pressure difference in Liters / minute
 float read_Pdiff_Lpm();

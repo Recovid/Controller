@@ -35,7 +35,7 @@ target_include_directories(${EXECUTABLE} PUBLIC
 
 
 
-target_link_libraries(${EXECUTABLE} m platform )
+target_link_libraries(${EXECUTABLE} platform )
 target_compile_definitions(${EXECUTABLE} PUBLIC NTESTS) # remove unit-tests from target
 
 
@@ -53,12 +53,12 @@ if(${TARGET} STREQUAL "recovid_revB")
     set(HEX_FILE ${EXECUTABLE}.hex)
     set(BIN_FILE ${EXECUTABLE}.bin)
     message("Adding custom command for ${EXECUTABLE}")
-    add_custom_command(TARGET ${EXECUTABLE}
+    add_custom_command(TARGET ${EXECUTABLE} 
+        BYPRODUCTS  ${HEX_FILE} ${BIN_FILE}
         COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${EXECUTABLE}> ${HEX_FILE}
         COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${EXECUTABLE}> ${BIN_FILE}
         COMMAND ${SIZE} $<TARGET_FILE:${EXECUTABLE}>
-        COMMENT "Objcopy ${HEX_FILE}"
-        POST_BUILD
+        COMMENT "Generating ${BIN_FILE}"
     )
 
     set(target_name "${EXECUTABLE}.flash")

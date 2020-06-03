@@ -117,7 +117,7 @@ static void hmi_run(void *args)
                 }
 #endif
 
-                if( 0 != (brthEvents & (BRTH_CYCLE_PINS | BRTH_CYCLE_PEXP)))
+                if( 0 != (brthEvents & (BRTH_CYCLE_PINHA | BRTH_CYCLE_PEXHA)))
                 {
                     // Inhalation or Exhalation pause
                     send_DATA_X(read_Paw_cmH2O(), read_Pdiff_Lpm(), read_Vol_mL(), get_cycle_Pplat_cmH2O(), get_cycle_PEP_cmH2O());

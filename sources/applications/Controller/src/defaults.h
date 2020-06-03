@@ -20,8 +20,8 @@
 #define DEFAULT_setting_PEPmax_cmH2O  (2)
 #define DEFAULT_setting_PEPmin_cmH2O  (-2)
 
-#define DEFAULT_Tpins_max_ms          (5000)
-#define DEFAULT_Tpexp_max_ms          (5000)
+#define DEFAULT_Tpinha_max_ms         (5000)
+#define DEFAULT_Tpexha_max_ms         (5000)
 
 
 
