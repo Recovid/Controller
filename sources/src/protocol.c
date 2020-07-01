@@ -6,6 +6,10 @@
 #include <string.h>
 #include <math.h>
 
+// HACK
+#include "adrien/const_calibs.h"
+// HACK
+
 
 #define ALARM_COUNT 18
 
@@ -52,7 +56,7 @@ void replace_int_with_padding(char* frame, int value, int size, int base)
     }
 }
 
-static const char DATA_pattern[] = "DATA msec_:...... Vol__:....... Deb__:....... Paw__:......." CS8 CS8_VALUE;
+static const char DATA_pattern[] = "DATA msec_:...... Vol__:....... Deb__:....... Paw__:....... State:. slm__:......." CS8 CS8_VALUE;
 static char DATA_frame[sizeof(DATA_pattern)];
 
 bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
@@ -72,13 +76,16 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
     replace_int_with_padding(DATA_frame, roundf(VolM_Lpm * 1000), 6, 10);
     *strchr(DATA_frame, '.') = sign(P_cmH2O);
     replace_int_with_padding(DATA_frame, roundf(P_cmH2O * 1000), 6, 10);
+    replace_int_with_padding(DATA_frame, GLOB_PHASE___modele_erreur, 1, 10);
+    *strchr(DATA_frame, '.') = sign(GLOB_last_flow_slm_brut);
+    replace_int_with_padding(DATA_frame, roundf(GLOB_last_flow_slm_brut * 1000), 6, 10);
 
     replace_int_with_padding(DATA_frame, checksum8(DATA_frame), 2, 16);
 
     return send(DATA_frame);
 }
 
-static const char DATA_X_pattern[] = "DATA msec_:...... Vol__:....... Deb__:....... Paw__:....... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
+static const char DATA_X_pattern[] = "DATA msec_:...... Vol__:....... Deb__:....... Paw__:....... PPLAT:.. PEP__:.. State:. slm__:......." CS8 CS8_VALUE;
 static char DATA_X_frame[sizeof(DATA_X_pattern)];
 
 bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O, float PEP_cmH2O)
@@ -101,13 +108,16 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
     replace_int_with_padding(DATA_X_frame, roundf(P_cmH2O * 1000)    , 6, 10);
     replace_int_with_padding(DATA_X_frame, roundf(Pplat_cmH2O), 2, 10);
     replace_int_with_padding(DATA_X_frame, roundf(PEP_cmH2O)  , 2, 10);
+    replace_int_with_padding(DATA_X_frame, GLOB_PHASE___modele_erreur, 1, 10);
+    *strchr(DATA_X_frame, '.') = sign(GLOB_last_flow_slm_brut);
+    replace_int_with_padding(DATA_X_frame, roundf(GLOB_last_flow_slm_brut * 1000), 6, 10);
 
     replace_int_with_padding(DATA_X_frame, checksum8(DATA_X_frame), 2, 16);
     hmi_printf(DATA_X_frame);
     return send(DATA_X_frame);
 }
 
-static const char RESP_pattern[] = "RESP IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
+static const char RESP_pattern[] = "RESP msec_:...... IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
 static char RESP_frame[sizeof(RESP_pattern)];
 
 bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g_cycle_Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O)
@@ -123,6 +133,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g
     {
         return false;
     }*/
+    replace_int_with_padding(RESP_frame, get_time_ms() % 1 << 19, 6, 10);
     replace_int_with_padding(RESP_frame, roundf(EoI_ratio*10)    , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(FR_pm)           , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(VTe_mL)          , 3, 10);
