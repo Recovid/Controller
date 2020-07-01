@@ -93,7 +93,12 @@ uint32_t get_setting_Texp_ms()
 static inline
 uint32_t get_setting_Tinsu_ms()
 {
-    return (uint32_t)(get_setting_VT_mL() / (get_setting_Vmax_Lpm()/60.f /*(mL/ms)*/));
+    /// tenir compte de l'aire des 2 traingles : todo
+	/// ACCEL ---> volume perdu le temps de l'accel
+	/// DECCEL --> f( debit ) = temsp arret et volume parasite
+	return (uint32_t)(get_setting_VT_mL() / (
+																	get_setting_Vmax_Lpm()/60.f /*(mL/ms)*/
+																));
 }
 
 //! \returns inspiration duration based on T, Texp
@@ -102,7 +107,7 @@ static inline
 uint32_t get_setting_Tinspi_ms()
 {
     uint32_t  used_ms = get_setting_Texp_ms();
-    uint32_t     T_ms = get_setting_T_ms();
+    uint32_t     T_ms = get_setting_T_ms(); /// dureee cycle complet
     assert(T_ms >=used_ms);
     return T_ms - used_ms ;
 }

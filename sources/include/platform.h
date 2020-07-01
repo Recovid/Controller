@@ -178,7 +178,7 @@ bool is_Failsafe_Enabled();
 //! FailSafe
 void enable_Rpi(bool ena);
 
-
+void hardfault_CRASH_ME();
 
 // ------------------------------------------------------------------------------------------------
 //! HW indicators

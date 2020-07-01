@@ -2,6 +2,9 @@
 #include "platform.h"
 #include "bmp280.h"
 #include <string.h>
+#include <math.h>
+
+#include <../../../src/adrien/const_calibs.h>
 
 /*
  * Notes concernant l'utilisation du bmp280.
@@ -47,6 +50,7 @@ static struct bmp280_dev bmp;
 struct bmp280_uncomp_data ucomp_data;
 static uint8_t bmp280_DMA_buffer[6];
 
+static volatile float _current_flow_slm_brut;
 static volatile float _current_flow_slm;
 static volatile float _current_Patmo_mbar;
 static volatile float _current_Paw_cmH2O;
@@ -72,6 +76,7 @@ static bool initSDP610();
 
 
 static inline uint16_t get_time_us() { return timer_us.Instance->CNT; }
+uint16_t	get_time_us_extern(){ return get_time_us(); }
 
 bool init_sensors() {
 	if (initialized)
@@ -316,10 +321,228 @@ float compute_corrected_pressure(uint16_t read)
 }
 
 //! \warning TODO compute corrected QPatientSLM (Standard Liters per Minute) based on Patmo
-float compute_corrected_flow(int16_t read)
+// float compute_corrected_flow(int16_t read)
+// {
+    // return -(float) read / 105.f; // V1 Calibration
+// }
+
+
+
+
+
+
+float compute_corrected_flow( int16_t read, float Paw )
 {
-    return -(float) read / 105.f; // V1 Calibration
+	// #error "-------dddd-----"
+		
+	 #if	 	ENABLE_CORRECTION_FABRICE_GERMAIN		==		0
+			// #error "-------ttt-----"
+			
+			
+			float		slm =  -(float) read / 105.f;
+							_current_flow_slm_brut = slm; /// sauvegarde pr logs debug Fabrice
+							
+			return	slm;
+	
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	#elif		MODEL_ERR_PAR_PHASES			==			1	
+		/// nouvelle implem FABRICE : 3 phases  selon : GLOB_PHASE___modele_erreur : 16/06/2020
+		// #error "eeeeeedddeeeeee"
+		
+		uint32_t 								curr_time = (uint32_t)get_time_ms();
+		// static		uint32_t 				ANCIEN_curr_time = 0;
+													// if( ANCIEN_curr_time == 0 ) ANCIEN_curr_time = curr_time;
+						
+						
+		static 		float					ANCIEN_debit_pneumo = 0.0f;
+		// static	last_debit		= 0.0f;
+		
+		
+		
+		
+		float		slm =  -(float) read / 105.f;
+						_current_flow_slm_brut = slm; /// sauvegarde pr logs debug Fabrice
+						
+		float		paw_0 = Paw; /// 01/07/2020
+		float		input_racine = Paw; /// buffer_Paw_cmH2O[0];
+		
+				if( input_racine < 0.000001f ) input_racine = 0.000001f;
+		#if		0
+				int		index_racine = (int)roundf( input_racine*10 );
+				if( index_racine > RANGE_RACINE_CONST_TAB-1 ) index_racine = RANGE_RACINE_CONST_TAB-1;
+
+				// buffer_RPaw_cmH2O[0] = TAB_sqrtf[ index_racine ];
+				float	rpaw_0 = TAB_sqrtf[ index_racine ];
+		#else
+				// buffer_RPaw_cmH2O[0] = sqrtf( input_racine ); /// CPU archi-hungry
+				float	rpaw_0 = sqrtf( input_racine ); /// CPU archi-hungry
+		#endif
+		
+	
+		// if( curr_time - ANCIEN_curr_time >= 25 ){ /// si 		NBR_ECHANTILLONS_FITTING_MODELE_ERREUR
+			
+				/// REMEMBER
+				for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+					buffer_time_echant_US[ i ]=buffer_time_echant_US[ i-1 ];
+				}
+				buffer_time_echant_US[0]= (float)curr_time; /// MAJ
+				// uint16_t dt_time = buffer_time_echant_US[0] - buffer_time_echant_US[1*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+				
+				/// REMEMBER
+				for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+					buffer_flow_slm[ i ]=buffer_flow_slm[ i-1 ];
+				}
+				buffer_flow_slm[0] = slm; /// ( -(float) read / 105.f ); /// MAJ
+				
+				
+				// ANCIEN_curr_time = curr_time; /// ms
+		// } else {
+			/// skipping pr rester a 50Hz
+			// return 	ANCIEN_debit_pneumo;
+		// }
+		
+		/// ancienne version recalage sampling pr tenue 25ms entre echantillons sur fitting
+		float debit_pneumo_3 = buffer_flow_slm[3*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float debit_pneumo_2 = buffer_flow_slm[2*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float debit_pneumo_1 = buffer_flow_slm[1*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float debit_pneumo_0 = buffer_flow_slm[0];
+
+		float time_3 = (float)buffer_time_echant_US[3*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float time_2 = (float)buffer_time_echant_US[2*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float time_1 = (float)buffer_time_echant_US[1*NBR_ECHANTILLONS_FITTING_MODELE_ERREUR];
+		float time_0 = (float)buffer_time_echant_US[0];
+		
+		// float debit_pneumo_3 = buffer_flow_slm[3];
+		// float debit_pneumo_2 = buffer_flow_slm[2];
+		// float debit_pneumo_1 = buffer_flow_slm[1];
+		// float debit_pneumo_0 = buffer_flow_slm[0];
+
+		// float time_3 = (float)buffer_time_echant_US[3];
+		// float time_2 = (float)buffer_time_echant_US[2];
+		// float time_1 = (float)buffer_time_echant_US[1];
+		// float time_0 = (float)buffer_time_echant_US[0];
+		
+		
+		
+		float 	acc_3=(debit_pneumo_0-debit_pneumo_3)/(time_0-time_3);
+		float 	acc_2=(debit_pneumo_0-debit_pneumo_2)/(time_0-time_2);
+		float 	acc_1=(debit_pneumo_0-debit_pneumo_1)/(time_0-time_1);
+		
+				
+		#define			USE_WITHOUT_ACCEL			0
+		
+		float	pneumo;
+		float	ex_paw;
+		
+		/// 01/07/2020 : last modele erreur Fabrice
+		// if (phase==up)
+			// pneumo=(0.92)*debit_pneumo_0 + (1.60)*rpaw_0 + (-0.22)*acc_1 + (-0.24)*paw_0; /// 01/07/2020
+		// else if (phase==pause)
+			// pneumo=(0.44)*debit_pneumo_0 + (-0.09)*rpaw_0 + (0.88)*acc_1 + (0.01)*paw_0; /// 01/07/2020
+		// else if (phase==down)
+			// pneumo=(1.01)*debit_pneumo_0 + (-1.46)*rpaw_0 + (-0.42)*acc_1 + (0.27)*paw_0; /// 01/07/2020
+				
+		
+		// if (phase==up)
+			// pneumo=(0.90)*debit_pneumo_0 + (1.42)*rpaw_0 + (-0.18)*paw_0;
+		// else if (phase==pause)
+			// pneumo=(-0.86)*debit_pneumo_0 + (-0.11)*rpaw_0 + (0.01)*paw_0;
+		// else if (phase==down)
+			// pneumo=(0.99)*debit_pneumo_0 + (-1.58)*rpaw_0 + (0.29)*paw_0;
+		
+		
+		/// a integrer			GLOB_PHASE___modele_erreur
+		/// a integrer			_current_flow_slm_brut
+		
+		switch( GLOB_PHASE___modele_erreur ){
+				
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				case INSPIRATION_MODEL_ERR: /// MAJ SLM
+						// pneumo=  4.0   + (0.91f)*debit_pneumo_0 + (-0.19f)*acc_3 + (-0.45f)*rpaw_0;
+						pneumo=(0.92)*debit_pneumo_0 + (1.60)*rpaw_0 + (-0.22)*acc_1 + (-0.24)*paw_0; /// 01/07/2020
+						// pneumo=(0.90)*debit_pneumo_0 + (1.42)*rpaw_0 + (-0.18)*paw_0; /// 01/07/2020
+					break;
+				
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				case EXPIRATION_MODEL_ERR: /// MAJ SLM
+						// #error	"zzzzzzzz"
+						// pneumo=  -2.7f  + (1.01f)*debit_pneumo_0 + (-0.23f)*acc_3 + (0.27f)*rpaw_0;
+						pneumo=(1.01)*debit_pneumo_0 + (-1.46)*rpaw_0 + (-0.42)*acc_1 + (0.27)*paw_0; /// 01/07/2020
+						// pneumo=(0.99)*debit_pneumo_0 + (-1.58)*rpaw_0 + (0.29)*paw_0; /// 01/07/2020
+					break;
+					
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				case PLATEAU_MODEL_ERR: /// MAJ SLM
+						// pneumo=  (0.40)*debit_pneumo_0 + (0.48)*acc_3 + (-0.01)*rpaw_0;
+						pneumo=(0.44)*debit_pneumo_0 + (-0.09)*rpaw_0 + (0.88)*acc_1 + (0.01)*paw_0; /// 01/07/2020
+						// pneumo=(-0.86)*debit_pneumo_0; /// + (-0.11)*rpaw_0 + (0.01)*paw_0; /// 01/07/2020
+					break;
+				
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				default:
+					pneumo=debit_pneumo_0;
+					
+					printf("crash default unkown value : MODEL_ERR_PAR_PHASES %u\n", (uint16_t)(GLOB_PHASE___modele_erreur));
+					hardfault_CRASH_ME();
+					break;
+				
+		}
+		
+		/// conversions diverses BTPS, ATPD...
+		/// conversions diverses BTPS, ATPD...
+		#if		ENABLE_CONVERSION_BTPS			==		1
+		
+									ANCIEN_debit_pneumo = pneumo * 1013.0f / ( read_Patmo_mbar() - 62.66f ) * (310.0f/294.0f ); /// BTPS
+					return	ANCIEN_debit_pneumo;
+					
+		#else
+					// float	PEP = 0.0f; /// get_cycle_PEP_cmH2O();
+					// printf( "PEP %i\n", (int)( GLOBALE_pep* 1000.0f ) );
+					// printf( "Temp %i\n", (int)( read_temp_degreeC() * 1000.0f ) );
+	
+						#if	0
+						printf( "\t\t\t   pneum %i  -> %i   Paw %i %i  : %u\n", 
+																				(int)( slm * 1000 ),
+																				(int)( pneumo * 1000 ),
+																				(int)( Paw * 1000 ),
+																				(int)( ex_paw * 1000 ),
+																				(uint8_t)( GLOB_PHASE___modele_erreur )
+																		);
+						#endif
+		
+		
+					#if	1 /// ATPD :
+										ANCIEN_debit_pneumo = pneumo / ( ( read_Patmo_mbar() -47.0f ) / ( read_Patmo_mbar() + GLOBALE_pep ) * (( 273.0f+read_temp_degreeC() )/310.0f) );
+						return 	ANCIEN_debit_pneumo;
+					#else
+					
+
+									ANCIEN_debit_pneumo = pneumo;
+					return	pneumo; /// ATPD pour comparaison avec ASL 5000
+					#endif
+					
+		#endif
+		/// conversions diverses BTPS, ATPD...
+		/// conversions diverses BTPS, ATPD...
+		
+		
+		
+		
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	#endif
 }
+
+
+
 
 
 static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
@@ -383,8 +606,10 @@ static void process_i2c_callback(I2C_HandleTypeDef *hi2c) {
 				uint16_t sdp_t_us = (uint16_t)get_time_us();
 				uint16_t sdp_dt_us = (uint16_t)sdp_t_us - last_sdp_t_us;
 				int16_t dp_raw   = (int16_t)((((uint16_t)_sdp_measurement_buffer[0]) << 8) | (uint8_t)_sdp_measurement_buffer[1]);
-				_current_flow_slm = compute_corrected_flow(dp_raw);
+				
+				_current_flow_slm = compute_corrected_flow( dp_raw, _current_Paw_cmH2O );
       			_current_vol_mL += (_current_flow_slm/60.) * ((float)sdp_dt_us/1000);
+				
 				last_sdp_t_us = sdp_t_us;
         		readSDP();
 			} else {

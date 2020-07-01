@@ -11,47 +11,104 @@
 #include <math.h>
 #include "const_calibs.h"
 
+void		hardfault_CRASH_ME(
+		// string 		message_err /// WIP code fatal error : todo
+){
+	// #error	"not_in_production !!!!"
+	
+	motor_release(MOTOR_RELEASE_STEP_US);
+	
+	// ALARM_fatale( message_err ); /// WIP
+	printf( "hardfault_CRASH_ME\n\r" );
+	wait_ms( 3000 );
+	
+	/// provoque un crash du MCU
+	uint8_t* 	BytePtr = (uint8_t)0x20002000;
+					*BytePtr = 0x5a;        //generate hardfault IRQ		
+					
+	return; /// jamais
+}
 
-float Segment_error_time_sliced( float*   flow_samples_Lpm,                       /// INPUT : Flow samples
-                                 uint32_t flow_samples_period_ms,                 /// INPUT : Flow samples period
-                                 uint32_t TIMER_US_debut_segment,                 /// INPUT : TIMER_US_debut_segment
-                                 uint32_t TIMER_US_fin_segment,                   /// INPUT : TIMER_US_fin_segment
-                                 uint32_t time_shift_start,                       /// INPUT : TIME_SLICING_ERROR_debut
-                                 uint32_t time_shift_end,                         /// INPUT : TIME_SLICING_ERROR_fin
-                                 uint32_t GLOB_TIMER_fin_accel_moteur_ms,         /// INPUT : Time end of acceleration
-                                 uint32_t GLOB_TIMER_ms_fin_sampling_temps_moteur)/// INPUT : Time end of plateau
+
+float Segment_error_time_sliced( 
+															 int		index_segt,
+															 float*   flow_samples_Lpm,                       /// INPUT : Flow samples
+															 uint32_t flow_samples_period_ms,                 /// INPUT : Flow samples period
+															 uint32_t  dernier_echant_phase_motor_ON,   
+															 uint32_t TIMER_US_debut_segment,                 /// INPUT : TIMER_US_debut_segment
+															 uint32_t TIMER_US_fin_segment,                   /// INPUT : TIMER_US_fin_segment
+															 uint32_t time_shift_start,                       /// INPUT : TIME_SLICING_ERROR_debut
+															 uint32_t time_shift_end                         /// INPUT : TIME_SLICING_ERROR_fin
+															 // uint32_t GLOB_timecode_ms_full_speed,         /// INPUT : Time end of acceleration
+															 // uint32_t GLOB_TIMECODE_ms_fin_sampling_temps_moteur
+															)/// INPUT : Time end of plateau
 {
-  float Debit_moyen_SEGMENT = 0.f;
-  int denom = 0;
-
-  if ( (TIMER_US_fin_segment / 1000)  <= GLOB_TIMER_fin_accel_moteur_ms) 
+  // #define			SAMPLING_PERIOD_MS								5
+  #define			DELTA_MS_ENTREE_PLATEAU					5
+  #define			DELTA_MS_FIN_PLATEAU							10
+  float 				Debit_moyen_SEGMENT = 0.f;
+  int 					denom = 0;
+	
+	
+	// time_shift_start = 10;
+	// time_shift_end = 40;
+	// printf( "----GLOB_timecode_ms_full_speed %u\n", GLOB_timecode_ms_full_speed );
+	
+  if ( (TIMER_US_fin_segment / 1000)  <= GLOB_timecode_ms_full_speed) 
   {
     /// segment inutilisable car accel initiale
-    return 0.0f;
+    return -0.0f; /// sgt non tunable
   }
   
+	uint32_t		premier_echant_utilisable_plateu_inspi = DELTA_MS_ENTREE_PLATEAU / flow_samples_period_ms;
+
+	GLOB_TIMECODE_ms_fin_sampling_temps_moteur = ( dernier_echant_phase_motor_ON - 1 ) * flow_samples_period_ms; /// MAJ
+	// printf("----%u", dernier_echant_phase_motor_ON );
+	uint32_t		dernier_echant_utilisable_plateu_inspi = ( GLOB_TIMECODE_ms_fin_sampling_temps_moteur / flow_samples_period_ms ) - DELTA_MS_FIN_PLATEAU / flow_samples_period_ms;
+						// if( dernier_echant_utilisable_plateu_inspi >= dernier_echant_phase_motor_ON - DELTA_MS_FIN_PLATEAU / flow_samples_period_ms ) dernier_echant_utilisable_plateu_inspi = dernier_echant_phase_motor_ON - DELTA_MS_FIN_PLATEAU / SAMPLING_PERIOD_MS;
+
+
+	
   /// d'abord on cherche la Paw du segment
-  uint32_t timecode_milieu_segment_MS = TIMER_US_debut_segment + (TIMER_US_fin_segment - TIMER_US_debut_segment) / 2; 
-  timecode_milieu_segment_MS /= 1000;
+	uint32_t timecode_milieu_segment_MS = TIMER_US_debut_segment + (TIMER_US_fin_segment - TIMER_US_debut_segment) / 2; 
+	timecode_milieu_segment_MS /= 1000;
 
-  uint32_t sample_idx_debut =  ((timecode_milieu_segment_MS + time_shift_start)) / flow_samples_period_ms;
-  uint32_t t_end_of_measure =  MIN( (timecode_milieu_segment_MS + time_shift_end), GLOB_TIMER_ms_fin_sampling_temps_moteur);
-  uint32_t sample_idx_fin   =  ( t_end_of_measure / flow_samples_period_ms);
-
+	uint32_t 		sample_idx_debut =  ((timecode_milieu_segment_MS + time_shift_start)) / flow_samples_period_ms;
+					if( sample_idx_debut < premier_echant_utilisable_plateu_inspi ) 	sample_idx_debut = premier_echant_utilisable_plateu_inspi;
+					if( sample_idx_debut > dernier_echant_utilisable_plateu_inspi ) 		sample_idx_debut = dernier_echant_utilisable_plateu_inspi;
+					
+	uint32_t 		t_end_of_measure =  timecode_milieu_segment_MS + time_shift_end;
+						
+	
+	uint32_t 		sample_idx_fin   =  ( t_end_of_measure / flow_samples_period_ms);
+						if( sample_idx_fin > dernier_echant_utilisable_plateu_inspi ) sample_idx_fin = dernier_echant_utilisable_plateu_inspi;
+					
+					
+  // printf("sample_idx_debut = %d sample_idx_fin = %d\n", sample_idx_debut, sample_idx_fin);
   for (uint32_t index_TAB_sampl_DEBITS = sample_idx_debut ; index_TAB_sampl_DEBITS < sample_idx_fin; index_TAB_sampl_DEBITS++) {
     //Find the sample between timecode_milieu_segment_MS + time_shift_start and timecode_milieu_segment_MS + time_shift_end 
     Debit_moyen_SEGMENT += flow_samples_Lpm[index_TAB_sampl_DEBITS];
+	//printf("sample_idx_debut[%d] = %d\n", index_TAB_sampl_DEBITS, flow_samples_Lpm[index_TAB_sampl_DEBITS]);
     // Timecode_moyen_Debit_SEGMENT 	+= TAB_dp_raw_temps_moteur[
     // index_TAB_sampl_DEBITS ].timecode_sample_MS;
     denom++;
   } /// fin du for
 
   if (denom == 0) {
-    printf("--- PANIQUE SGT : de moyenne possible : on prends le milieu\n");
-    printf("T debut = %d\n", TIMER_US_debut_segment);
-    printf("T fin   = %d\n", TIMER_US_fin_segment  );
-    Debit_moyen_SEGMENT =  flow_samples_Lpm[sample_idx_debut];
-    /// ON SAMPLE L'ECHANTILLON LE PLUS PROCHE : la frequence d'echantillonage n'est pas stable...
+		#if	1
+		 return -12345.0f; /// sgt non tunable
+		#else
+		printf("--- PANIQUE SGT : %u on prends le milieu index : %u %u %u\n", /// PASS_MESURES_DEBIT
+																															timecode_milieu_segment_MS,
+																															sample_idx_debut,
+																															t_end_of_measure,
+																															sample_idx_fin
+																															);  
+		printf("T debut = %d\n", TIMER_US_debut_segment);
+		printf("T fin   = %d\n", TIMER_US_fin_segment  );
+		Debit_moyen_SEGMENT =  flow_samples_Lpm[sample_idx_debut];
+		/// ON SAMPLE L'ECHANTILLON LE PLUS PROCHE : la frequence d'echantillonage n'est pas stable...
+		#endif
   }
   else {
     Debit_moyen_SEGMENT /= denom;
@@ -60,62 +117,139 @@ float Segment_error_time_sliced( float*   flow_samples_Lpm,                     
 }
 /// OUPUT : Debit_slm_segment
 
-void reset_Vol_error_phase_accel() {
-  return;
+
+
+// #include "../platforms/recovid_revB/core/recovid_revB.h"
+
+
+
+void reset_Vol_error_phase_accel() {  
+	// GLOB_PHASE___modele_erreur = INSPIRATION_MODEL_ERR;
+	GLOB_Volume_erreur_phase_accel = 0;
+	GLOB_Volume_insu_AFTER_motor_stop = 0;
+	GLOB_TOTAL_Volume_insu_AFTER_motor_stop = VOLUME_PARASITE_DECELERATION; /// par defaut approximed pour 60 lpm
 }
 
-bool load_default_calib_from_debit(float target_Pdiff_Lpm) {
+#if	ENABLE_CORRECTION_FABRICE_GERMAIN		==		1
+	
+	void reset_volumes_Modele_erreur_Pneumo(){
+		MODELE_ERR_PNEUMO_volume_pneumo = 0; /// anti_divergence volume pr modele erreur Fabrice
+		MODELE_ERR_PNEUMO_volumeplus_pneumo = 0;
+		MODELE_ERR_PNEUMO_paw_max = 0;
+	}
+		/// MODELE_ERR_PNEUMO_volume_pneumo		et			MODELE_ERR_PNEUMO_volumeplus_pneumo ------> faut-il repasser a zero a chaque fin de cycle ????????
+		/// MODELE_ERR_PNEUMO_paw_max 					a la reinit du systeme : init_variables_PID()
+		
+		
+		
+		
+	 void reinit_Modele_erreur_Pneumo() {  /// notamment reinit modele erreur pneumo pr compute_corrected_flow() /// CHANGEMENTS_POST_LYON_0
+		/// CHANGEMENTS_POST_LYON_0
+		uint16_t curr_time = (uint16_t)get_time_us_extern();
+		for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+			buffer_time_echant_US[ i ]=curr_time - SAMPLING_PERIOD_MS*1000*i; /// ptit risque underflow ATTENTION
+		}
+		buffer_time_echant_US[ 0 ]=curr_time;
+		
+		for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+			buffer_flow_slm[ i ]=0;
+		}
+		buffer_flow_slm[ 0 ]=0;
+		
+		// float Paw = read_Paw_cmH2O();
+		// float r_Paw;
+		// float	input_racine = Paw; /// buffer_Paw_cmH2O[0];
+				// if( input_racine < 0.000001f ) input_racine = 0.000001f;
+		// #if		1
+				// int		index_racine = (int)roundf( input_racine*10 );
+				// if( index_racine > RANGE_RACINE_CONST_TAB-1 ) input_racine = RANGE_RACINE_CONST_TAB-1;
 
-  printf("----> load_default_calib_from_debit %i\n\r", (int)target_Pdiff_Lpm);
+				// r_Paw = TAB_sqrtf[ index_racine ];
+		// #else
+				// r_Paw = sqrtf( input_racine ); /// CPU archi-hungry
+		// #endif
+		
+		
+		// for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+			// buffer_Paw_cmH2O[ i ]=Paw;
+		// }
+		// buffer_Paw_cmH2O[ 0 ]=Paw;
+		
+		// for( int i = NBR_ECHANTILLONS_FITTING_MODELE_ERREUR * 4 - 1; i >0 ; i-- ){
+			// buffer_RPaw_cmH2O[ i ]=r_Paw;
+		// }
+		// buffer_RPaw_cmH2O[ 0 ]=r_Paw;
+		
+		
+		/// MODELE_ERR_PNEUMO_volume_pneumo		et			MODELE_ERR_PNEUMO_volumeplus_pneumo ------> faut-il repasser a zero a chaque fin de cycle ????????
+		/// MODELE_ERR_PNEUMO_paw_max 					a la reinit du systeme : init_variables_PID()
+		
+		reset_volumes_Modele_erreur_Pneumo();
+		// MODELE_ERR_PNEUMO_volume_pneumo = 0;
+		// MODELE_ERR_PNEUMO_volumeplus_pneumo = 0;
+		// MODELE_ERR_PNEUMO_paw_max = 0;
+		
+		/// pour usage cycle a cycle : pas ici
+		// reset_volumes_Modele_erreur_Pneumo();
+		
+		
+	  return;
+	}
+#endif
+
+bool load_default_calib_from_debit(float debit_consigne_slm) {
+
+  printf("----> load_default_calib_from_debit %i\n\r", (int)debit_consigne_slm);
+  
   
   const uint16_t* calib_lesser; // pointer to the calib tab (lesser bound)
   const uint16_t* calib_upper; // pointer to the calib tab (upper bound)
   float proportion_TAB_du_bas = 0.f;
-  if (target_Pdiff_Lpm < 20)  /// on prends 		CONST_calib_10_lpm
+  if (debit_consigne_slm < 20)  /// on prends 		CONST_calib_10_lpm
   {  
-    proportion_TAB_du_bas = (20.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (20.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_10_lpm;
     calib_upper   = CONST_calib_20_lpm;
   }
-  else if (target_Pdiff_Lpm < 30)  /// on prends CONST_calib_20_lpm
+  else if (debit_consigne_slm < 30)  /// on prends CONST_calib_20_lpm
   {  
-    proportion_TAB_du_bas = (30.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (30.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_20_lpm;
     calib_upper   = CONST_calib_30_lpm;
   }
-  else if (target_Pdiff_Lpm < 40) /// on prends CONST_calib_30_lpm
+  else if (debit_consigne_slm < 40) /// on prends CONST_calib_30_lpm
   {
-    proportion_TAB_du_bas = (40.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (40.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_30_lpm;
     calib_upper   = CONST_calib_40_lpm;
   } 
-  else if (target_Pdiff_Lpm < 50) /// on prends CONST_calib_40_lpm
+  else if (debit_consigne_slm < 50) /// on prends CONST_calib_40_lpm
   {
-    proportion_TAB_du_bas = (50.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (50.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_40_lpm;
     calib_upper   = CONST_calib_50_lpm;
   } 
-  else if (target_Pdiff_Lpm < 60)  /// on prends CONST_calib_50_lpm
+  else if (debit_consigne_slm < 60)  /// on prends CONST_calib_50_lpm
   {
-    proportion_TAB_du_bas = (60.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (60.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_50_lpm;
     calib_upper   = CONST_calib_60_lpm;
   } 
-  else if (target_Pdiff_Lpm < 70)  /// on prends CONST_calib_60_lpm
+  else if (debit_consigne_slm < 70)  /// on prends CONST_calib_60_lpm
   {
-    proportion_TAB_du_bas = (70.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (70.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_60_lpm;
     calib_upper   = CONST_calib_70_lpm;
   } 
-  else if (target_Pdiff_Lpm < 80) /// on prends CONST_calib_70_lpm
+  else if (debit_consigne_slm < 80) /// on prends CONST_calib_70_lpm
   {
-    proportion_TAB_du_bas = (80.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (80.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_70_lpm;
     calib_upper   = CONST_calib_80_lpm;
   }
-  else if (target_Pdiff_Lpm < 90) /// on prends CONST_calib_80_lpm
+  else if (debit_consigne_slm < 90) /// on prends CONST_calib_80_lpm
   {
-    proportion_TAB_du_bas = (90.0f - target_Pdiff_Lpm) / 10;
+    proportion_TAB_du_bas = (90.0f - debit_consigne_slm) / 10;
     calib_lesser = CONST_calib_80_lpm;
     calib_upper   = CONST_calib_90_lpm;
   } 
@@ -132,11 +266,15 @@ bool load_default_calib_from_debit(float target_Pdiff_Lpm) {
                                                                    ((float)  calib_upper[index_segt] / (1000.f * 1000.f)) * (1.0f - proportion_TAB_du_bas);
     TAB_volume_slm_calib[index_segt].CALIB_nbr_echant = 1;
   }
+  
   return true;
 }
 
 void init_variables_PID(float target_Pdiff_Lpm) {
-
+	
+	if( target_Pdiff_Lpm < 10 ) target_Pdiff_Lpm = 60;
+	
+	
   /// reinit tab
   for (int i = 0; i < NBR_SEGMENTS_CALIBRATION; i++) {
     TAB_volume_slm_calib[i].CALIB_nbr_echant = 0;
@@ -145,7 +283,7 @@ void init_variables_PID(float target_Pdiff_Lpm) {
     TAB_volume_slm_calib[i].CALIB_US_avt_motor_full_speed = 0;
     TAB_volume_slm_calib[i].debit_slm_en_cours = 0;
 
-#if USE_PID_ON_AUTO_CALIB == 1
+// #if USE_PID_ON_AUTO_CALIB == 1
     TAB_volume_slm_calib[i].PID_ERREUR_Debit = 0.0f;
     // TAB_volume_slm_calib[ i ] .PID_Comp_Volume_Debit 				=
     // 0.0f; TAB_volume_slm_calib[ i ] .PID_p_factor
@@ -159,7 +297,10 @@ void init_variables_PID(float target_Pdiff_Lpm) {
     TAB_volume_slm_calib[i].is_accel_max_SEGMENT = false;
     // TAB_volume_slm_calib[ i ] .is_TUNABLE_segment					=
     // true;
-#endif
+// #endif
+	#if	ENABLE_CORRECTION_FABRICE_GERMAIN		==		1
+	reinit_Modele_erreur_Pneumo(); /// notamment reinit modele erreur pneumo pr compute_corrected_flow() /// CHANGEMENTS_POST_LYON_0
+	#endif
   }
   /// reinit tab
   /// reinit tab
@@ -170,21 +311,58 @@ void init_variables_PID(float target_Pdiff_Lpm) {
   /// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr
   /// usage uniqt ds boucle breathing todo WIP struct pr globales vraies, et
   /// arguments compute_PID_factors pr usage uniqt ds boucle breathing
-  GLOB_is_first_guess_from_abaques = true;
-  GLOB_index_premier_segment_FULL_SPEED = 0;
-  GLOB_NBR_de_cycles_before_auto_crash_test = 0; /// 0 pr desactiver le test crash
-  GLOB_NBR_pas_moteur_par_segment = floor(NBR_PAS_MOTEUR_par_SEGMENT_ANALYSE);
-  GLOB_FACTEUR_linearite_plateau_inspi = 0;
-  GLOB_MOYENNE_facteur_I_PID = 0;
-  GLOB_MOYENNE_erreur = 0;
-  GLOB_index_pas_stepper = 0;
-  GLOB_duree_TOTAL_theorique_US = 0;
-  GLOB_debit_from_error_slm = 0;
+  
+		  GLOB_is_first_guess_from_abaques = true;
+		  GLOB_index_premier_segment_FULL_SPEED = 0;
+		  GLOB_NBR_de_cycles_before_auto_crash_test = 0; /// 0 pr desactiver le test crash
+		  GLOB_NBR_pas_moteur_par_segment = floor(NBR_PAS_MOTEUR_par_SEGMENT_ANALYSE);
+		  GLOB_FACTEUR_linearite_plateau_inspi = 0;
+		  GLOB_MOYENNE_facteur_I_PID = 0;
+		  GLOB_MOYENNE_erreur = 0;
+		  GLOB_index_pas_stepper = 0;
+		  GLOB_duree_TOTAL_theorique_US = 0;
+		  GLOB_debit_to_compensate_ERROR_accel = 0;
+		  /// Volumes parasites :
+		  GLOB_Volume_erreur_phase_accel = -12345.0f;
+		  GLOB_Volume_insu_AFTER_motor_stop = 0;
+		  GLOB_TOTAL_Volume_insu_AFTER_motor_stop = (float)( target_Pdiff_Lpm / 60.0f ) * VOLUME_PARASITE_DECELERATION; /// par defaut approximed pour 60 lpm
+		  // reset_Vol_error_phase_accel(); /// deja fait au dessus
+		  
+		  GLOB_is_running_sampling_temps_moteur = 0;
+		  GLOB_TIMECODE_ms_fin_sampling_temps_moteur = 0;
+		  // GLOB_TIMER_fin_accel_moteur_ms = 0;
+		  GLOB_index_sgt_full_speed = 0;
+		  GLOB_TIMER_ms_debut_sampling_temps_moteur = 0;
+		  GLOB_denom_TAB_dp_raw_temps_moteur = 0;
+		  GLOB_accumule_TAB_dp_raw_temps_moteur = 0;
+		  GLOB_index_TAB_dp_raw_temps_moteur = 0;
+		  GLOB_accumule_TAB_TIMECODE_temps_moteur = 0;
+		  
+		  
+		  /// pas trop sur
+		  #if		1
+		  GLOB_index_sample_FIN_plateau = 0;
+		  GLOB_timecode_ms_full_speed = 0;
+		  GLOB_index_sample_full_speed = 0;
+		  GLOB_index_sample_GO_motor_stop = 0;
+		  GLOB_index_sample_motor_stop_DONE = 0;
+		  GLOB_Volume_BEFORE_motor_stop = 0;
+		  GLOB_Volume_AFTER_motor_stop = 0;
+		  GLOB_Volume_AFTER_Plateau = 0;
+		  GLOB_Verif_Tinsu = 0;
+		  #endif
+
+
+			/// modele	d'erreur Fabrice Rastello
+			
+			
+			
+			
   /// todo WIP struct pr globales vraies, et arguments compute_PID_factors pr
   /// usage uniqt ds boucle breathing todo WIP struct pr globales vraies, et
   /// arguments compute_PID_factors pr usage uniqt ds boucle breathing
 
-  printf("----> init_variables_PID %i\n\r", (int)(target_Pdiff_Lpm));
+  printf("\n\n\n\n\n\n\n\n-----------------------------> init_variables_PID %i\n\n\n\n\n\r", (int)(target_Pdiff_Lpm));
 
   /// charge un programme de 		TAB_volume_slm_calib[ index_segt ]
   /// .CALIB_result_volume_segment 		par defaut, ok a vide, la PID fera le
@@ -195,23 +373,36 @@ void init_variables_PID(float target_Pdiff_Lpm) {
   }
 }
 
-uint32_t adaptation( float     target_VT_mL,
-                     float     target_Pdiff_Lpm, /// GLOB_debit_from_error_slm sera ajouted ds corps function, mais GLOB_Volume_erreur_phase_accel a passer en argument
+
+
+
+
+
+
+
+
+
+
+
+uint32_t adaptation( /// compute_PID_factors()
+					float     target_VT_mL, 
+                     float     target_Pdiff_Lpm, /// GLOB_debit_to_compensate_ERROR_accel sera ajouted ds corps function, mais GLOB_Volume_erreur_phase_accel a passer en argument
                      uint32_t  flow_samples_period_ms,                           
-                     uint32_t  flow_samples_count,                               
+                     uint32_t  flow_samples_count,    /// GLOB_index_sample_GO_motor_stop                           
                      float*    flow_samples_Lpm,                                 
                      uint32_t  motor_max_steps,
                      uint32_t* motor_steps_us)
 { 
-  static bool initialized = false;
-  if(! initialized)
-  {
-    init_variables_PID(target_Pdiff_Lpm);
-    initialized = true;
-  }
-
-  printf("------------------ compute_PID_factors DEBUT %i lpm %i ms\n\r", (int)target_Pdiff_Lpm, (int)get_setting_Tinsu_ms()*2);
-
+  // static bool initialized = false;
+  // if(! initialized)
+  // {
+    // init_variables_PID(target_Pdiff_Lpm);
+    // initialized = true;
+  // }
+	#if			VERBOSE_PID_PHASE_DEBUT			==			1
+	printf("------------------ adaptation DEBUT %i lpm %i ms\n\r", (int)target_Pdiff_Lpm, (int)get_setting_Tinsu_ms()*2);
+	#endif
+	
   float duree_ACCEL = 0;
   float duree_FULL_SPEED = 0;
 
@@ -224,7 +415,9 @@ uint32_t adaptation( float     target_VT_mL,
    uint32_t index_step_moteur_en_cours = 0; /// pr analyse ds 	g_motor_steps_us[ ]
    uint32_t TIMER_US_debut_segment     = 0;
    uint32_t TIMER_US_fin_segment       = TAB_volume_slm_calib[0].CALIB_duree_sgt_US;
-
+	
+	float	last_Debit_slm_segment = 0;
+	
    for (int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++)  /// ds 		TAB_volume_slm_calib
    {
     ///
@@ -238,29 +431,54 @@ uint32_t adaptation( float     target_VT_mL,
 
     /// ON FAIT LA MOYENNE : 	ATTENTION  INSTABLE CAR FREQUENCE ECHANTILLONAGE
     /// CAPTEUR PAS FIXE...
-    printf("duree_theorique = %d get_cycle_insuflation_duration = %d\n", 
+    #if		NIVEAU_VERBOSE_DEBUG		>=		2
+	printf("duree_theorique = %d get_cycle_insuflation_duration = %d\n", 
       (GLOB_duree_TOTAL_theorique_US / 1000), 
       get_cycle_insuflation_duration()-50);
+	#endif
+
+															 // uint32_t GLOB_timecode_ms_full_speed,         /// INPUT : Time end of acceleration
+															 // uint32_t GLOB_TIMECODE_ms_fin_sampling_temps_moteur
+	 /// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+	 /// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
     float Debit_slm_segment = Segment_error_time_sliced(
-      flow_samples_Lpm,
-      flow_samples_period_ms,
-      TIMER_US_debut_segment,        /// INPUT : TIMER_US_debut_segment
-      TIMER_US_fin_segment,          /// INPUT : TIMER_US_fin_segment
-      TIME_SLICING_ERROR_debut,      /// INPUT : TIME_SLICING_ERROR_debut
-      TIME_SLICING_ERROR_fin,        /// INPUT : TIME_SLICING_ERROR_fin
-      GLOB_timecode_ms_full_speed,
-      MIN((GLOB_duree_TOTAL_theorique_US / 1000), get_cycle_insuflation_duration())); // GLOB_TIMER_fin_accel_moteur_ms
-
+																												index_segt,
+																												flow_samples_Lpm,
+																												flow_samples_period_ms,
+																												GLOB_index_sample_GO_motor_stop, /// flow_samples_count,   
+																												TIMER_US_debut_segment,        /// INPUT : TIMER_US_debut_segment
+																												TIMER_US_fin_segment,          /// INPUT : TIMER_US_fin_segment
+																												TIME_SLICING_ERROR_debut,      /// INPUT : TIME_SLICING_ERROR_debut
+																												TIME_SLICING_ERROR_fin        /// INPUT : TIME_SLICING_ERROR_fin
+																												// GLOB_timecode_ms_full_speed,
+																												// MIN((GLOB_duree_TOTAL_theorique_US / 1000), get_cycle_insuflation_duration())
+																										); // GLOB_TIMER_fin_accel_moteur_ms
+	/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+	/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+	
+	if( Debit_slm_segment == -12345.0f){ /// code erreur fin de segment
+		#if			VERBOSE_PID_PHASE_DEBUT			==			1
+		printf("----------------> ecrase last segment %i\n", (int)( index_segt ) );
+		#endif
+		Debit_slm_segment = last_Debit_slm_segment;
+	}
+	last_Debit_slm_segment = Debit_slm_segment;
+	
+	
     /// MAJ 		ERREUR
-    TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit = Debit_slm_segment - (target_Pdiff_Lpm
-#if USE_PID_VENTILATION_Verreur_accel == 1
-      // +	GLOB_debit_from_error_slm
-#endif
-      );
+    TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit = 
+																														Debit_slm_segment
+																													- 	(target_Pdiff_Lpm
+																														#if USE_PID_VENTILATION_Verreur_accel == 1
+																															  + GLOB_debit_to_compensate_ERROR_accel
+																														#endif
+																														);
     /// MAJ 		ERREUR
-
+	
+	#if		NIVEAU_VERBOSE_DEBUG		>=		2
     printf( "---deb %d mes %i Err %i\n\r", index_segt, (int)(Debit_slm_segment * 1000), (int)(TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit * 1000));
-
+	#endif
+	
     /// on recupere l'erreur du SEGMENT
     float ERREUR_debit_segment = TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
     float DUREE_segment_US = TAB_volume_slm_calib[index_segt].CALIB_duree_sgt_US;
@@ -350,6 +568,21 @@ uint32_t adaptation( float     target_VT_mL,
 
     } /// fin de l'erreur is negative			PAS DE PANIQUE
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #if DEBUG_PRINTF_CYCLE_PID == 1 /// ---DEBUT sampling data
     /// RESUME :
     printf(
@@ -396,45 +629,78 @@ uint32_t adaptation( float     target_VT_mL,
    float MAX_erreur = -123456789;
    float MIN_erreur = 123456789;
    int denom = 0;
-
+	
+	uint32_t	delai_US_depuis_demarrage_0 = 0;
+	GLOB_MOYENNE_erreur = 0;
+	
    for (int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++) { /// ds 		TAB_volume_slm_calib
 
-    if (TAB_volume_slm_calib[index_segt].is_vitesse_max_SEGMENT == false) /// on ne fait la moyenne que de ce qui est sur le plateau de
-     /// debit : on ne tient pas compte de la phase d'accel initiale
-     /// on pourrait aussi utiliser 		GLOB_timecode_ms_full_speed		--->
-     /// equivalent
-    {
-     SOMME_ABS_erreur += TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit * TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
+/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse tuning
+/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
 
-     GLOB_MOYENNE_erreur += TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
-     GLOB_MOYENNE_facteur_I_PID += TAB_volume_slm_calib[index_segt].PID_i_factor;
-     denom++;
+		uint32_t	duree_segment_US = TAB_volume_slm_calib[index_segt].CALIB_duree_sgt_US;
+		if(
+				delai_US_depuis_demarrage_0 / 1000 											<= GLOB_timecode_ms_full_speed
+			||	( delai_US_depuis_demarrage_0 + duree_segment_US ) / 1000		>= GLOB_TIMECODE_ms_fin_sampling_temps_moteur
+		){
+			/// skip sgt analysis
+			// TAB_volume_slm_calib[index_segt].PID_i_factor = 0;
+			
+		} else {
+					
+				if (
+						TAB_volume_slm_calib[index_segt].is_vitesse_max_SEGMENT == false
+				) /// on ne fait la moyenne que de ce qui est sur le plateau de
+				 /// debit : on ne tient pas compte de la phase d'accel initiale
+				 /// on pourrait aussi utiliser 		GLOB_timecode_ms_full_speed		--->
+				 /// equivalent
+				{
+				 SOMME_ABS_erreur += TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit * TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
+				 #if			VERBOSE_PID_PHASE_DEBUT			==			1
+				 printf( "------------------------------------ ++++++++ %i\n",  (int)( TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit * 100 ) );
+				 #endif
+				 GLOB_MOYENNE_erreur += TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit; /// SATURATION_GLOB_MOYENNE_erreur
+				 GLOB_MOYENNE_facteur_I_PID += TAB_volume_slm_calib[index_segt].PID_i_factor;
+				 denom++;
 
-     if (TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit > MAX_erreur) 
-     {
-      MAX_erreur = TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
-     }
+				 if (TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit > MAX_erreur) 
+				 {
+				  MAX_erreur = TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
+				 }
 
-     if (TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit < MIN_erreur) 
-     {
-      MIN_erreur = TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
-     }
-    }
-   } /// fin du for
-   GLOB_MOYENNE_erreur /= denom;
+				 if (TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit < MIN_erreur) 
+				 {
+				  MIN_erreur = TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit;
+				 }
+				}
+		}
+		
+		delai_US_depuis_demarrage_0 += duree_segment_US;
+	} /// fin du for
+
+   GLOB_MOYENNE_erreur /= denom; /// SATURATION_GLOB_MOYENNE_erreur
    GLOB_MOYENNE_facteur_I_PID /= denom;
    SOMME_ABS_erreur /= denom;
-
    /// linearite du plateau
    GLOB_FACTEUR_linearite_plateau_inspi = fabs(GLOB_MOYENNE_erreur - MAX_erreur) / PROPORTION_FACTEUR_LINEARITE_PLATEAU; /// ajustement fin
    /// PID_i_factor
    // GLOB_FACTEUR_linearite_plateau_inspi = ( fabs( GLOB_MOYENNE_erreur ) -
    // SOMME_ABS_erreur ) / ( PROPORTION_FACTEUR_LINEARITE_PLATEAU / 6 ); ///
    // ajustement fin		PID_i_factor
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
 
    /// ecart moyen a consigne
-   if (GLOB_MOYENNE_erreur >
-     0) { /// MODE_PANIQUE : overshoot on cherche a revenir en leger negatif
+   if (GLOB_MOYENNE_erreur > 0) { /// MODE_PANIQUE : overshoot on cherche a revenir en leger negatif
     GLOB_FACTEUR_linearite_plateau_inspi *= GLOB_MOYENNE_erreur * FACT_PROPORTIONNEL_in_LINEARITE_POSITIF;
     if (GLOB_FACTEUR_linearite_plateau_inspi < MINI_FACTEUR_LINEARITE_PLATEAU * 4)
      GLOB_FACTEUR_linearite_plateau_inspi = MINI_FACTEUR_LINEARITE_PLATEAU * 4;
@@ -454,41 +720,83 @@ uint32_t adaptation( float     target_VT_mL,
    /// OUTPUT : MAX_erreur
    /// OUTPUT : GLOB_FACTEUR_linearite_plateau_inspi
    
-   /// on applique tout ca :
-   for (int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++) /// ds 		TAB_volume_slm_calib
-   {
-    if (TAB_volume_slm_calib[index_segt].PID_tunable_sgt == false) {
+   
+   
+   
+   
+   
+	/// on applique tout ca :
+	uint32_t		delai_US_depuis_demarrage = 0;
+	int				remember_index_full_speed = 0;
+	int				remember_index_motor_stop = 0;
+	for (int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++) /// ds 		TAB_volume_slm_calib
+	{
+		/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+		/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse tuning
+		/// on utilise GLOB_timecode_ms_full_speed et GLOB_TIMECODE_ms_fin_sampling_temps_moteur		pr borner l'analyse
+		uint32_t	duree_segment_US = TAB_volume_slm_calib[index_segt].CALIB_duree_sgt_US;
+		if(
+					delai_US_depuis_demarrage / 1000 										<= GLOB_timecode_ms_full_speed
+		){
+			remember_index_full_speed = index_segt;
+		} else if(
+			( delai_US_depuis_demarrage + duree_segment_US ) / 1000		>= GLOB_TIMECODE_ms_fin_sampling_temps_moteur
+		){
+			/// skip sgt analysis
+			// TAB_volume_slm_calib[index_segt].PID_i_factor = -1.234;
+			// printf("ooo---%i : %i %i\n", index_segt, (int)GLOB_timecode_ms_full_speed, (int)GLOB_TIMECODE_ms_fin_sampling_temps_moteur );
+		} else {
+				remember_index_motor_stop = index_segt;
+				
+				if (TAB_volume_slm_calib[index_segt].PID_tunable_sgt == false) {
 
-    } 
-    else { /// cad TAB_volume_slm_calib[ index_segt ] .PID_tunable_sgt == true
-     /// on calcule la PID
-     float increment_INTEGRALE = ( TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit) *
-      FACTEUR_I_PID_CONSIGNE_DEBIT_ERR_NEGATIVE
-      * GLOB_FACTEUR_linearite_plateau_inspi; /// va diminuer l'impact de l'integrale a mesure que le plateau apparait
+				} 
+				else { /// cad TAB_volume_slm_calib[ index_segt ] .PID_tunable_sgt == true
+				 /// on calcule la PID
+				 float increment_INTEGRALE =  
+																			TAB_volume_slm_calib[index_segt].PID_ERREUR_Debit
+																	* 		FACTEUR_I_PID_CONSIGNE_DEBIT_ERR_NEGATIVE
+																	* 		GLOB_FACTEUR_linearite_plateau_inspi
+																; /// va diminuer l'impact de l'integrale a mesure que le plateau apparait
 
-     if (increment_INTEGRALE > MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_POSITIF) 
-     {
-      increment_INTEGRALE = MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_POSITIF;
-#if NIVEAU_VERBOSE_DEBUG >= 1
-      if (index_segt >= GLOB_index_sgt_full_speed) {
-       printf("\t\t---limitation sgt ++ %i : %i\n\r", index_segt, (int)(increment_INTEGRALE * 1000));
-      }
+				 if (increment_INTEGRALE > MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_POSITIF) 
+				 {
+				  increment_INTEGRALE = MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_POSITIF;
+				#if NIVEAU_VERBOSE_DEBUG >= 1
+				  if (index_segt >= GLOB_index_sgt_full_speed) {
+				   printf("\t\t---limitation sgt ++ %i : %i\n\r", index_segt, (int)(increment_INTEGRALE * 1000));
+				  }
+				#endif
+				 } 
+				 else if (increment_INTEGRALE < -MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_NEGATIF) 
+				 {
+				  increment_INTEGRALE = -MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_NEGATIF;
+				#if NIVEAU_VERBOSE_DEBUG >= 1
+				  if (index_segt >= GLOB_index_sgt_full_speed) {
+				   printf("\t\t---limitation sgt -- %i : %i\n\r", index_segt, (int)(increment_INTEGRALE * 1000));
+				  }
+				#endif
+				 }
+				 TAB_volume_slm_calib[index_segt].PID_i_factor += increment_INTEGRALE;
+				}
+				
+				// printf("ooo---\n");
+		}
+		
+		delai_US_depuis_demarrage += duree_segment_US;
+/// on applique tout ca :
+} /// fin du for 		NBR_SEGMENTS_CALIBRATION
+/// OUTPUT : TAB_volume_slm_calib[index_segt].PID_i_factor
+#if			VERBOSE_PID_PHASE_DEBUT			==			1
+printf("---index Full speed %i ||| motor_stop %i\n", remember_index_full_speed, remember_index_motor_stop );
 #endif
-     } 
-     else if (increment_INTEGRALE < -MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_NEGATIF) 
-     {
-      increment_INTEGRALE = -MAX_INCREMENT_INTEGRALE_ACCUMULEE_PID_NEGATIF;
-#if NIVEAU_VERBOSE_DEBUG >= 1
-      if (index_segt >= GLOB_index_sgt_full_speed) {
-       printf("\t\t---limitation sgt -- %i : %i\n\r", index_segt, (int)(increment_INTEGRALE * 1000));
-      }
-#endif
-     }
-     TAB_volume_slm_calib[index_segt].PID_i_factor += increment_INTEGRALE;
-    }
 
-    /// on applique tout ca :
-   } /// fin du for 		NBR_SEGMENTS_CALIBRATION
+
+
+
+
+
+
 
    /// Nouvel algo PID
 
@@ -530,6 +838,11 @@ uint32_t adaptation( float     target_VT_mL,
     }
    }
    /// on limite les facteurs de PID PID_i_factor : pas plus de 20000 !!!
+   
+   
+   
+   
+   
 
    /// LISSAGE param PID
    if (ENABLE_LISSAGE_COURBE_FACT_INTEGRALE == 1) /// WIP : pas terrible : ne pas utiliser, pour memoire : a virer
@@ -566,14 +879,14 @@ uint32_t adaptation( float     target_VT_mL,
      if (index_SEGMENT_max_error_en_cours > 0)  /// gestion nm1
      {  
       TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours - 1] .PID_i_factor = 
-       TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours - 1].PID_i_factor * (1.0f - FACTEUR_LISSAGE_NM1) 
-       + TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours] .PID_i_factor * FACTEUR_LISSAGE_NM1;
+																																			TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours - 1].PID_i_factor * (1.0f - FACTEUR_LISSAGE_NM1) 
+																																	   + 	TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours] .PID_i_factor * FACTEUR_LISSAGE_NM1;
      }
 
      if (index_SEGMENT_max_error_en_cours < NBR_SEGMENTS_CALIBRATION - 1) { /// gestion nm1
       TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours + 1] .PID_i_factor =
-       TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours + 1] .PID_i_factor * (1.0f - FACTEUR_LISSAGE_NP1) +
-       TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours] .PID_i_factor * FACTEUR_LISSAGE_NP1;
+																																			TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours + 1] .PID_i_factor * (1.0f - FACTEUR_LISSAGE_NP1)
+																																	  +	TAB_volume_slm_calib[index_SEGMENT_max_error_en_cours] .PID_i_factor * FACTEUR_LISSAGE_NP1;
      }
 
      /// MAJ
@@ -584,10 +897,13 @@ uint32_t adaptation( float     target_VT_mL,
    /// LISSAGE param PID
    /// LISSAGE param PID
    /// LISSAGE param PID
-   for( int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++ )
-   {
-     brth_printf( "%i\n", (int)( TAB_volume_slm_calib[ index_segt ].PID_ERREUR_Debit * 10 ));
-   }
+   
+   
+   
+   
+   
+   
+
 #if DEBUG_PRINTF_CYCLE_PID == 1 /// ---DEBUT sampling data
    printf("---FIN   sampling data %i\n\r", GLOB_index_TAB_dp_raw_temps_moteur / DIVISEUR_NBR_VALEURS_SAMPLED);
 #endif
@@ -598,23 +914,23 @@ uint32_t adaptation( float     target_VT_mL,
   
 
   /// ETAPE 2 : on prepare la commande moteur
-#if USE_PID_VENTILATION_Verreur_accel == 1 /// WIP
-  float vol_during_acc_mL = 0.f;
-  uint32_t t_acc = 0;
-  printf("GLOB_timecode_ms_full_speed = %d\n", GLOB_timecode_ms_full_speed);
-  uint32_t i =0;
-  for(i = 0; t_acc < (GLOB_timecode_ms_full_speed*1000) ; i++)
-  {
-    t_acc             += motor_steps_us[i];
-    if( ((t_acc/1000) % flow_samples_period_ms) == 0)
-    {
-      uint32_t idx = (t_acc/1000) / flow_samples_period_ms;
-      vol_during_acc_mL += ( flow_samples_Lpm[idx] / 60.f) * (flow_samples_period_ms); //LPM -> mLms => /60/1000*1000 => /60
-    }
-  }
-  //Mettre a jour GLOB_debit_from_error_slm
-  GLOB_debit_from_error_slm = GLOB_Volume_erreur_phase_accel / duree_FULL_SPEED; /// on pourrait aussi estimer direct l'aire du triangle PID...
-
+#if 		USE_PID_VENTILATION_Verreur_accel == 1 /// WIP
+	// float vol_during_acc_mL = 0.f;
+	// uint32_t t_acc = 0;
+	// uint32_t i =0;
+	
+	// for(i = 0; t_acc < (GLOB_timecode_ms_full_speed*1000) ; i++)
+	// {
+		// t_acc             += motor_steps_us[i];
+		// if( ((t_acc/1000) % flow_samples_period_ms) == 0)
+		// {
+		  // uint32_t idx = (t_acc/1000) / flow_samples_period_ms;
+		  // vol_during_acc_mL += ( flow_samples_Lpm[idx] / 60.f) * (flow_samples_period_ms); //LPM -> mLms => /60/1000*1000 => /60
+		// }
+	// }
+	//Mettre a jour GLOB_debit_to_compensate_ERROR_accel
+	// GLOB_debit_to_compensate_ERROR_accel = GLOB_Volume_erreur_phase_accel / duree_FULL_SPEED; /// on pourrait aussi estimer direct l'aire du triangle PID...
+	// printf("GLOB_debit_to_compensate_ERROR_accel = %i with %i\n", (int)( GLOB_debit_to_compensate_ERROR_accel*1000 ) );
 #endif
 
   GLOB_index_pas_stepper = 0;
@@ -647,10 +963,10 @@ uint32_t adaptation( float     target_VT_mL,
 #endif
 #endif
     /// vol / debit = US
-    uint32_t duree_segment_US = (uint32_t)(round((float)((VOLUME_segment_corriged) / (target_Pdiff_Lpm)*60 * 1000 * 1000)));
+    uint32_t duree_segment_US = (uint32_t)(roundf((float)((VOLUME_segment_corriged) / (target_Pdiff_Lpm)*60 * 1000 * 1000)));
 
 //#if USE_PID_VENTILATION_Verreur_accel == 1
-    // +	GLOB_debit_from_error_slm /// todo : on accumule le VOL d'erreur pdt
+    // +	GLOB_debit_to_compensate_ERROR_accel /// todo : on accumule le VOL d'erreur pdt
     // accel : A VENTILER SUR target_Pdiff_Lpm
 //#endif
 //
@@ -660,7 +976,7 @@ uint32_t adaptation( float     target_VT_mL,
                                                                          /// WIP	: a refaire avec  nouveaux mors
 #endif
 
-    uint32_t duree_step_ideale_US = round((float)duree_segment_US / GLOB_NBR_pas_moteur_par_segment); /// linearised : todo : faire
+    uint32_t duree_step_ideale_US = roundf((float)duree_segment_US / GLOB_NBR_pas_moteur_par_segment); /// linearised : todo : faire
                                                                                                       /// varier le nombre de pas POUR
                                                                                                       /// EVITER DE TOUT DEPLACER
 
@@ -781,7 +1097,7 @@ uint32_t adaptation( float     target_VT_mL,
         duree_segment_US += duree_step_US;
         // }
 #if ENABLE_GESTION_Ti == 1
-        if (DUREE_Totale_cycle + duree_segment_US > round((float)get_setting_Tinsu_ms()*2 / 1000)) 
+        if (DUREE_Totale_cycle + duree_segment_US > roundf((float)get_setting_Tinsu_ms()*2 / 1000)) 
         { /// on vient de depasser Ti !!! cut !!
           super_break = true;
           break;
@@ -864,23 +1180,66 @@ uint32_t adaptation( float     target_VT_mL,
   /// BLOC_PID 0 FIN
   /// BLOC_PID 0 FIN
 
-  printf("------------------ compute_PID_factors FIN\n\r");
 
-  float    V_must_be_zero = get_cycle_VTe_mL();
-  float    VTe = get_cycle_VTi_mL() - V_must_be_zero; /// CONTROLE GENERAL IHM
-  float    pourcentage_erreur = ( V_must_be_zero ) / VTe; /// MODIF_POST_COMMIT
-  printf("----ERR\t %i\t %i\t LinACCEL %ims\t VTi %i VTe %i Verr_Acc %i ->deberr %i pmill %i\tmoyPIDI:\t %i\n",
-    (int)(GLOB_MOYENNE_erreur*1000),
-    (int)(GLOB_FACTEUR_linearite_plateau_inspi*1000),
-    (int)GLOB_timecode_ms_full_speed,
-    (int)(get_cycle_VTi_mL()*1000),
-    (int)(VTe*1000),
-    (int)(GLOB_Volume_erreur_phase_accel*1000),
-    (int)(GLOB_debit_from_error_slm*1000),
-    (int)(pourcentage_erreur*1000),
-    (int)(GLOB_MOYENNE_facteur_I_PID*1000*1000));
+	
 
-  return GLOB_index_pas_stepper-1;
+
+  // printf("------------------ compute_PID_factors FIN\n\r");
+
+   #if		NIVEAU_VERBOSE_DEBUG		>=		0
+		for( int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++ )
+		{
+			brth_printf( "%i\t", (int)( TAB_volume_slm_calib[ index_segt ].PID_ERREUR_Debit * 10 ));
+			if( ( index_segt % 10 ) == 9 ){
+			 brth_printf("\n");
+			}
+		}
+		brth_printf("\n");
+		brth_printf("\n");
+		
+		for( int index_segt = 0; index_segt < NBR_SEGMENTS_CALIBRATION; index_segt++ )
+		{
+			brth_printf( "%i\t", (int)( TAB_volume_slm_calib[ index_segt ].PID_i_factor * 1000 ));
+			if( ( index_segt % 10 ) == 9 ){
+			 brth_printf("\n");
+			}
+		}
+		brth_printf("\n");
+   #endif
+   
+
+	float    pourcentage_erreur = ( get_cycle_VTi_mL() - get_cycle_VTe_mL() ) / get_cycle_VTe_mL(); /// MODIF_POST_COMMIT
+
+
+
+	#if		NIVEAU_VERBOSE_DEBUG		>=		1
+	printf("----ERR\t %i\t %i\t LinACCEL %ims\t Ti %i -> VTi %i : ++%i --%i  : VTe %i ->deberr %i pmill %i\tmoyPID: %i\n", /// tuning
+																																																		(int)(GLOB_MOYENNE_erreur*1000),
+																																																		(int)(GLOB_FACTEUR_linearite_plateau_inspi*1000),
+																																																		(int)GLOB_timecode_ms_full_speed,
+																																																		
+																																																		(int)GLOB_Verif_Tinsu,
+																																																		
+																																																		/// ----------------->
+																																																		/// ----------------->
+																																																		(int)(get_cycle_VTi_mL()*1),
+																																																		(int)(GLOB_Volume_erreur_phase_accel*1),
+																																																		
+																																																		(int)(GLOB_Volume_insu_AFTER_motor_stop*1),
+																																																		
+																																																		(int)(get_cycle_VTe_mL()*1),
+																																																		
+																																																		/// ----------------->
+																																																		/// ----------------->
+																																																		
+																																																		
+																																																		(int)(GLOB_debit_to_compensate_ERROR_accel * 1),
+																																																		(int)(pourcentage_erreur*1000),
+																																																		(int)(GLOB_MOYENNE_facteur_I_PID*1000*1000)
+																																												);
+	#endif
+	
+	return GLOB_index_pas_stepper-1;
 } /// fin de 		compute_PID_factors()
 
 /// OUPUT ETAPE 1 Analyse error : dans l'ordre
@@ -891,7 +1250,7 @@ uint32_t adaptation( float     target_VT_mL,
 // GLOB_FACTEUR_linearite_plateau_inspi
 // TAB_volume_slm_calib[ index_segt ] .PID_i_factor
 // TAB_volume_slm_calib[ index_SEGMENT_max_error_en_cours ] .max_error_checked
-// /// foireux a virer GLOB_debit_from_error_slm
+// /// foireux a virer GLOB_debit_to_compensate_ERROR_accel
 
 /// OUTPUT ETAPE 2 commande moteur :
 // VOLUME_segment_corriged /// todo a passer ds TAB_volume_slm_calib

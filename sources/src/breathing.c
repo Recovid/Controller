@@ -10,20 +10,23 @@
 #include <math.h>
 #include <string.h>
 
+#include"adrien/const_calibs.h"
+
+
 //----------------------------------------------------------
 // Private defines
 //----------------------------------------------------------
 
-#define INSUFLATION_PROCESSING_PERIOD_MS    (10)
-#define PLATEAU_PROCESSING_PERIOD_MS        (10)
+#define INSUFLATION_PROCESSING_PERIOD_MS    (2) /// a faire plus souvent pr protection Pmax et surtout precision du volume VTi ---> voir motor_stop() qui controle 
+#define PLATEAU_PROCESSING_PERIOD_MS        	(5) /// a faire plus souvent pr protection Pmax
 #define EXHALATION_PROCESSING_PERIOD_MS     (10)
 
 
-#define SAMPLING_PERIOD_MS      (5)
+// #define SAMPLING_PERIOD_MS      (5)
 #define PEP_SAMPLES_COUNT       (100 / SAMPLING_PERIOD_MS)          // moyenne glissante sur les 100ms dernieres de l'expi
 #define PPLAT_SAMPLES_COUNT     (50  / SAMPLING_PERIOD_MS)          // moyenne glissante sur les 50ms dernieres de plat
 #define MAX_PAW_SAMPLES         MAX(PEP_SAMPLES_COUNT, PPLAT_SAMPLES_COUNT)
-#define MAX_PDIFF_SAMPLES       (2000 / SAMPLING_PERIOD_MS)
+#define MAX_PDIFF_SAMPLES       (6000 / SAMPLING_PERIOD_MS)
 
 
 //----------------------------------------------------------
@@ -50,6 +53,7 @@ static float g_cycle_Pcrete_cmH2O;
 static float g_cycle_Pplat_cmH2O;
 static float g_cycle_PEP_cmH2O;
 static uint32_t g_cycle_insuflation_duration;
+static volatile bool g_sampling_flow;
 
 static uint32_t g_setting_T;
 static float g_setting_VT;
@@ -176,7 +180,12 @@ static void breathing_run(void *args)
         g_cycle_Pplat_cmH2O = 0;
         g_cycle_PEP_cmH2O = 0;
         g_cycle_insuflation_duration = 0;
-
+		GLOBALE_pep = 0;
+		
+		float cycle_Pcrete_cmH2O = 0.0;
+		float cycle_Debit_insu_max = -10;
+		float cycle_Debit_exsu_max = 10;
+		
         // Init state machine
         BreathingState next_state = Insuflation;
         uint32_t inhalation_start_ms;
@@ -185,19 +194,15 @@ static void breathing_run(void *args)
 
         uint32_t exhalation_start_ms;
         uint32_t exhalation_pause_t_ms;
+		uint32_t nb_steps;
+		
+		
         do
         {
-            brth_printf("BRTH: start cycle\n");
+            #if		NIVEAU_VERBOSE_DEBUG		>=		3
+			brth_printf("BRTH: start cycle\n");
+			#endif
 
-            //--------------------------------------------------------------
-            // Inhalation (macro) state
-            //--------------------------------------------------------------
-            inhalation_start_ms   = get_time_ms();
-
-            //--------------------------------------------------------------
-            // Insuflation state: onEntry
-            //--------------------------------------------------------------
-            signal_state(Insuflation);
 
             // Get current controller settings
             taskENTER_CRITICAL();
@@ -208,23 +213,115 @@ static void breathing_run(void *args)
             g_setting_Tinspi_ms = get_setting_Tinspi_ms(); // Computed based on cycle period T and I/E ratio
             g_setting_Tinsu_ms = get_setting_Tinsu_ms();   // Théoritical Insuflation's time based on volume and theoritical flow
             g_setting_Texp_ms = get_setting_Texp_ms();     // Computed based on cycle period T and I/E ratio
-            taskEXIT_CRITICAL();
+           
+			brth_printf("BRTH: T     : %lu\n", g_setting_T);
+			brth_printf("BRTH: VT    : %lu\n", (uint32_t)(g_setting_VT ));
+			brth_printf("BRTH: VM    : %lu\n", (uint32_t)(g_setting_VM ));
+			brth_printf("BRTH: Pmax  : %lu\n", (uint32_t)(g_setting_Pmax ));
+			brth_printf("BRTH: Tinsu : %lu\n", g_setting_Tinsu_ms);
+			brth_printf("BRTH: Tinspi: %lu\n", g_setting_Tinspi_ms);
+			brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
+				
+				
+			#if	1
+				static uint32_t	LAST_g_setting_T = 0; /// 					= g_setting_T = 0;
+				static float		LAST_g_setting_VT = 0; ///  				= g_setting_VT = 0;
+				static float		LAST_g_setting_VM = 0; ///  				= g_setting_VM = 0;
+				static float		LAST_g_setting_Pmax = 0; ///  			= g_setting_Pmax = 0;
+				static uint32_t	LAST_g_setting_Tinspi_ms = 0; ///  	= g_setting_Tinspi_ms = 0;
+				static uint32_t	LAST_g_setting_Tinsu_ms = 0; ///  	= g_setting_Tinsu_ms = 0;
+				static uint32_t	LAST_g_setting_Texp_ms = 0; ///  	= g_setting_Texp_ms;
+				
+				static	uint16_t		compteur_print = 0;
+				if(
+						LAST_g_setting_T 				!= g_setting_T
+					||	LAST_g_setting_VT 				!= g_setting_VT
+					||	LAST_g_setting_VM 				!= g_setting_VM
+					||	LAST_g_setting_Pmax 			!= g_setting_Pmax
+					||	LAST_g_setting_Tinspi_ms 	!= g_setting_Tinspi_ms
+					||	LAST_g_setting_Tinsu_ms 	!= g_setting_Tinsu_ms
+					||	LAST_g_setting_Texp_ms 	!= g_setting_Texp_ms
+				){
+					
+					init_variables_PID( g_setting_VM ); /// + reinit_Modele_erreur_Pneumo(); /// notamment reinit modele erreur pneumo pr compute_corrected_flow() /// CHANGEMENTS_POST_LYON_0
+					// reset_Vol_error_phase_accel(); /// deja fait ds : init_variables_PID()
+					
+					g_Pdiff_Lpm_sample_count = 0; /// pr thread acquisition i2c
+					compteur_print = 0;
+					
+					#if			ENABLE_ADAPTATION_DURING_EXPIRATION			==			1 /// pas top pour timing general et I/E : decalle tout
+					// Compute adaptation based on current settings and previous collected data if any.
+					nb_steps = adaptation(
+																					g_setting_VT,
+																					g_setting_VM,
+																					SAMPLING_PERIOD_MS,
+																					
+																					g_Pdiff_Lpm_sample_count,
+																					// GLOB_index_sample_GO_motor_stop, /// g_Pdiff_Lpm_sample_count,
+																					
+																					g_Pdiff_Lpm_samples,
+																					MOTOR_MAX_STEPS,
+																					g_motor_steps_us
+																			);
+					#endif
+					
+					
 
-            brth_printf("BRTH: T     : %lu\n", g_setting_T);
-            brth_printf("BRTH: VT    : %lu\n", (uint32_t)(g_setting_VT ));
-            brth_printf("BRTH: VM    : %lu\n", (uint32_t)(g_setting_VM ));
-            brth_printf("BRTH: Pmax  : %lu\n", (uint32_t)(g_setting_Pmax ));
-            brth_printf("BRTH: Tinsu : %lu\n", g_setting_Tinsu_ms);
-            brth_printf("BRTH: Tinspi: %lu\n", g_setting_Tinspi_ms);
-            brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
-            
-
-
+				}
+				
+				LAST_g_setting_T 				= g_setting_T;
+				LAST_g_setting_VT 				= g_setting_VT;
+				LAST_g_setting_VM 				= g_setting_VM;
+				LAST_g_setting_Pmax 			= g_setting_Pmax;
+				LAST_g_setting_Tinspi_ms 	= g_setting_Tinspi_ms;
+				LAST_g_setting_Tinsu_ms 	= g_setting_Tinsu_ms;
+				LAST_g_setting_Texp_ms 	= g_setting_Texp_ms;
+				
+				if( ( compteur_print++ % 12 ) == 0 ){
+					brth_printf("BRTH: T     : %lu\n", g_setting_T);
+					brth_printf("BRTH: VT    : %lu\n", (uint32_t)(g_setting_VT ));
+					brth_printf("BRTH: VM    : %lu\n", (uint32_t)(g_setting_VM ));
+					brth_printf("BRTH: Pmax  : %lu\n", (uint32_t)(g_setting_Pmax ));
+					brth_printf("BRTH: Tinsu : %lu\n", g_setting_Tinsu_ms);
+					brth_printf("BRTH: Tinspi: %lu\n", g_setting_Tinspi_ms);
+					brth_printf("BRTH: samples: %u\n", g_Pdiff_Lpm_sample_count);
+				}
+            #endif
+			 taskEXIT_CRITICAL();
+			 
+			 
+			#if			ENABLE_ADAPTATION_DURING_EXPIRATION			==			0 /// pas top pour timing general et I/E : decalle tout
             // Compute adaptation based on current settings and previous collected data if any.
-            //compute_constant_motor_steps(800, 1200, g_motor_steps_us);
-            //      compute_motor_press_christophe(350000, 2000, 65000, 20, 14, 350000, 4000, steps, g_motor_steps_us);
+            nb_steps = adaptation(
+																			g_setting_VT,
+																			g_setting_VM,
+																			SAMPLING_PERIOD_MS,
+																			
+																			g_Pdiff_Lpm_sample_count,
+																			// GLOB_index_sample_GO_motor_stop, /// g_Pdiff_Lpm_sample_count,
+																			
+																			g_Pdiff_Lpm_samples,
+																			MOTOR_MAX_STEPS,
+																			g_motor_steps_us
+																	);
+			#endif
+																	
+            //--------------------------------------------------------------
+            // Inhalation (macro) state
+            //--------------------------------------------------------------
+            inhalation_start_ms   = get_time_ms(); /// CHANGEMENTS_POST_LYON_0
 
-            uint32_t nb_steps = adaptation(g_setting_VT, g_setting_VM, SAMPLING_PERIOD_MS, g_Pdiff_Lpm_sample_count, g_Pdiff_Lpm_samples, MOTOR_MAX_STEPS, g_motor_steps_us);
+            //--------------------------------------------------------------
+            // Insuflation state: onEntry
+            //--------------------------------------------------------------
+            signal_state(Insuflation);
+			
+			
+			
+			
+			cycle_Debit_insu_max = -10;
+			cycle_Debit_exsu_max = 10;
+			cycle_Pcrete_cmH2O = 0; 
             // Init Paw samples
             init_Paw_cmH2O_sampling();
 
@@ -233,45 +330,147 @@ static void breathing_run(void *args)
 
             valve_inhale();
             reset_Vol_mL();
-            motor_press(g_motor_steps_us, nb_steps);
+			#if	ENABLE_CORRECTION_FABRICE_GERMAIN		==		1
+			// reinit_Modele_erreur_Pneumo(); /// notamment reinit modele erreur pneumo pr compute_corrected_flow() /// CHANGEMENTS_POST_LYON_0
+			reset_volumes_Modele_erreur_Pneumo();  /// anti_divergence volume pr modele erreur Fabrice : uniqt  		MODELE_ERR_PNEUMO_volume_pneumo = 0
+			#endif
 
+			uint32_t	debut_motor = get_time_ms();
+			g_sampling_flow = true; ///-----------> on DEMARRE le sampling
+			
+			/// reinit pour calcul de volume de phase d'accel
+			GLOB_Volume_erreur_phase_accel = -12345.0f; /// pr calcul 			GLOB_debit_to_compensate_ERROR_accel			
+			
+
+            motor_press(g_motor_steps_us, nb_steps);
+			
+			
+			
+			
+            // print_steps(g_motor_steps_us, nb_steps);
             // start Sampling (Paw and Pdiff)
             if( xTimerReset(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
             {
                 // TODO : What should we do? Raise an alarm ??
             }
+			
+			
+			
+			
+			
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // Insuflation state: do
             // Pdiff and Paw sampling will be done by the samplingTimer in background
+			bool		MUST_printf_arret_motor	= false;
             do
             {
-                wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
-                g_cycle_Pcrete_cmH2O = MAX(g_cycle_Pcrete_cmH2O, read_Paw_cmH2O());
-                if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
+                
+                cycle_Pcrete_cmH2O 		= MAX(cycle_Pcrete_cmH2O, read_Paw_cmH2O());
+				cycle_Debit_insu_max 		= MAX( cycle_Debit_insu_max, read_Pdiff_Lpm() );
+				
+				wait_ms(INSUFLATION_PROCESSING_PERIOD_MS);
+				
+				/// on coupe moteur car PROTECTION PMax
+				/// on coupe moteur car PROTECTION PMax
+				/// on coupe moteur car PROTECTION PMax
+				if ( g_setting_Pmax <= g_cycle_Pcrete_cmH2O) 
                 {
-                    brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                    g_sampling_flow = false; ///-----------> on ARRETE le sampling
+					// GLOB_index_sample_GO_motor_stop = g_Pdiff_Lpm_sample_count; /// on se remember l'index echantillon
+					
+					/// PAS de printf ici !!!
+					/// PAS de printf ici !!!
+					/// PAS de printf ici !!!
+					 // valve_exhale(); /// prio absolue
+					// brth_printf("\n\nBRTH: Paw [%ld]> Pmax --> Exhalation\n\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+					/// PAS de printf ici !!!
+					/// PAS de printf ici !!!
+					/// PAS de printf ici !!!
+					
+					init_variables_PID(get_setting_Vmax_Lpm());
                     next_state = Exhalation;
                 }
-                else if (g_setting_VT <= read_Vol_mL())
-                {
-                    brth_printf("BRTH: vol [%ld]>= VT --> Plateau\n", (int32_t)(read_Vol_mL()));
-                    next_state = Plateau;
-                }
+				
+				
+				
+				#if	1
+				
+					#define				LIMITE_CUT_MOTOR					5 /// mL : petite marge secu car motor_stop n'est pas immediat
+					/// on coupe moteur car VOLUME ATTEINDS : g_setting_VT
+					/// on coupe moteur car VOLUME ATTEINDS : g_setting_VT
+					/// on coupe moteur car VOLUME ATTEINDS : g_setting_VT
+					else if (g_setting_VT <= 
+															read_Vol_mL()
+														+ 	GLOB_TOTAL_Volume_insu_AFTER_motor_stop /// GLOB_Volume_insu_AFTER_motor_stop
+														+	LIMITE_CUT_MOTOR
+					) 
+					// else if (g_setting_VT <= 600)
+					{
+						 
+						 g_sampling_flow = false; ///-----------> on ARRETE le sampling
+						 // GLOB_index_sample_GO_motor_stop = g_Pdiff_Lpm_sample_count; /// on se remember l'index echantillon
+						 
+						MUST_printf_arret_motor = true; /// debug only
+						next_state = Plateau;
+					}
+					
+				#endif
+				
+				
+				
                 // else if (g_setting_Tinsu_ms <= (get_time_ms() - inhalation_start_ms))   // TODO: see how it fits with the adaptation
                 // {
                 //     brth_printf("BRTH: dt [%lu]>= Ti\n", (get_time_ms() - inhalation_start_ms));
                 //     next_state = Plateau;
                 // }
             } while (Insuflation == next_state);
-            
             // Insuflation state: onExit
-            motor_stop();
-            if(Plateau == next_state) 
-            {
-                wait_ms(MOTOR_INERTIA_STOP_MS);
-            }
+			
+
+			
+			
+			/// TIMECODE necessaire pour PID
+			GLOB_index_sample_GO_motor_stop = g_Pdiff_Lpm_sample_count; /// on se remember l'index echantillon
+			GLOB_Volume_BEFORE_motor_stop = read_Vol_mL();
+					
+					motor_stop( ); /// nouvelle version avec decceleration adrien on the fly DMA MAJ + gestion GLOB_TOTAL_Volume_insu_AFTER_motor_stop ---> attention avec augmentation gain PID
+					/// todo : gerer un 		facteur_evolution_gain_PID_last_segment 		pour faire evoluer 		GLOB_TOTAL_Volume_insu_AFTER_motor_stop :
+					/// ds adapation() ------> facteur_evolution_gain_PID_last_segment = fabs( new_gain_PID_dernier_segment / last_gain_PID_dernier_segment );
+					/// last_gain_PID_dernier_segment = new_gain_PID_dernier_segment; /// MAJ
+					/// GLOB_TOTAL_Volume_insu_AFTER_motor_stop *= facteur_evolution_gain_PID_last_segment;
+			
+			g_sampling_flow = false; /// on arrete le sampling
+			
+
+			
+			/// TIMECODE necessaire pour PID
+			GLOB_index_sample_motor_stop_DONE = g_Pdiff_Lpm_sample_count; /// on se remember l'index echantillon
+			GLOB_Volume_AFTER_motor_stop = read_Vol_mL();
+			
+			
+			
+			/// VERIFICATION de Ti
+			/// VERIFICATION de Ti
+			/// VERIFICATION de Ti
+			GLOB_Verif_Tinsu = get_time_ms() - debut_motor;
+			/// VERIFICATION de Ti
+			/// VERIFICATION de Ti
+			/// VERIFICATION de Ti
+			
+			
+            // if(Plateau == next_state) 
+            // {
+                // wait_ms(MOTOR_INERTIA_STOP_MS);
+            // }
             motor_release(MOTOR_RELEASE_STEP_US);
-
-
+			
+			
+			
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (Plateau == next_state)
             {
                 // Plateau state : onEntry
@@ -281,6 +480,7 @@ static void breathing_run(void *args)
                 // Plateau state: do
                 do {
                     wait_ms(PLATEAU_PROCESSING_PERIOD_MS);
+					
                     if(is_command_Tpins_expired())
                     {
                         signal_pins(false);                  
@@ -298,7 +498,14 @@ static void breathing_run(void *args)
 
                     if (g_setting_Pmax <= g_cycle_Pcrete_cmH2O)
                     {
-                        brth_printf("BRTH: Paw [%ld]> Pmax --> Exhalation\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+                        /// PAS de printf ici !!!
+						/// PAS de printf ici !!!
+						/// PAS de printf ici !!!
+						 // valve_exhale(); /// prio absolue
+						// brth_printf("\n\nBRTH: Paw [%ld]> Pmax --> Exhalation\n\n\n", (int32_t)(g_cycle_Pcrete_cmH2O));
+						/// PAS de printf ici !!!
+						/// PAS de printf ici !!!
+						/// PAS de printf ici !!!
                         next_state= Exhalation;
                     }
                     else if ((g_setting_Tinspi_ms + DEFAULT_Tpins_max_ms) <= (get_time_ms() - inhalation_start_ms) )
@@ -308,7 +515,9 @@ static void breathing_run(void *args)
                     }
                     else if ( (g_setting_Tinspi_ms + inhalation_pause_t_ms) <= (get_time_ms() - inhalation_start_ms) )
                     {
-                        brth_print("BRTH: dt > Tinspi\n");
+                        #if		NIVEAU_VERBOSE_DEBUG		>=		2
+						brth_print("BRTH: dt > Tinspi\n");
+						#endif
                         next_state= Exhalation;
                     }
                 } while (Plateau == next_state);
@@ -322,18 +531,63 @@ static void breathing_run(void *args)
 
             // End of (macro) state Inhalation            
             g_cycle_VTi_mL = read_Vol_mL();
-
-
+			GLOB_Volume_AFTER_Plateau = g_cycle_VTi_mL; /// read_Vol_mL();
+			
+			// g_sampling_flow = false; ///-----------> on ARRETE le sampling
+			
+			
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel			
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel
+			GLOB_Volume_insu_AFTER_motor_stop 					= GLOB_Volume_AFTER_motor_stop - GLOB_Volume_BEFORE_motor_stop;
+			GLOB_TOTAL_Volume_insu_AFTER_motor_stop 		= GLOB_Volume_AFTER_Plateau - GLOB_Volume_BEFORE_motor_stop;
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel
+			/// volume parasite pr calcul : USE_PID_VENTILATION_Verreur_accel
+			
+			#if	1
+			if( MUST_printf_arret_motor == true ){
+				
+				// get_setting_Tplat_ms() ==  g_setting_Tinspi_ms - g_setting_Tinsu_ms : a verifier ???  /// CHANGEMENTS_POST_LYON_0
+				
+                     printf( "\n-----> declenche at %i + %i = %i mL --> %i != %i ms < %i\n\n", 
+																						(int)( ( GLOB_Volume_BEFORE_motor_stop ) * 1 ),
+																						(int)( GLOB_TOTAL_Volume_insu_AFTER_motor_stop * 1 ),
+																						(int)( GLOB_Volume_BEFORE_motor_stop + GLOB_TOTAL_Volume_insu_AFTER_motor_stop * 1 ),
+																						
+																						(int)( g_setting_Tinsu_ms ),
+																						(int)( GLOB_Verif_Tinsu ),
+																						(int)( g_setting_Tinspi_ms )
+																					);
+			
+			}
+			#endif
+			
+			
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			
             // Exhalation state: onEntry
             signal_state(Exhalation);
             valve_exhale();
             float VTe_start_mL = read_Vol_mL();
             exhalation_start_ms = get_time_ms();
             exhalation_pause_t_ms = 0;
+			
+			#if			ENABLE_ADAPTATION_DURING_EXPIRATION			==			1 /// mieux pr timing general bien propre I/E etc...
+				#define			MS_TEMPS_CALCUL_DEVOLU_ADAPTATION						250 /// 65 ms max mesured /// ms : todo : a mesurer CHANGEMENTS_POST_LYON_0
+			#else
+				#define			MS_TEMPS_CALCUL_DEVOLU_ADAPTATION						0 /// 150 /// ms : todo : a mesurer CHANGEMENTS_POST_LYON_0
+			#endif
+			
             // Exhalation state: do
             do {
-                wait_ms(EXHALATION_PROCESSING_PERIOD_MS);
-                if (is_command_Tpexp_expired())
+                cycle_Debit_exsu_max 		= MIN( cycle_Debit_exsu_max, read_Pdiff_Lpm() );
+				
+				wait_ms(EXHALATION_PROCESSING_PERIOD_MS);
+				
+         /*        if (is_command_Tpexp_expired())
                 {
                     // Release valve
                     valve_exhale();
@@ -347,21 +601,116 @@ static void breathing_run(void *args)
                     g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
                     exhalation_pause_t_ms+=EXHALATION_PROCESSING_PERIOD_MS;
                     signal_pexp(true);
-                }
+                } */
                 
-                if ((g_setting_Texp_ms + DEFAULT_Tpexp_max_ms) <= (get_time_ms() - exhalation_start_ms)) 
+                if ((g_setting_Texp_ms - MS_TEMPS_CALCUL_DEVOLU_ADAPTATION + DEFAULT_Tpexp_max_ms) <= (get_time_ms() - exhalation_start_ms))  /// CHANGEMENTS_POST_LYON_0
                 {
                     next_state= Insuflation;
                 }
-                else if (g_setting_Texp_ms + exhalation_pause_t_ms <= (get_time_ms() - exhalation_start_ms))
+                else if (g_setting_Texp_ms - MS_TEMPS_CALCUL_DEVOLU_ADAPTATION + exhalation_pause_t_ms <= (get_time_ms() - exhalation_start_ms)) /// CHANGEMENTS_POST_LYON_0
                 {
-                    brth_print("BRTH: Tpexp expired && (T <= dt)\n");
+                    #if		NIVEAU_VERBOSE_DEBUG		>=		2
+					brth_print("BRTH: Tpexp expired && (T <= dt)\n");
+					#endif
                     next_state= Insuflation;
                 }
             } while (Exhalation == next_state);            
             
+
+
+
+
+			#if		1 ///			ENABLE_ADAPTATION_DURING_EXPIRATION			==			1 /// mieux pr timing general bien propre I/E etc...
+				
+				bool			overrun_cpu = true;
+				uint32_t 		Duree_cpu_pr_adaptation = get_time_ms();
+				
+				
+					
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				
+				#if			ENABLE_ADAPTATION_DURING_EXPIRATION			==			1 /// mieux pr timing general bien propre I/E etc...
+				// Compute adaptation based on current settings and previous collected data if any.
+				nb_steps = adaptation(
+																				g_setting_VT,
+																				g_setting_VM,
+																				SAMPLING_PERIOD_MS,
+																				
+																				g_Pdiff_Lpm_sample_count,
+																				// GLOB_index_sample_GO_motor_stop, /// g_Pdiff_Lpm_sample_count,
+																				
+																				g_Pdiff_Lpm_samples,
+																				MOTOR_MAX_STEPS,
+																				g_motor_steps_us
+																		);
+				#endif
+				Duree_cpu_pr_adaptation = get_time_ms() - Duree_cpu_pr_adaptation;
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				/// faire adaptation() ici ! /// CHANGEMENTS_POST_LYON_0
+				
+				printf( "---tps_calcul %u << %u\n", Duree_cpu_pr_adaptation, MS_TEMPS_CALCUL_DEVOLU_ADAPTATION );
+				
+				while( 1 ){ /// wait 		MS_TEMPS_CALCUL_DEVOLU_ADAPTATION
+					
+					if ((g_setting_Texp_ms + DEFAULT_Tpexp_max_ms) <= (get_time_ms() - exhalation_start_ms))  /// CHANGEMENTS_POST_LYON_0
+					{
+						next_state= Insuflation;
+						break;
+					}
+					else if (g_setting_Texp_ms + exhalation_pause_t_ms <= (get_time_ms() - exhalation_start_ms)) /// CHANGEMENTS_POST_LYON_0
+					{
+						next_state= Insuflation;
+						break;
+					}
+					
+					overrun_cpu = false;
+					wait_ms( 1 );
+				}
+				
+				// printf( "---debug 2\n" );
+				
+				if( overrun_cpu == true ){
+					/// alarme !! CPU
+					printf(" alarm CPU %u < %u ms insuffisant !!!!\n", MS_TEMPS_CALCUL_DEVOLU_ADAPTATION, Duree_cpu_pr_adaptation );
+				}
+			#endif
+			
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			/// PAUSE EXPI only 
+            while( is_command_Tpexp_expired() == false ){
+				
+                wait_ms(EXHALATION_PROCESSING_PERIOD_MS);
+                if (is_command_Tpexp_expired())
+                {
+                    // Release valve
+                    valve_exhale();
+                    signal_pexp(false);
+					break;
+                }
+                else
+                {
+                    // Block valve
+                    valve_inhale();
+                    // Update cycle PEP with current average
+                    g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
+                    exhalation_pause_t_ms+=EXHALATION_PROCESSING_PERIOD_MS;
+                    signal_pexp(true);
+                }
+			
+			}
+			
+			
+			
             // Exhalation state: onExit
+			// printf( "--------------------------> g_cycle_PEP_cmH2O %i\n", (int)(g_cycle_PEP_cmH2O * 1 ) );
+			GLOBALE_pep = g_cycle_PEP_cmH2O;
+			
             g_cycle_PEP_cmH2O = get_avg_Paw_cmH2O(PEP_SAMPLES_COUNT);
+			
 
             // stop Sampling (Paw and Pdiff)
             if( xTimerStop(g_samplingTimer, 20/portTICK_PERIOD_MS) != pdTRUE ) 
@@ -375,13 +724,35 @@ static void breathing_run(void *args)
             g_cycle_FR_pm = 1. / (((float)(t_ms - inhalation_start_ms - inhalation_pause_t_ms - exhalation_pause_t_ms)) / 1000 / 60);
             g_cycle_VTe_mL = VTe_start_mL - read_Vol_mL();
             g_cycle_VMe_Lpm = (g_cycle_VTe_mL / 1000) * g_cycle_FR_pm;
-
+			g_cycle_Pcrete_cmH2O = cycle_Pcrete_cmH2O;
             // Notify system that new cycle data is available.
             xEventGroupSetBits(g_breathingEvents, BRTH_CYCLE_UPDATED);
 
             // Proceed to the PEP regulation
-            //regulation_pep();
-
+			#if					ENABLE_ASSERVISSEMENT_PEP						==				1
+				#define			DETECTION_DECONNEXION_PCrete										(15)	/// 5 PEEP min
+				#define			DETECTION_DECONNEXION_DEBIT_MIN_INSU						5.0f		/// lpm
+				#define			DETECTION_DECONNEXION_DEBIT_MIN_EXSU					-2.5f		/// lpm
+				if( 
+						/// poumon_effectivement_detected == true
+							cycle_Pcrete_cmH2O		>		DETECTION_DECONNEXION_PCrete
+					&&	cycle_Debit_insu_max		>		DETECTION_DECONNEXION_DEBIT_MIN_INSU
+					&&	cycle_Debit_exsu_max		<		DETECTION_DECONNEXION_DEBIT_MIN_EXSU
+					/// todo : analyse ecart à moyenne cycles précédents : + fin
+					
+				){ /// todo : attention alarme debranchement circuit sinon elle se plante ds le fond... CHANGEMENTS_POST_LYON_0
+					regulation_pep();
+					
+				} else {
+					/// ALARME deconnexion !!!
+					brth_printf("\n\n\nALARME DECONNEXION !!! insu %i   exsu %i lpm : Paw %i\n\n\n",
+																																	(int)(cycle_Debit_insu_max),
+																																	(int)(cycle_Debit_exsu_max),
+																																	(int)(cycle_Pcrete_cmH2O)
+																															);
+				}
+			#endif
+			
             // Check if controller asked us to stop.
             events = xEventGroupGetBits(g_controllerEvents);
         } while ((events & BREATHING_RUN_FLAG) != 0);
@@ -423,15 +794,21 @@ static void signal_state(BreathingState state)
     {
     case Insuflation:
         brthState = BRTH_CYCLE_INSUFLATION;
-        brth_printf("BRTH: Insuflation\n");
+        #if		NIVEAU_VERBOSE_DEBUG		>=		3
+		brth_printf("BRTH: Insuflation\n");
+		#endif
         break;
     case Plateau:
         brthState = BRTH_CYCLE_PLATEAU;
-        brth_printf("BRTH: Plateau\n");
+        #if		NIVEAU_VERBOSE_DEBUG		>=		3
+		brth_printf("BRTH: Plateau\n");
+		#endif
         break;
     case Exhalation:
         brthState = BRTH_CYCLE_EXHALATION;
-        brth_printf("BRTH: Exhalation\n");
+        #if		NIVEAU_VERBOSE_DEBUG		>=		3
+		brth_printf("BRTH: Exhalation\n");
+		#endif
         break;
     }
     // Inform system about current state
@@ -481,24 +858,77 @@ static float get_avg_Paw_cmH2O(uint16_t count)
     return count == 0 ? 0 : sum/count;
 }
 
+
 static void samplingCallback(TimerHandle_t timer) {
     taskENTER_CRITICAL();
     // sample Paw
     g_Paw_cmH2O_samples[g_Paw_cmH2O_sample_idx]= read_Paw_cmH2O();
     g_Paw_cmH2O_sample_idx = (g_Paw_cmH2O_sample_idx + 1) % MAX_PAW_SAMPLES;
+	
     if(g_Paw_cmH2O_sample_count<MAX_PAW_SAMPLES) 
     {
         ++g_Paw_cmH2O_sample_count;
     }
 
     // sample Pdiff only during Insuflation state
-    if((xEventGroupGetBits(g_breathingEvents) & BRTH_CYCLE_INSUFLATION) == BRTH_CYCLE_INSUFLATION) 
+    if(g_sampling_flow == true) 
     {
         if(g_Pdiff_Lpm_sample_count<MAX_PDIFF_SAMPLES)
         {
-            g_Pdiff_Lpm_samples[g_Pdiff_Lpm_sample_count++]= read_Pdiff_Lpm();
+			g_Pdiff_Lpm_samples[g_Pdiff_Lpm_sample_count++]= read_Pdiff_Lpm(); /// PASS_MESURES_DEBIT
         }
     }
+
+	#if		USE_PID_VENTILATION_Verreur_accel		==		1
+	/// remember errur liee a phase accel
+	if( 
+				// get_time_ms() > GLOB_TIMER_fin_accel_moteur_ms
+		// &&	
+				GLOB_Volume_erreur_phase_accel == -12345.0f /// MAJ needed
+		&&	GLOB_timecode_ms_full_speed != 0
+		&&	( g_Pdiff_Lpm_sample_count * SAMPLING_PERIOD_MS ) >= GLOB_timecode_ms_full_speed
+	){ /// GLOB_timecode_ms_full_speed ){
+		
+		float	current_volume = read_Vol_mL();
+		
+		float	Volume_attendu_mL = 			( 
+																				( 
+																						g_setting_VM /// consigne debit
+																					// + 	GLOB_debit_to_compensate_ERROR_accel
+																				) /// get_setting_Vmax_Lpm()  // debit_consigne_slm
+																		/ 		60.0f /// min to sec : MODIF_POST_COMMIT
+																	)
+																	
+																	
+															/// a peu pres equivalent
+															// * 	GLOB_timecode_ms_full_speed
+															*	( g_Pdiff_Lpm_sample_count * SAMPLING_PERIOD_MS )
+														;
+														
+		GLOB_Volume_erreur_phase_accel = Volume_attendu_mL - current_volume;
+		
+		float		Volume_a_compenser = GLOB_Volume_erreur_phase_accel - GLOB_Volume_insu_AFTER_motor_stop;
+		
+		float		proportion_erreur = current_volume / Volume_attendu_mL;
+		#define		ATTENUATION_OSCILLATION_COMP_VOLUME_ERR			0.85f
+		GLOB_debit_to_compensate_ERROR_accel = 
+																							ATTENUATION_OSCILLATION_COMP_VOLUME_ERR
+																					* 		60.0f * Volume_a_compenser / ( 1000 - GLOB_timecode_ms_full_speed );
+		
+		
+		#if	0
+			printf( "\n\n\n--cons %i mL but %i mL -> deb comp %i full speed %i ms : period %i / index %i\n\n\n\n", 
+																											(int)( Volume_attendu_mL ),
+																											(int)( current_volume ),
+																											(int)( GLOB_debit_to_compensate_ERROR_accel * 1000 ),
+																											(int)( GLOB_timecode_ms_full_speed ),
+																											(int)( SAMPLING_PERIOD_MS ),
+																											(int)( g_Pdiff_Lpm_sample_count )
+																									);
+		#endif
+	}
+	#endif
+
 
     taskEXIT_CRITICAL();
 }

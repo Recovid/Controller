@@ -9,6 +9,7 @@
 
 #include <math.h>
 
+#include "adrien/const_calibs.h"
 
 //----------------------------------------------------------
 // Private defines
@@ -63,7 +64,7 @@ static void reset_settings();
 static bool load_settings();
 
 static void check(int *bits, int bit, bool success);
-//static bool sensor_test(float (*sensor)(), float min, float max, float maxstddev);
+// static bool sensor_test(float (*sensor)(), float min, float max, float maxstddev);
 static int  self_tests();
 
 static void controller_run(void *args);
@@ -249,8 +250,10 @@ static void controller_run(void *args)
 
         ctrl_printf("CTRL: breathing, monitoring and hmi tasks stopped\n");
         ctrl_printf("CTRL: proceed to system shutdown\n");
-
+		
+		#ifndef	NO_RASPI_REBOOT
         enable_Rpi(Off);
+		#endif
 
         // TODO implement system shutdown (lowpower)
 
@@ -266,38 +269,38 @@ static void check(int *bits, int bit, bool success)
     }
 }
 
-// static bool sensor_test(float (*sensor)(), float min, float max, float maxstddev)
-// {
-//     // Sample sensor
-//     float value[10], stddev = 0., sumX = 0., sumX2 = 0., sumY = 0., sumXY = 0.;
-//     const int samples = COUNT_OF(value);
-//     for (int i = 0; i < samples; i++)
-//     {
-//         value[i] = (*sensor)();
-//         if (value[i] < min || max < value[i])
-//         {
-//             return false;
-//         }
-//         sumX += i;      //  45 for 10 samples
-//         sumX2 += i * i; // 285 for 10 samples
-//         sumY += value[i];
-//         sumXY += value[i] * i;
-//         wait_ms(1);
-//     }
-//     // Fit a line to account for rapidly changing data such as Pdiff at start of Exhale
-//     float b = (samples * sumXY - sumX * sumY) / (samples * sumX2 - sumX * sumX);
-//     float a = (sumY - b * sumX) / samples;
+/* static bool sensor_test(float (*sensor)(), float min, float max, float maxstddev)
+{
+    // Sample sensor
+    float value[10], stddev = 0., sumX = 0., sumX2 = 0., sumY = 0., sumXY = 0.;
+    const int samples = COUNT_OF(value);
+    for (int i = 0; i < samples; i++)
+    {
+        value[i] = (*sensor)();
+        if (value[i] < min || max < value[i])
+        {
+            return false;
+        }
+        sumX += i;      //  45 for 10 samples
+        sumX2 += i * i; // 285 for 10 samples
+        sumY += value[i];
+        sumXY += value[i] * i;
+        wait_ms(1);
+    }
+    // Fit a line to account for rapidly changing data such as Pdiff at start of Exhale
+    float b = (samples * sumXY - sumX * sumY) / (samples * sumX2 - sumX * sumX);
+    float a = (sumY - b * sumX) / samples;
 
-//     // Compute standard deviation to line fit
-//     for (int i = 0; i < samples; i++)
-//     {
-//         float fit = a + b * i;
-//         stddev += pow(value[i] - fit, 2);
-//     }
-//     stddev = sqrtf(stddev / samples);
+    // Compute standard deviation to line fit
+    for (int i = 0; i < samples; i++)
+    {
+        float fit = a + b * i;
+        stddev += pow(value[i] - fit, 2);
+    }
+    stddev = sqrtf(stddev / samples);
 
-//     return maxstddev < stddev;
-// }
+    return maxstddev < stddev;
+} */
 
 static int self_tests()
 {
@@ -336,11 +339,36 @@ static int self_tests()
     ctrl_printf("CTRL: Start sensors\n");
     check(&test_bits, 5, init_sensors());
     check(&test_bits, 11, sensors_start());
-
+	
+	// int		compteur = 2000;
+	bool		pourrave = true;
+	
+	while( pourrave == true ){
+		int	compteur_2 = 500;
+				// wait_ms(200);
+			if( read_Paw_cmH2O() != 0 && read_Paw_cmH2O() != 0){
+				pourrave = false;
+				break;
+			} else {
+				light_red(On);
+				printf( "---- ERROR bus i2c\n" );
+				wait_ms( 200 );
+				light_red(Off);
+				wait_ms( 200 );
+			}
+		// while( 1 );
+		// hardfault_CRASH_ME();
+	}
+            // g_setting_VT = get_setting_VT_mL();
+            // g_setting_VM = get_setting_Vmax_Lpm();
+            // g_setting_Pmax = get_setting_Pmax_cmH2O();
+            // g_setting_Tinspi_ms = get_setting_Tinspi_ms(); // Computed based on cycle period T and I/E ratio
+            // g_setting_Tinsu_ms = get_setting_Tinsu_ms();   // Théoritical Insuflation's time based on volume and theoritical flow
+            // g_setting_Texp_ms = get_setting_Texp_ms();     // Computed based on cycle period T and I/E ratio
     // TODO: Tests not working !!!
-    //    check(&test_bits, 5, sensor_test(get_sensed_VolM_Lpm  , -100,  100, 2)); ctrl_printf("Rest    Pdiff  Lpm:%+.1g\n", read_VolM_Lpm  ());
-    //   check(&test_bits, 6, sensor_test(read_Paw_cmH2O   ,  -20,  100, 2)); ctrl_printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O   ());
-    //    check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); ctrl_printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
+	// check(&test_bits, 5, sensor_test(get_sensed_VolM_Lpm  , -100,  100, 2)); ctrl_printf("Rest    Pdiff  Lpm:%+.1g\n", read_VolM_Lpm  ());
+	// check(&test_bits, 6, sensor_test(read_Paw_cmH2O   ,  -20,  100, 2)); ctrl_printf("Rest    Paw  cmH2O:%+.1g\n", read_Paw_cmH2O   ());
+	// check(&test_bits, 7, sensor_test(read_Patmo_mbar,  900, 1100, 2)); ctrl_printf("Rest    Patmo mbar:%+.1g\n", read_Patmo_mbar());
 
     ctrl_printf("CTRL: Init valve\n");
     check(&test_bits, 3, init_valve());
@@ -368,20 +396,24 @@ static int self_tests()
     //check(&test_bits, 4, motor_stop());
     //check(&test_bits, 3, valve_exhale()); // start pos
     //printf("Exhale  Pdiff  Lpm:%+.1g\n", get_sensed_VolM_Lpm());
-
-    //ctrl_printf("CTRL: Init pep motor\n");
-    //check(&test_bits, 8, init_motor_pep());
-    //motor_pep_home();
-    //while (!is_motor_pep_home())
-    //{
-    //    wait_ms(10);
-    //}    
-    //motor_pep_move(40);
-    //while (is_motor_pep_moving()) 
-    //{
-    //    wait_ms(10);
-    //}
+	
+	
+	#if		ENABLE_ASSERVISSEMENT_PEP			==		1
+	// #error	"toupourri"
+    ctrl_printf("CTRL: Init pep motor\n");
+    check(&test_bits, 8, init_motor_pep());
+    motor_pep_home();
+    while (!is_motor_pep_home())
+    {
+       wait_ms(10);
+    }    
+    motor_pep_move(40);
+    while (is_motor_pep_moving()) 
+    {
+       wait_ms(10);
+    }
     // TODO check(&test_bits, 8, motor_pep_...
+	#endif
 
     return test_bits;
 }
