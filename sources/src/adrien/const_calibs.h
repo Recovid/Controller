@@ -289,6 +289,7 @@ typedef enum {
 volatile float	ACCUMULATION_err_max_EXPI;
 
 volatile	modele_erreur_PHASE	GLOB_PHASE___modele_erreur; /// = 1;
+volatile	float GLOB_last_flow_slm_brut; /// = 1;
 void reinit_Modele_erreur_Pneumo(); /// notamment reinit modele erreur pneumo pr compute_corrected_flow() /// CHANGEMENTS_POST_LYON_0
 void reset_volumes_Modele_erreur_Pneumo(); /// /// pour usage cycle a cycle
 #endif

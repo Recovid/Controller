@@ -340,7 +340,8 @@ float compute_corrected_flow( int16_t read, float Paw )
 			
 			
 			float		slm =  -(float) read / 105.f;
-							_current_flow_slm_brut = slm; /// sauvegarde pr logs debug Fabrice
+                        _current_flow_slm_brut = slm; /// sauvegarde pr logs debug Fabrice
+                        GLOB_last_flow_slm_brut = slm; // Save value in global probably equivalent to previous line
 							
 			return	slm;
 	
