@@ -66,7 +66,7 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
         return false;
     }*/
 
-    replace_int_with_padding(DATA_frame, get_time_ms() % 1000000l, 6, 10);
+    replace_int_with_padding(DATA_frame, get_time_ms() % 1 << 19, 6, 10);
     replace_int_with_padding(DATA_frame, roundf(Vol_mL), 4, 10);
     *strchr(DATA_frame, '.') = sign(VolM_Lpm);
     replace_int_with_padding(DATA_frame, roundf(VolM_Lpm), 3, 10);
@@ -93,7 +93,7 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
         return false;
     }*/
 
-    replace_int_with_padding(DATA_X_frame, get_time_ms() % 1000000l, 6, 10);
+    replace_int_with_padding(DATA_X_frame, get_time_ms() % 1 << 19, 6, 10);
     replace_int_with_padding(DATA_X_frame, roundf(Vol_mL)     , 4, 10);
     *strchr(DATA_X_frame, '.') = sign(VolM_Lpm);
     replace_int_with_padding(DATA_X_frame, roundf(VolM_Lpm)   , 3, 10);
