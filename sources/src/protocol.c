@@ -70,7 +70,7 @@ bool send_DATA(float P_cmH2O, float VolM_Lpm, float Vol_mL)
         return false;
     }*/
 
-    replace_int_with_padding(DATA_frame, get_time_ms() % 1 << 19, 6, 10);
+    replace_int_with_padding(DATA_frame, get_time_ms() % (1 << 19), 6, 10);
     replace_int_with_padding(DATA_frame, roundf(Vol_mL * 1000), 7, 10);
     *strchr(DATA_frame, '.') = sign(VolM_Lpm);
     replace_int_with_padding(DATA_frame, roundf(VolM_Lpm * 1000), 6, 10);
@@ -100,7 +100,7 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
         return false;
     }*/
 
-    replace_int_with_padding(DATA_X_frame, get_time_ms() % 1 << 19, 6, 10);
+    replace_int_with_padding(DATA_X_frame, get_time_ms() % (1 << 19), 6, 10);
     replace_int_with_padding(DATA_X_frame, roundf(Vol_mL * 1000)     , 7, 10);
     *strchr(DATA_X_frame, '.') = sign(VolM_Lpm);
     replace_int_with_padding(DATA_X_frame, roundf(VolM_Lpm * 1000)   , 6, 10);
@@ -133,7 +133,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g
     {
         return false;
     }*/
-    replace_int_with_padding(RESP_frame, get_time_ms() % 1 << 19, 6, 10);
+    replace_int_with_padding(RESP_frame, get_time_ms() % (1 << 19), 6, 10);
     replace_int_with_padding(RESP_frame, roundf(EoI_ratio*10)    , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(FR_pm)           , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(VTe_mL)          , 3, 10);
@@ -142,7 +142,7 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g
     replace_int_with_padding(RESP_frame, roundf(VM_Lpm)          , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(Pplat_cmH2O)     , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(PEP_cmH2O)       , 2, 10);
-    replace_int_with_padding(RESP_frame, roundf(Patmo)       , 4, 10);
+    replace_int_with_padding(RESP_frame, roundf(Patmo_mbar)       , 4, 10);
     replace_int_with_padding(RESP_frame, roundf(Temp_degreeC * 10)       , 3, 10);
     replace_int_with_padding(RESP_frame, checksum8(RESP_frame), 2, 16);
 
