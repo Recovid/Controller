@@ -103,7 +103,9 @@ static void hmi_run(void *args)
                           get_cycle_VMe_Lpm(),
                           get_cycle_Pcrete_cmH2O(),
                           get_cycle_Pplat_cmH2O(),
-                          get_cycle_PEP_cmH2O());
+                          get_cycle_PEP_cmH2O(),
+                          read_Patmo_mbar(),
+                          read_temp_degreeC());
             }
 
             if (25 <= (get_time_ms() - last_report_time))

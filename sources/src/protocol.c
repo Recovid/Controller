@@ -117,10 +117,10 @@ bool send_DATA_X(float P_cmH2O, float VolM_Lpm, float Vol_mL, float Pplat_cmH2O,
     return send(DATA_X_frame);
 }
 
-static const char RESP_pattern[] = "RESP msec_:...... IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.." CS8 CS8_VALUE;
+static const char RESP_pattern[] = "RESP msec_:...... IE___:.. FR___:.. VTe__:... PCRET:.. VM___:... PPLAT:.. PEP__:.. Patmo:.... Temp_:..." CS8 CS8_VALUE;
 static char RESP_frame[sizeof(RESP_pattern)];
 
-bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g_cycle_Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O)
+bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g_cycle_Pcrete_cmH2O, float Pplat_cmH2O, float PEP_cmH2O, float Patmo_mbar, float Temp_degreeC)
 {
     strncpy(RESP_frame, RESP_pattern, sizeof(RESP_frame));
 
@@ -142,6 +142,8 @@ bool send_RESP(float EoI_ratio, float FR_pm, float VTe_mL, float VM_Lpm, float g
     replace_int_with_padding(RESP_frame, roundf(VM_Lpm)          , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(Pplat_cmH2O)     , 2, 10);
     replace_int_with_padding(RESP_frame, roundf(PEP_cmH2O)       , 2, 10);
+    replace_int_with_padding(RESP_frame, roundf(Patmo)       , 4, 10);
+    replace_int_with_padding(RESP_frame, roundf(Temp_degreeC * 10)       , 3, 10);
     replace_int_with_padding(RESP_frame, checksum8(RESP_frame), 2, 16);
 
     return send(RESP_frame);
